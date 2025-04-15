@@ -1,0 +1,31 @@
+site_name: Azure AI Supercomputer User Guide
+site_url: https://stunning-fiesta-rw48l84.pages.github.io
+site_description: Azure AI Supercomputer User Guide
+site_author: Azure Specialized AI CSI <azure-ai-csi@microsoft.com>
+docs_dir: docs
+theme:
+  name: material
+  palette:
+    scheme: default
+    primary: indigo
+    accent: indigo
+
+features:
+  - navigation.tabs
+  - navigation.instant
+  - toc.integrate
+  - content.code.copy
+  - content.action.edit
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Deployment Guide: deployment.md
+  - VM SKUs: vm-skus.md
+  - Validation & Health Checks: validation.md
+  - Operations: operations.md
+  - Guest Health Reporting (GHR): ghr.md
+  - InfiniBand Topology: topology.md
+  - Benchmarking: benchmarking.md
+  - Telemetry & Observability: telemetry.md
+  - Appendices: appendices.md
