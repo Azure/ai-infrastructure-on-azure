@@ -1,14 +1,21 @@
-# Project
+# AI on Azure
 
-> This repo has been populated by an initial template to help get you started. Please
-> make sure to update the content to build a great experience for community-building.
+This repository is meant to collect architectural guidance and AI training examples meant to run on Azure AI Infrastructure.
 
-As the maintainer of this project, please make a few updates:
+This includes architecture examples and real use case scenarios on Azure AI Infrastructure involving different orchestration solutions:
+* [Azure CycleCloud Workspaces for Slurm](https://learn.microsoft.com/en-us/azure/cyclecloud/overview-ccws?view=cyclecloud-8)
+* [Azure Kubernetes Service](https://learn.microsoft.com/en-us/azure/aks/what-is-aks)
+* [Azure Machine Learning](https://learn.microsoft.com/en-us/azure/machine-learning/?view=azureml-api-2)  
 
-- Improving this README.MD file to provide a great experience
-- Updating SUPPORT.MD with content about this project's support experience
-- Understanding the security reporting process in SECURITY.MD
-- Remove this section from the README
+For each scenario and architecture, the repository will include storage recommendations among Azure Storage services ([Azure Blob Storage](https://azure.microsoft.com/en-us/products/storage/blobs), [Azure Managed Lustre](https://learn.microsoft.com/en-us/azure/azure-managed-lustre/amlfs-overview), [Azure NetApp Files](https://learn.microsoft.com/en-us/azure/azure-netapp-files/azure-netapp-files-introduction)), monitoring and observability.
+
+## Infrastructure references catalog
+
+1. [Azure CycleCloud Slurm Workspaces AI Cluster](./infrastructure_references/azure_cyclecloud_workspaces_for_slurm/README.md) - Prototypes for the creation of Azure CycleCloud Slurm Workspaces AI Clusters using CLI deployment
+
+## AI training example catalogue
+1. [MegatronLM GPT3-175B with Slimpajama 627B dataset on Slurm](./examples/megatron-lm/GPT3-175B/slurm/README.md) - Guidance of an E2E training workflow based on MegatronLM, including data pre-processing from Slimpajama 627B dataset
+
 
 ## Contributing
 
@@ -31,3 +38,9 @@ trademarks or logos is subject to and must follow
 [Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general).
 Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
 Any use of third-party trademarks or logos are subject to those third-party's policies.
+
+## Contributors
+
+Please join us in contributing to the project
+
+[![Contributors](https://contrib.rocks/image?repo=Azure/ai-on-azure)](https://github.com/Azure/ai-on-azure/graphs/contributors)
