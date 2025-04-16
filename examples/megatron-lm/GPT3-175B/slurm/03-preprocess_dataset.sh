@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# This script preprocesses the SlimPajama dataset using NeMo Docker image.
 set -ex
 
 TASKS_PER_NODE=${TASKS_PER_NODE:-48}

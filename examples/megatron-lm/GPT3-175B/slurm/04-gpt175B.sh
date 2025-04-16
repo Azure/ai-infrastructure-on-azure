@@ -1,16 +1,15 @@
 #!/bin/bash
 #SBATCH --job-name=gpt175b
-#SBATCH --ntasks-per-node=8
+#SBATCH --ntasks-per-node=1
 #SBATCH --gpus-per-node=8
-#SBATCH --cpus-per-task=1        
-#SBATCH --gpus-per-task=1
+#SBATCH --cpus-per-task=8        
+#SBATCH --gpus-per-task=8
 #SBATCH --mem=0                
 #SBATCH --output=gpt175b_%j.out
 #SBATCH --error=gpt175b_%j.err
-
 # Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
 # This script has been modified from https://github.com/NVIDIA/Megatron-LM/blob/main/examples/gpt3/train_gpt3_175b_distributed.sh 
-
+# It contains the procedure to run the training of GPT-3 175B model using Megatron-LM.
 set -xe
 
 if [ -z "$STAGE_PATH" ]; then
@@ -18,22 +17,22 @@ if [ -z "$STAGE_PATH" ]; then
   exit 1
 fi
 
-
 ## CONFIGURATION
+TOPO_FILE=${TOPO_FILE:-"/opt/microsoft/ndv5-topo.xml"}
 CHUNKS=${CHUNKS:-15}
 GLOBAL_BATCH_SIZE=${GLOBAL_BATCH_SIZE:-512}
 NUMBER_OF_ITERATIONS=${NUMBER_OF_ITERATIONS:-1500}
 SAVE_INTERVAL=${SAVE_INTERVAL:-100}
 EVAL_INTERVAL=${EVAL_INTERVAL:-100}
 LOGLEVEL=${LOGLEVEL:-"INFO"}
-NCCL_TOPO_FILE=$TOPO_FILE 
-CUDA_DEVICE_MAX_CONNECTIONS=1
+
+export NCCL_TOPO_FILE=$TOPO_FILE 
+export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 ## PYTORCH
 PYTORCH_VERSION=${PYTORCH_VERSION:-"25.03"}
 SQUASHED_PYTORCH_IMAGE_NAME="pytorch+${PYTORCH_VERSION}+py3"
 SQUASHED_PYTORCH_IMAGE="$STAGE_PATH/${SQUASHED_PYTORCH_IMAGE_NAME}.sqsh"
-TOPO_FILE=${TOPO_FILE:-"/opt/microsoft/ndv5-topo.xml"}
 
 ## PATHS
 DATASET_FOLDER_NAME=${DATASET_FOLDER_NAME:-"slimpajama/preprocessed"}
@@ -58,7 +57,6 @@ VALID_DATA="\
 TEST_DATA="\
  $( find $DATA_PATH  -name "*.bin" -type f | sort | tail -n $(($CHUNKS+$CHUNKS)) |  head -n $(($CHUNKS)) | xargs -n1 echo 1.0 | sed "s/.bin//g" )
 "
-
 
 
 DISTRIBUTED_ARGS=(
@@ -125,6 +123,9 @@ EVAL_AND_LOGGING_ARGS=(
     --ckpt-assume-constant-structure
 )
 
+mkdir -p $CHECKPOINT_PATH
+mkdir -p $TENSORBOARD_LOGS_PATH
+mkdir -p $DATA_CACHE_DIR
 
 srun --container-mounts="$TOPO_FILE:$TOPO_FILE,$STAGE_PATH:$STAGE_PATH,$DATA_PATH:$DATA_PATH,$WORK_DIR:$WORK_DIR,$VOCAB_FILE:$VOCAB_FILE,$MERGE_FILE:$MERGE_FILE,$CHECKPOINT_PATH:$CHECKPOINT_PATH,/var/tmp:/var/tmp,/opt/microsoft:/opt/microsoft" \
     --container-env=CUDA_DEVICE_MAX_CONNECTIONS,NCCL_TOPO_FILE,LOGLEVEL  \

@@ -2,6 +2,11 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --mem=0
+# This script setups the environment for training GPT-3 175B model using Megatron-LM. This includes:
+# 1. Download of PyTorch and NeMo docker images
+# 2. Download of NeMo Framework Launcher
+# 3. Download of Megatron-LM repository
+# Downloads are performed in the $STAGE_PATH directory.
 set -xe
 
 if [ -z "$STAGE_PATH" ]; then

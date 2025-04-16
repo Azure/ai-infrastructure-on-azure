@@ -1,4 +1,6 @@
 #!/bin/bash
+# This script extracts and concatenates the SlimPajama dataset using NeMo Framework Launcher.
+# It uses the NeMo docker image to run the data preparation script.
 set -ex
 
 TASKS_PER_NODE=${TASKS_PER_NODE:-48}

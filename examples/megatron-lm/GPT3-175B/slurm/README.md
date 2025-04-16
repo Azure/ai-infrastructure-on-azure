@@ -14,7 +14,7 @@ The references that have been used to build this example are:
 * [Megatron-LM](https://github.com/NVIDIA/Megatron-LM) - NVIDIA MegatronLM framework 
 * [Megatron-LM GPT175B example](https://github.com/NVIDIA/Megatron-LM/blob/main/examples/gpt3/train_gpt3_175b_distributed.sh) - Example from the MegatronLM repository for GPT175B model
 * [SlimPajama 627B Dataset](https://huggingface.co/datasets/cerebras/SlimPajama-627B) - Cleaned and de-duplicated opensource version of Together's RedPajama. Please check the licensing of the different dataset sources before using in your enterprise environment. This dataset is composed of 59,166 jsonl files and a total of approximately 900 GiB of compressed data
-* [Azure CycleCloud Workspaces for Slurm](https://github.com/Azure/cyclecloud-slurm-workspace) - The Azure Marketplace offering allowing to stand-up a Slurm cluster powered by Azure CycleCloud and Azure Storage, with pre-configured `enroot` and `pyxis` support
+* [Azure CycleCloud Workspaces for Slurm](https://github.com/Azure/cyclecloud-slurm-workspace) - The Azure Marketplace offering allowing to stand-up a Slurm cluster powered by Azure CycleCloud and Azure Storage, with pre-configured `enroot` and `pyxis` to support containerized workloads
 
 All the scripts and code that have been derived by any of the above repositories will be explicitly marked and will contain the proper copyright disclaimer according to the relative licensing.
 
@@ -23,12 +23,12 @@ All the scripts and code that have been derived by any of the above repositories
 The first step in the process implies the creation of an Azure CycleCloud Slurm Workspace environment. The documentation [available in Microsoft Learn](https://learn.microsoft.com/en-us/azure/cyclecloud/overview-ccws?view=cyclecloud-8) guides through the deployment process.
 
 The Azure environment suggested for the following example should contain:
-* A GPU partition with ND-series nodes. The example has been tested on `Standard_ND96isr_H100_v5` and `Standard_ND96isr_H200_v5`
-* A HTC partition with general purpose compute nodes for data preparation. For example a `Standard_D64ds_v5`. Please consider that:
+* A GPU partition `gpu` with ND-series nodes. The example has been tested on `Standard_ND96isr_H100_v5` and `Standard_ND96isr_H200_v5`
+* A HTC partition `htc` with general purpose compute nodes for data preparation. For example a `Standard_D64ds_v5`. Please consider that:
     * The files are downloaded in `zst` format, so they will require extraction. This process can be ideally fully parallelized with 1 process per file.
     * In the current dataset processing flow, the `jsonl` files will be concatenated in a total of 72 chunks. This means that for data pre-processing, the parallelism can be pushed up to approximately 72 process in parallel
-* An Azure NetApp Files Premium area of approximately `4TiB` for the user environment and home directories
-* An Azure Managed Lustre File System for the shared cluster area for data pre-processing, training data storage and checkpointing. Consider that the selected model size (independently from the number of nodes used) will save checkpoint data of approximately `2.3 TiB`. Consider that the AMLFS tier and size will determine the time (in case of use of synchronous checkpoint), as described below.
+* An Azure NetApp Files Premium Storage Pool and Volume area. The volume size is `4TiB` for the user environment and home directories
+* An Azure Managed Lustre File System for the shared cluster area. This will be used for data pre-processing, training data storage and checkpointing. Consider that the selected model size (independently from the number of nodes used) will save checkpoint data of approximately `2.3 TiB`. Consider that the AMLFS tier and size will determine the time (in case of use of synchronous checkpoint), as described below.
 
 | Tier  | Size [TiB] | Bandwidth [GB/s] | Theoretical checkpoint write time (min)  |
 |----------|----------|----------|--------|
@@ -88,7 +88,7 @@ lfs getsripe $STAGE_PATH/pytorch+25.03+py3.sqsh
       - 4: { l_ost_idx: 2, l_fid: [0x100020000:0x3841c:0x0] }
 ```
 
-In order to increase the read performanc, it is possible to create a number of mirrors of the file components in order to fulfill, or even oversubscribe the OSSs.
+In order to increase the read performance, it is possible to create a number of mirrors of the file components in order to fulfill, or even oversubscribe the OSSs.
 
 In order to count the number of OSS of your filesystem:
 
@@ -122,7 +122,7 @@ Here is a comparison on an `AMLFS 500 - 256 TiB` of the time to startup with `sr
 
 ### Data set download
 
-The SlimPajama dataset has a compressed dimension of approximately 900 TiB. 
+The SlimPajama dataset has a compressed dimension of approximately 900 GiB. 
 
 Considering the data volume involved, we strongly orient user towards the guidance for [dataset download from Huggingface](https://huggingface.co/docs/hub/datasets-downloading)
 
@@ -164,9 +164,6 @@ To check the extraction was successful, this should return `72`:
 ```
 ls $STAGE_PATH/slimpajama/train*.jsonl | wc -l
 ```
-#### Troubleshooting
-
-In case some jobs result in failure, please check the logs available for each stage in folder `$STAGE_PATH/results.data_preparation`
 
 ### Data set preprocessing
 
@@ -180,7 +177,7 @@ export STAGE_PATH=<lustre-folder>
 TASKS_PER_NODE=32 NNODES=4 PARTITION=hpc ./03-preprocess_dataset.sh
 ```
 
-#### Troubleshooting
+### Troubleshooting data preparation phases
 
 In case some jobs result in failure, please check the logs available for each stage in folder `$STAGE_PATH/results.data_preparation`
 
@@ -197,9 +194,45 @@ sbatch -p gpu -N <NUMBER_OF_NODES> 04-gpt175B.sh
 
 Some elements to take into considerations:
 * `CHUNKS` variable defines the number of files used for validation and testing. Default is `15`
-* `GLOBAL_BATCH_SIZE` should be scaled accoringly to GPU number. Approximately we suggest `16 x NUMBER OF GPUS` 
-* `SAVE_INTERVAL` number of iterations between checkpoint save
-* `EVAL_INTERVAL` number of iterations between evaluations
+* `GLOBAL_BATCH_SIZE` should be scaled accoringly to GPU number. Default is `512` Approximately we suggest `16 x NUMBER OF GPUS` 
+* `SAVE_INTERVAL` number of iterations between checkpoint save. Default is `10000`, but it can be decreased to generate higher frequency checkpointing.
+* GPT_MODEL_ARGS=(
+    --num-layers 96 
+    --hidden-size 12288 
+    --num-attention-heads 96 
+    --seq-length 2048 
+    --max-position-embeddings 2048 
+    --attention-backend auto 
+)EVAL_INTERVAL` number of iterations between evaluations. Default is `1000`.
 * `NUMBER_OF_ITERATIONS` number of iterations up to completion
 
 This value above have been tuned to create a significant pressure on the storage with checkpointing. To look at the effective defaults refer to the official [Megatron-LM GPT175B example](https://github.com/NVIDIA/Megatron-LM/blob/main/examples/gpt3/train_gpt3_175b_distributed.sh)
+
+It is possible to fine tune the model in this section of the execution file:
+
+```bash
+GPT_MODEL_ARGS=(
+    --num-layers 96 
+    --hidden-size 12288 
+    --num-attention-heads 96 
+    --seq-length 2048 
+    --max-position-embeddings 2048 
+    --attention-backend auto 
+)
+```
+
+This can be tune according to the related [table from the NVIDIA MegatronLM repository](https://github.com/NVIDIA/Megatron-LM/blob/main/images/model_table.png?raw=true).
+
+For example, for a GPT3 32B:
+
+```bash
+GPT_MODEL_ARGS=(
+    --num-layers 56 
+    --hidden-size 7168 
+    --num-attention-heads 48 
+    --seq-length 2048 
+    --max-position-embeddings 2048 
+    --attention-backend auto 
+)
+```
+
