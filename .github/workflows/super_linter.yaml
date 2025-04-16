@@ -1,8 +1,5 @@
 ---
 name: Lint checker
-description: |
-  This workflow runs the Super Linter to check for code quality and style issues.
-  It is triggered on pull requests and pushes.
 
 on:
   push: null
