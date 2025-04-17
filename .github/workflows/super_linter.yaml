@@ -49,4 +49,3 @@ jobs:
           skip-checks: true
           commit_user_name: super-linter
           commit_user_email: super-linter@super-linter.dev
-
