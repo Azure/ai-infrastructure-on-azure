@@ -15,7 +15,6 @@ jobs:
       contents: write
       packages: read
       statuses: write
-      workflows: write
 
     steps:
       - name: Checkout code
