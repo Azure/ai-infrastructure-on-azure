@@ -45,6 +45,8 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           branch: ${{ github.event.pull_request.head.ref || github.head_ref || github.ref }}
-          commit_message: "super-linter: fix linting issues"
+          commit_message: "super-linter: fix linting issues [skip ci]"
+          skip-checks: true
           commit_user_name: super-linter
           commit_user_email: super-linter@super-linter.dev
+
