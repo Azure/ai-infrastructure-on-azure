@@ -30,14 +30,14 @@ logging.basicConfig(
 def download_shard(url, filename, retry=RETRIES):
     """Download a shard from the given URL and save it to the specified filename."""
     if os.path.exists(filename):
-        logging.warning(f"File {filename} already exists. Skipping download.")
+        logging.warning("File %s already exists. Skipping download.", filename)
         return
 
     response = requests.get(url)
 
     if response.status_code == 429 and retry > 0:
         time.sleep(BACKOFF_TIME)
-        logging.warning(f"Throttled. Retrying download for {filename}...")
+        logging.warning("Throttled. Retrying download for %s...", filename)
         download_shard(url, filename, retry=retry - 1)
 
     if response.status_code != 200:
