@@ -135,7 +135,7 @@ This script is based on the examples from [NVIDIA documentation](https://docs.nv
 The example commandline is:
 
 ```bash
-python3 01_-_download.py $STAGE_PATH/slimpajama
+python3 download_slimpajama.py $STAGE_PATH/slimpajama
 ```
 
 This download, if done without using Huggingface methodologies, will take several hours.

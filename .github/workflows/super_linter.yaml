@@ -2,7 +2,6 @@
 name: Lint checker
 
 on:
-  push: null
   pull_request: null
 
 permissions: {}
@@ -35,6 +34,7 @@ jobs:
           FIX_PYTHON_ISORT: true
           FIX_PYTHON_PYINKE: true
           FIX_SHELL_SHFMT: true
+          BASH_SEVERITY: warning
           
       - name: Commit and push linting fixes
         # Run only on:

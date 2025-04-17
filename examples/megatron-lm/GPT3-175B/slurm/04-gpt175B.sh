@@ -60,11 +60,11 @@ TEST_DATA="\
 
 
 DISTRIBUTED_ARGS=(
-    --nproc_per_node $SLURM_GPUS_PER_NODE 
-    --nnodes $SLURM_NNODES
+    --nproc_per_node "$SLURM_GPUS_PER_NODE"
+    --nnodes "$SLURM_NNODES"
     --rdzv_id $RANDOM
     --rdzv_backend c10d 
-    --rdzv_endpoint $(hostname):29500
+    --rdzv_endpoint "$(hostname)":29500
 )
 
 GPT_MODEL_ARGS=(
@@ -78,8 +78,8 @@ GPT_MODEL_ARGS=(
 
 TRAINING_ARGS=(
     --micro-batch-size 1 
-    --global-batch-size $GLOBAL_BATCH_SIZE #To be tuned based on number of GPUs. Suggested 16 x GPU number
-    --train-iters $NUMBER_OF_ITERATIONS # This is the number of iterations to train for. 1500 is a very low number 
+    --global-batch-size "$GLOBAL_BATCH_SIZE" #To be tuned based on number of GPUs. Suggested 16 x GPU number
+    --train-iters "$NUMBER_OF_ITERATIONS" # This is the number of iterations to train for. 1500 is a very low number 
     --weight-decay 0.1 
     --adam-beta1 0.9 
     --adam-beta2 0.95 
@@ -101,31 +101,31 @@ MODEL_PARALLEL_ARGS=(
 )
 
 DATA_ARGS=(
-    --data-cache-path $DATA_CACHE_DIR
-    --train-data-path $TRAIN_DATA 
-    --valid-data-path $VALID_DATA 
-    --test-data-path $TEST_DATA 
-    --vocab-file $VOCAB_FILE 
-    --merge-file $MERGE_FILE 
+    --data-cache-path "$DATA_CACHE_DIR"
+    --train-data-path "$TRAIN_DATA"
+    --valid-data-path "$VALID_DATA"
+    --test-data-path "$TEST_DATA"
+    --vocab-file "$VOCAB_FILE"
+    --merge-file "$MERGE_FILE" 
 )
 
 EVAL_AND_LOGGING_ARGS=(
     --log-interval 10
     --save-interval 100
     --eval-interval 100 
-    --save $CHECKPOINT_PATH 
-    --load $CHECKPOINT_PATH 
+    --save "$CHECKPOINT_PATH"
+    --load "$CHECKPOINT_PATH"
     --eval-iters 10
-    --tensorboard-dir $TENSORBOARD_LOGS_PATH 
+    --tensorboard-dir "$TENSORBOARD_LOGS_PATH"
     --ckpt-format torch_dist
     --ckpt-fully-parallel-load 
     --use-persistent-ckpt-worker
     --ckpt-assume-constant-structure
 )
 
-mkdir -p $CHECKPOINT_PATH
-mkdir -p $TENSORBOARD_LOGS_PATH
-mkdir -p $DATA_CACHE_DIR
+mkdir -p "$CHECKPOINT_PATH"
+mkdir -p "$TENSORBOARD_LOGS_PATH"
+mkdir -p "$DATA_CACHE_DIR"
 
 srun --container-mounts="$TOPO_FILE:$TOPO_FILE,$STAGE_PATH:$STAGE_PATH,$DATA_PATH:$DATA_PATH,$WORK_DIR:$WORK_DIR,$VOCAB_FILE:$VOCAB_FILE,$MERGE_FILE:$MERGE_FILE,$CHECKPOINT_PATH:$CHECKPOINT_PATH,/var/tmp:/var/tmp,/opt/microsoft:/opt/microsoft" \
     --container-env=CUDA_DEVICE_MAX_CONNECTIONS,NCCL_TOPO_FILE,LOGLEVEL  \
