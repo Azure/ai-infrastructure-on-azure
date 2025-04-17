@@ -24,7 +24,7 @@ jobs:
           token: ${{ secrets.SUPER_LINTER_TOKEN }}
 
       - name: Super-linter check
-        uses: super-linter/super-linter@v7.3.0 
+        uses: super-linter/super-linter@v7.3.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FIX_JSON_PRETTIER: true
@@ -36,7 +36,7 @@ jobs:
           FIX_PYTHON_PYINKE: true
           FIX_SHELL_SHFMT: true
           BASH_SEVERITY: warning
-          
+
       - name: Commit and push linting fixes
         # Run only on:
         # - Pull requests

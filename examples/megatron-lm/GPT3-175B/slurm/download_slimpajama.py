@@ -4,26 +4,26 @@ and from https://github.com/NVIDIA/NeMo-Framework-Launcher
 Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
 This script downloads Slimpajama 627B dataset from Hugging Face.
 """
-import os
+
 import argparse
-import time
 import logging
+import os
+import time
 
 import requests
 
-
 CHUNKS = 10
 SHARDS = 6000
-REPOSITORY_PATH = "https://huggingface.co/datasets/cerebras/SlimPajama-627B/resolve/main/train"
+REPOSITORY_PATH = (
+    "https://huggingface.co/datasets/cerebras/SlimPajama-627B/resolve/main/train"
+)
 BACKOFF_TIME = 10
 RETRIES = 3
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.StreamHandler()
-    ]
+    handlers=[logging.StreamHandler()],
 )
 
 
@@ -43,7 +43,7 @@ def download_shard(url, filename, retry=RETRIES):
     if response.status_code != 200:
         return
 
-    with open(filename, 'wb') as fn:
+    with open(filename, "wb") as fn:
         fn.write(response.content)
 
 
@@ -51,14 +51,16 @@ def download(directory):
     """Download SlimPajama dataset from Hugging Face."""
     for chunk in range(1, CHUNKS + 1):
         for shard in range(0, SHARDS):
-            filename = f'example_train_chunk{chunk}_shard{shard}.jsonl.zst'
+            filename = f"example_train_chunk{chunk}_shard{shard}.jsonl.zst"
             filename = os.path.join(directory, filename)
-            url = f'{REPOSITORY_PATH}/chunk{chunk}/example_train_{shard}.jsonl.zst'
+            url = f"{REPOSITORY_PATH}/chunk{chunk}/example_train_{shard}.jsonl.zst"
             download_shard(url, filename)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Download SlimPajama from Hugging Face.")
+    parser = argparse.ArgumentParser(
+        description="Download SlimPajama from Hugging Face."
+    )
     parser.add_argument(
         "--directory",
         type=str,

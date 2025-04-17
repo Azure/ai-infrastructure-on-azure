@@ -1,20 +1,24 @@
 # Megatron-LM Distributed Training - GPT3 - 175B
 
 ## Table of Contents
+
 1. [Introduction](#introduction)
 2. [Creation of an Azure CycleCloud Workspaces for Slurm environment](#1-creation-of-an-azure-cyclecloud-workspaces-for-slurm-environment)
 3. [Environment setup](#2-environment-setup)
 4. [Filesystem Tuning](#3-filesystem-tuning)
 5. [Data Preparation](#4-data-preparation)
 6. [Training](#5-training-run)
+
 ## Introduction
+
 In this example, we will demonstrate how to train a 175B GPT3 model on Azure, using a Slurm cluster.
 
 The references that have been used to build this example are:
-* [Megatron-LM](https://github.com/NVIDIA/Megatron-LM) - NVIDIA MegatronLM framework 
-* [Megatron-LM GPT175B example](https://github.com/NVIDIA/Megatron-LM/blob/main/examples/gpt3/train_gpt3_175b_distributed.sh) - Example from the MegatronLM repository for GPT175B model
-* [SlimPajama 627B Dataset](https://huggingface.co/datasets/cerebras/SlimPajama-627B) - Cleaned and de-duplicated opensource version of Together's RedPajama. Please check the licensing of the different dataset sources before using in your enterprise environment. This dataset is composed of 59,166 jsonl files and a total of approximately 900 GiB of compressed data
-* [Azure CycleCloud Workspaces for Slurm](https://github.com/Azure/cyclecloud-slurm-workspace) - The Azure Marketplace offering allowing to stand-up a Slurm cluster powered by Azure CycleCloud and Azure Storage, with pre-configured `enroot` and `pyxis` to support containerized workloads
+
+- [Megatron-LM](https://github.com/NVIDIA/Megatron-LM) - NVIDIA MegatronLM framework
+- [Megatron-LM GPT175B example](https://github.com/NVIDIA/Megatron-LM/blob/main/examples/gpt3/train_gpt3_175b_distributed.sh) - Example from the MegatronLM repository for GPT175B model
+- [SlimPajama 627B Dataset](https://huggingface.co/datasets/cerebras/SlimPajama-627B) - Cleaned and de-duplicated opensource version of Together's RedPajama. Please check the licensing of the different dataset sources before using in your enterprise environment. This dataset is composed of 59,166 jsonl files and a total of approximately 900 GiB of compressed data
+- [Azure CycleCloud Workspaces for Slurm](https://github.com/Azure/cyclecloud-slurm-workspace) - The Azure Marketplace offering allowing to stand-up a Slurm cluster powered by Azure CycleCloud and Azure Storage, with pre-configured `enroot` and `pyxis` to support containerized workloads
 
 All the scripts and code that have been derived by any of the above repositories will be explicitly marked and will contain the proper copyright disclaimer according to the relative licensing.
 
@@ -23,29 +27,31 @@ All the scripts and code that have been derived by any of the above repositories
 The first step in the process implies the creation of an Azure CycleCloud Slurm Workspace environment. The documentation [available in Microsoft Learn](https://learn.microsoft.com/en-us/azure/cyclecloud/overview-ccws?view=cyclecloud-8) guides through the deployment process.
 
 The Azure environment suggested for the following example should contain:
-* A GPU partition `gpu` with ND-series nodes. The example has been tested on `Standard_ND96isr_H100_v5` and `Standard_ND96isr_H200_v5`
-* A HTC partition `htc` with general purpose compute nodes for data preparation. For example a `Standard_D64ds_v5`. Please consider that:
-    * The files are downloaded in `zst` format, so they will require extraction. This process can be ideally fully parallelized with 1 process per file.
-    * In the current dataset processing flow, the `jsonl` files will be concatenated in a total of 72 chunks. This means that for data pre-processing, the parallelism can be pushed up to approximately 72 process in parallel
-* An Azure NetApp Files Premium Storage Pool and Volume area. The volume size is `4TiB` for the user environment and home directories
-* An Azure Managed Lustre File System for the shared cluster area. This will be used for data pre-processing, training data storage and checkpointing.  
-Consider that the selected model size (independently from the number of nodes used) will save checkpoint data of approximately `2.3 TiB`. Consider that the AMLFS tier and size will determine the time (in case of use of synchronous checkpoint), as described below.
 
-| Tier  | Size [TiB] | Bandwidth [GB/s] | Theoretical checkpoint write time (min)  |
-|----------|----------|----------|--------|
-| AMLFS 40   | 480 | 19.2 | 2.04     |
-| AMLFS 125    | 512  | 64 | 0.61     |
-| AMLFS 250    | 512  | 128 | 0.31     |
-| AMLFS 500    | 512  | 256 | 0.15     |
+- A GPU partition `gpu` with ND-series nodes. The example has been tested on `Standard_ND96isr_H100_v5` and `Standard_ND96isr_H200_v5`
+- A HTC partition `htc` with general purpose compute nodes for data preparation. For example a `Standard_D64ds_v5`. Please consider that:
+  - The files are downloaded in `zst` format, so they will require extraction. This process can be ideally fully parallelized with 1 process per file.
+  - In the current dataset processing flow, the `jsonl` files will be concatenated in a total of 72 chunks. This means that for data pre-processing, the parallelism can be pushed up to approximately 72 process in parallel
+- An Azure NetApp Files Premium Storage Pool and Volume area. The volume size is `4TiB` for the user environment and home directories
+- An Azure Managed Lustre File System for the shared cluster area. This will be used for data pre-processing, training data storage and checkpointing.  
+  Consider that the selected model size (independently from the number of nodes used) will save checkpoint data of approximately `2.3 TiB`. Consider that the AMLFS tier and size will determine the time (in case of use of synchronous checkpoint), as described below.
 
+| Tier      | Size [TiB] | Bandwidth [GB/s] | Theoretical checkpoint write time (min) |
+| --------- | ---------- | ---------------- | --------------------------------------- |
+| AMLFS 40  | 480        | 19.2             | 2.04                                    |
+| AMLFS 125 | 512        | 64               | 0.61                                    |
+| AMLFS 250 | 512        | 128              | 0.31                                    |
+| AMLFS 500 | 512        | 256              | 0.15                                    |
 
-## 2. Environment setup 
+## 2. Environment setup
+
 In order to prepare the environment, there are several components to be downloaded for the execution.
 
 This will include:
-* [PyTorch NGC Image](https://catalog.ngc.nvidia.com/orgs/nvidia/containers/pytorch) - defaults to version `25.03`
-* [Nemo Frameweork Launcher Scripts](https://github.com/NVIDIA/NeMo-Framework-Launcher) - defaults to `24.12`
-* [Megatron-LM](https://github.com/NVIDIA/Megatron-LM) - defaults to commit `e958b2ca`
+
+- [PyTorch NGC Image](https://catalog.ngc.nvidia.com/orgs/nvidia/containers/pytorch) - defaults to version `25.03`
+- [Nemo Frameweork Launcher Scripts](https://github.com/NVIDIA/NeMo-Framework-Launcher) - defaults to `24.12`
+- [Megatron-LM](https://github.com/NVIDIA/Megatron-LM) - defaults to commit `e958b2ca`
 
 The above version can be overriden with the environment variables described in `setup_environment.sh` script file.
 
@@ -59,7 +65,7 @@ mkdir -p $STAGE_PATH
 sbatch -p hpc 00-setup_environment.sh
 ```
 
-## 3. Filesystem tuning 
+## 3. Filesystem tuning
 
 During the training job startup, all the cluster nodes will read the squashed image files from the parallel file-system, generating a start-up storm on a single file read.
 
@@ -68,8 +74,9 @@ This means that approximately 23 GiB of data will be read in a single file by hu
 If the image files just have default Lustre striping configuration, this may lead to get most of the pressure in I\O on a limited number of OSSs.
 
 To avoid this issue, there are two alternatives:
-* Tuning the Lustre file striping on Lustre
-* At job start-up, rsyncing the image file on the nodes local NVME
+
+- Tuning the Lustre file striping on Lustre
+- At job start-up, rsyncing the image file on the nodes local NVME
 
 Here we will demonstrate the commands that would allow the tuning on AMLFS side.
 
@@ -98,37 +105,38 @@ lfs df -h <MOUNT_POINT>  | grep OST | wc -l
 ```
 
 In this case, the performace can enhanced adding to the image a number of mirrors able to create stripes on all the OSSs:
+
 ```bash
 lfs mirror extend -N2 $STAGE_PATH/<IMAGE_NAME>.sqsh
 ```
 
 In a similar way, the striping of the single mirror can be increased (this requires superuser priviledges):
+
 ```bash
 lfs setstripe -S 512M -E -1 -c -1 $STAGE_PATH/<IMAGE_NAME>.sqsh
 ```
 
 Here is a comparison on an `AMLFS 500 - 256 TiB` of the time to startup with `srun` a squashed image from the Azure Managed Lustre Filesystem with different settings:
 
-| Setting  |  OST occupation | Container startup time on 64 nodes [s]  |
-|----------|----------|----------|
-| No mirror / Default striping | 1 x 23 GiB | 218  |
-| 5 mirror / Default striping    | 5 x 23 GiB  | 56    |
-| 10 mirror / Default striping    | 10 x 23 GiB  | 57   |
-| No mirror / Full 64 OST striping   | 1 x 23 GiB  | 105  |
-| 5 mirror / Full 64 OST striping    | 5 x 23 GiB  | 73  |
-| 10 mirror / Full 64 OST striping    | 10 x 23 GiB  |  70  |
-
+| Setting                          | OST occupation | Container startup time on 64 nodes [s] |
+| -------------------------------- | -------------- | -------------------------------------- |
+| No mirror / Default striping     | 1 x 23 GiB     | 218                                    |
+| 5 mirror / Default striping      | 5 x 23 GiB     | 56                                     |
+| 10 mirror / Default striping     | 10 x 23 GiB    | 57                                     |
+| No mirror / Full 64 OST striping | 1 x 23 GiB     | 105                                    |
+| 5 mirror / Full 64 OST striping  | 5 x 23 GiB     | 73                                     |
+| 10 mirror / Full 64 OST striping | 10 x 23 GiB    | 70                                     |
 
 ## 4. Data preparation
 
 ### Data set download
 
-The SlimPajama dataset has a compressed dimension of approximately 900 GiB. 
+The SlimPajama dataset has a compressed dimension of approximately 900 GiB.
 
 Considering the data volume involved, we strongly orient user towards the guidance for [dataset download from Huggingface](https://huggingface.co/docs/hub/datasets-downloading)
 
 Downloading without any Huggingface plan will cause throttling in case of parallel download and using a shared IP.
-In order to download the dataset, a convenience script is provided in the repository, and it is called ```download_dataset.py```. This will just download the file sequentially, 1 after the other. It can run even on the head-node. 
+In order to download the dataset, a convenience script is provided in the repository, and it is called `download_dataset.py`. This will just download the file sequentially, 1 after the other. It can run even on the head-node.
 
 This script is based on the examples from [NVIDIA documentation](https://docs.nvidia.com/dgx-cloud/run-ai/latest/nemo-e2e-example.html) and from [Nemo Framework Launcher scripts](https://github.com/NVIDIA/NeMo-Framework-Launcher/blob/main/launcher_scripts/nemo_launcher/collections/dataprep_scripts/slim_pajama_dataprep/download.py).
 
@@ -141,14 +149,15 @@ python3 download_slimpajama.py $STAGE_PATH/slimpajama
 This download, if done without using Huggingface methodologies, will take several hours.
 
 You can track the progress in another shell window with:
+
 ```bash
 watch "ls $STAGE_PATH/slimpajama/*.zst | wc -l"
 ```
 
 ### Data set extraction and concatenation
 
- * The dataset extraction will extract data from `zst` format to `jsonl` format in the staging folder
- * The concatenation will consolidate the files in only 72 `jsonl` samples
+- The dataset extraction will extract data from `zst` format to `jsonl` format in the staging folder
+- The concatenation will consolidate the files in only 72 `jsonl` samples
 
 This step is relying on NVIDIA NeMo Megatron framework and Docker image.
 
@@ -162,6 +171,7 @@ TASKS_PER_NODE=32 NNODES=32 PARTITION=hpc ./02-extract_and_concat_dataset.sh
 This will generate 2 Slurm array jobs, one for extraction and one for concatenation.
 
 To check the extraction was successful, this should return `72`:
+
 ```bash
 ls $STAGE_PATH/slimpajama/train*.jsonl | wc -l
 ```
@@ -194,11 +204,12 @@ sbatch -p gpu -N <NUMBER_OF_NODES> 04-gpt175B.sh
 ```
 
 Some elements to take into considerations:
-* `CHUNKS` variable defines the number of files used for validation and testing. Default is `15`
-* `GLOBAL_BATCH_SIZE` should be scaled accoringly to GPU number. Default is `512` Approximately we suggest `16 x NUMBER OF GPUS` 
-* `SAVE_INTERVAL` number of iterations between checkpoint save. Default is `10000`, but it can be decreased to generate higher frequency checkpointing.
-* `EVAL_INTERVAL` number of iterations between evaluations. Default is `1000`.
-* `NUMBER_OF_ITERATIONS` number of iterations up to completion
+
+- `CHUNKS` variable defines the number of files used for validation and testing. Default is `15`
+- `GLOBAL_BATCH_SIZE` should be scaled accoringly to GPU number. Default is `512` Approximately we suggest `16 x NUMBER OF GPUS`
+- `SAVE_INTERVAL` number of iterations between checkpoint save. Default is `10000`, but it can be decreased to generate higher frequency checkpointing.
+- `EVAL_INTERVAL` number of iterations between evaluations. Default is `1000`.
+- `NUMBER_OF_ITERATIONS` number of iterations up to completion
 
 This value above have been tuned to create a significant pressure on the storage with checkpointing. To look at the effective defaults refer to the official [Megatron-LM GPT175B example](https://github.com/NVIDIA/Megatron-LM/blob/main/examples/gpt3/train_gpt3_175b_distributed.sh)
 
@@ -206,12 +217,12 @@ It is possible to fine tune the model in this section of the execution file:
 
 ```bash
 GPT_MODEL_ARGS=(
-    --num-layers 96 
-    --hidden-size 12288 
-    --num-attention-heads 96 
-    --seq-length 2048 
-    --max-position-embeddings 2048 
-    --attention-backend auto 
+    --num-layers 96
+    --hidden-size 12288
+    --num-attention-heads 96
+    --seq-length 2048
+    --max-position-embeddings 2048
+    --attention-backend auto
 )
 ```
 
@@ -221,12 +232,11 @@ For example, for a GPT3 32B:
 
 ```bash
 GPT_MODEL_ARGS=(
-    --num-layers 56 
-    --hidden-size 7168 
-    --num-attention-heads 48 
-    --seq-length 2048 
-    --max-position-embeddings 2048 
-    --attention-backend auto 
+    --num-layers 56
+    --hidden-size 7168
+    --num-attention-heads 48
+    --seq-length 2048
+    --max-position-embeddings 2048
+    --attention-backend auto
 )
 ```
-

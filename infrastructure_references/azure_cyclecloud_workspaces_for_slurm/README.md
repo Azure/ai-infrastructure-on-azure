@@ -9,11 +9,11 @@ The deployment guide follows what described in the [official Azure CycleCloud Wo
 ## Prequisites
 
 In order to deploy the infrastructure described in this section of the guide in an existing Azure Subscription, be sure to have:
-* A working installation of [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli-linux?pivots=apt)
-* Contributor on the Subscription
-* User Access Administrator on the Subscription
-* Be sure that `az account show` is displaying the right subscription. In case, fix the subscription with `az account set --subscription "your-subscription-name"`
 
+- A working installation of [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli-linux?pivots=apt)
+- Contributor on the Subscription
+- User Access Administrator on the Subscription
+- Be sure that `az account show` is displaying the right subscription. In case, fix the subscription with `az account set --subscription "your-subscription-name"`
 
 ## Define the environment variables
 
@@ -42,10 +42,12 @@ The deployment ready file can be generated with the following commands:
 ```bash
 envsubst < large-ai-training-cluster-parameters.json large-ai-training-cluster-parameters_deploy.json
 ```
+
 > [!WARNING]  
 > Check other parameters in the template before proceeding with the deployment, like AMLFS file system size, the desired SKU and size.
 
 ## (Optional) Create a MySQL Flexible server
+
 Some of the templates in this folder require the presence of a pre-existing MySQL Flexible server for Slurm job accounting.
 
 This is a prerequisites for some of the deployments below.
@@ -71,7 +73,6 @@ az mysql flexible-server create \
 
 > [!WARNING]  
 > Check other parameters in the template before proceeding with the deployment, like AMLFS file system size, the desired SKU and size.
-
 
 ```bash
 az login --tenant <your-tenant-id>
