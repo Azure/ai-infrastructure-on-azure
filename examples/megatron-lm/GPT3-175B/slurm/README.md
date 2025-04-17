@@ -60,7 +60,7 @@ A stage path folder should be identified for environment setup. This will contai
 Here, we are here assuming that the `hpc` partition will be used for data preparation:
 
 ```bash
-export STAGE_PATH=<lustre-folder>
+export STAGE_PATH="your-stage-path"
 mkdir -p $STAGE_PATH
 sbatch -p hpc 00-setup_environment.sh
 ```
@@ -82,8 +82,16 @@ Here we will demonstrate the commands that would allow the tuning on AMLFS side.
 
 If we run the `lfs getstripe` command on one of the downloaded image, we will see that only 6 OSSs are hosting the file. Moreover, a sequential read of the file by all the nodes on job startup will probably make only even less OSSs contributing at any given time.
 
+In the following commands we assume the presence of some environment variables for the stage path, the AMLFS mount point and image name of the sqsh file:
+
 ```bash
-lfs getsripe $STAGE_PATH/pytorch+25.03+py3.sqsh
+export STAGE_PATH="your-stage-path"
+export MOUNT_PATH="lustre-mount-point"
+export IMAGE_NAME="your-image-name"
+```
+
+```bash
+lfs getsripe ${STAGE_PATH}/${IMAGE_NAME}.sqsh
 ...
      lmm_objects:
       - 0: { l_ost_idx: 5, l_fid: [0x100050000:0x38418:0x0] }
@@ -101,19 +109,19 @@ In order to increase the read performance, it is possible to create a number of 
 In order to count the number of OSS of your filesystem:
 
 ```bash
-lfs df -h <MOUNT_POINT>  | grep OST | wc -l
+lfs df -h ${MOUNT_PATH} | grep OST | wc -l
 ```
 
-In this case, the performace can enhanced adding to the image a number of mirrors able to create stripes on all the OSSs:
+In this case, the performance can enhanced adding to the image a number of mirrors able to create stripes on all the OSSs:
 
 ```bash
-lfs mirror extend -N2 $STAGE_PATH/<IMAGE_NAME>.sqsh
+lfs mirror extend -N2 ${STAGE_PATH}/${IMAGE_NAME}.sqsh
 ```
 
 In a similar way, the striping of the single mirror can be increased (this requires superuser priviledges):
 
 ```bash
-lfs setstripe -S 512M -E -1 -c -1 $STAGE_PATH/<IMAGE_NAME>.sqsh
+lfs setstripe -S 512M -E -1 -c -1 ${STAGE_PATH}/${IMAGE_NAME}.sqsh
 ```
 
 Here is a comparison on an `AMLFS 500 - 256 TiB` of the time to startup with `srun` a squashed image from the Azure Managed Lustre Filesystem with different settings:
@@ -140,10 +148,11 @@ In order to download the dataset, a convenience script is provided in the reposi
 
 This script is based on the examples from [NVIDIA documentation](https://docs.nvidia.com/dgx-cloud/run-ai/latest/nemo-e2e-example.html) and from [Nemo Framework Launcher scripts](https://github.com/NVIDIA/NeMo-Framework-Launcher/blob/main/launcher_scripts/nemo_launcher/collections/dataprep_scripts/slim_pajama_dataprep/download.py).
 
-The example commandline is:
+The example commandline could be:
 
 ```bash
-python3 download_slimpajama.py $STAGE_PATH/slimpajama
+export STAGE_PATH="your-stage-path"
+python3 download_slimpajama.py ${STAGE_PATH}/slimpajama
 ```
 
 This download, if done without using Huggingface methodologies, will take several hours.
@@ -151,7 +160,7 @@ This download, if done without using Huggingface methodologies, will take severa
 You can track the progress in another shell window with:
 
 ```bash
-watch "ls $STAGE_PATH/slimpajama/*.zst | wc -l"
+watch "ls ${STAGE_PATH}/slimpajama/*.zst | wc -l"
 ```
 
 ### Data set extraction and concatenation
@@ -164,7 +173,7 @@ This step is relying on NVIDIA NeMo Megatron framework and Docker image.
 In this example we are deciding to extract the dataset using 32 nodes and 32 tasks per nodes, with the `hpc` partition:
 
 ```bash
-export STAGE_PATH=<lustre-folder>
+export STAGE_PATH="your-stage-path"
 TASKS_PER_NODE=32 NNODES=32 PARTITION=hpc ./02-extract_and_concat_dataset.sh
 ```
 
@@ -184,7 +193,7 @@ This will generate the preprocessed dataset with the `bin` and `idx` files in th
 To run this using 4 nodes and 32 tasks per nodes with the `hpc` partition:
 
 ```bash
-export STAGE_PATH=<lustre-folder>
+export STAGE_PATH="your-stage-path"
 TASKS_PER_NODE=32 NNODES=4 PARTITION=hpc ./03-preprocess_dataset.sh
 ```
 
@@ -199,7 +208,7 @@ After the data preparation is completed, the execution of the training on a cert
 The script has been adapted starting from [Megatron-LM GPT175B example](https://github.com/NVIDIA/Megatron-LM/blob/main/examples/gpt3/train_gpt3_175b_distributed.sh)
 
 ```bash
-export STAGE_PATH=<lustre-folder>
+export STAGE_PATH="your-stage-path"
 sbatch -p gpu -N <NUMBER_OF_NODES> 04-gpt175B.sh
 ```
 

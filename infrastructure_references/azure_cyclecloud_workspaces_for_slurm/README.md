@@ -40,7 +40,7 @@ export MYSQL_ID="your-mysql-id"                  # Unique identifier for the MyS
 The deployment ready file can be generated with the following commands:
 
 ```bash
-envsubst < large-ai-training-cluster-parameters.json large-ai-training-cluster-parameters_deploy.json
+envsubst < large-ai-training-cluster-parameters.json > large-ai-training-cluster-parameters_deploy.json
 ```
 
 > [!WARNING]  
@@ -75,10 +75,12 @@ az mysql flexible-server create \
 > Check other parameters in the template before proceeding with the deployment, like AMLFS file system size, the desired SKU and size.
 
 ```bash
-az login --tenant <your-tenant-id>
+export TENANT_ID="your-tenant-id"
+export SUBSCRIPTION_NAME="your-subscription-name"
+az login --tenant $TENANT_ID
 az account show ### Check you are in the right subscription
-az account set --subscription "your-subscription-name" ### In case you are not in the right one
+az account set --subscription $SUBSCRIPTION_NAME ### In case you are not in the right one
 git clone --depth 1 --branch 2025.02.06 https://github.com/azure/cyclecloud-slurm-workspace.git
 cd cyclecloud-slurm-workspace
-az deployment sub create --template-file bicep/mainTemplate.bicep --parameters <YOUR_TEMPLATE_FILE>_deploy.json --location $LOCATION
+az deployment sub create --template-file bicep/mainTemplate.bicep --parameters large-ai-training-cluster-parameters_deploy.json --location $LOCATION
 ```
