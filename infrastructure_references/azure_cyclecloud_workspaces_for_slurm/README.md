@@ -25,7 +25,7 @@ There are however a series of parameters that can be passed defining some enviro
 In order to define the deployment logic of the `large-ai-training-cluster-parameters.json` the following environment variables are required.
 
 ```bash
-export LOCATION="your-azure-region"               # Azure region for resource deployment (e.g., eastus, westus2)
+export LOCATION="your-azure-region"              # Azure region for resource deployment (e.g., eastus, westus2)
 export USERNAME="your-admin-username"            # Administrator username for Azure CycleCloud UI
 export PASSWORD="your-admin-password"            # Administrator password for Azure CycleCloud UI
 export SSH_PUBLIC_KEY="your-ssh-public-key"      # Public SSH key for secure access to all cluster nodes and Azure CycleCloud VM
@@ -59,7 +59,7 @@ az mysql flexible-server create \
   --name $DB_NAME \
   --resource-group $RESOURCE_GROUP_NAME \
   --location $LOCATION \
-  --admin-user $DB_USERNAME$ \
+  --admin-user $DB_USERNAME \
   --admin-password $DB_PASSWORD \
   --sku-name Standard_B1ms \
   --tier Burstable \
