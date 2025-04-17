@@ -23,15 +23,15 @@
   "sharedFilesystem": {
     "value": {
       "type": "anf-new",
-      "anfServiceTier": "Premium",
-      "anfCapacityInTiB": 4
+      "anfServiceTier": "${ANF_SKU}",
+      "anfCapacityInTiB": "${ANF_SIZE}"
     }
   },
   "additionalFilesystem": {
     "value": {
       "type": "aml-new",
-      "lustreTier": "AMLFS-Durable-Premium-500",
-      "lustreCapacityInTib": 512,
+      "lustreTier": "${AMLFS_SKU}",
+      "lustreCapacityInTib": "${AMLFS_SIZE}",
       "mountPath": "/data"
     }
   },
@@ -98,8 +98,8 @@
   },
   "gpu": {
     "value": {
-      "sku": "Standard_ND96isr_H100_v5",
-      "maxNodes": 64,
+      "sku": "${GPU_SKU}",
+      "maxNodes": "${GPU_NODE_COUNT}",
       "osImage": "microsoft-dsvm:ubuntu-hpc:2204:latest"
     }
   },

@@ -34,7 +34,12 @@ export NETWORK_RANGE="10.0.0.0/16"               # Address space for the virtual
 export DB_PASSWORD="your-db-password"            # MySQL Database administrator password (if required by the template)
 export DB_USERNAME="your-db-username"            # MySQL Database administrator username (if required by the template)
 export DB_NAME="your-database-name"              # Name of the MySQL database (if required by the template)
-export MYSQL_ID="your-mysql-id"                  # Unique identifier for the MySQL database resource (if required by the template)
+export ANF_SKU="Premium"                         # SKU for Azure NetApp Files
+export ANF_SIZE=4                                # Size for Azure NetApp Files (Standard | Premium | Ultra)
+export AMLFS_SKU="AMLFS-Durable-Premium-500"     # SKU for AMLFS (AMLFS-Durable-Premium-40 | AMLFS-Durable-Premium-125 | AMLFS-Durable-Premium-250 | AMLFS-Durable-Premium-500)
+export AMLFS_SIZE=128                            # Size for Azure Managed Lustre
+export GPU_SKU="Standard_ND96isr_H100_v5"        # GPU Node SKU
+export GPU_NODE_COUNT=64                         # Number of GPU nodes at maximum scale
 ```
 
 The deployment ready file can be generated with the following commands:
@@ -64,9 +69,14 @@ az mysql flexible-server create \
   --sku-name Standard_B1ms \
   --tier Burstable \
   --storage-size 20 \
-  --backup-retention 0 \
   --high-availability Disabled \
    --public-access 'None'
+```
+
+Let's then export the ID in a variable for the subsequent steps:
+
+```bash
+export MYSQL_ID=$( az mysql flexible-server show -n $DB_NAME -g $RESOURCE_GROUP_NAME --query "id")     
 ```
 
 ## Deploy the Azure CycleCloud Slurm Workspaces environment
@@ -81,6 +91,5 @@ az login --tenant $TENANT_ID
 az account show ### Check you are in the right subscription
 az account set --subscription $SUBSCRIPTION_NAME ### In case you are not in the right one
 git clone --depth 1 --branch 2025.02.06 https://github.com/azure/cyclecloud-slurm-workspace.git
-cd cyclecloud-slurm-workspace
-az deployment sub create --template-file bicep/mainTemplate.bicep --parameters large-ai-training-cluster-parameters_deploy.json --location $LOCATION
+az deployment sub create --template-file cyclecloud-slurm-workspace/bicep/mainTemplate.bicep --parameters large-ai-training-cluster-parameters_deploy.json --location $LOCATION
 ```
