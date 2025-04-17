@@ -76,7 +76,7 @@ az mysql flexible-server create \
 Let's then export the ID in a variable for the subsequent steps:
 
 ```bash
-export MYSQL_ID=$( az mysql flexible-server show -n $DB_NAME -g $RESOURCE_GROUP_NAME --query "id")     
+export MYSQL_ID=$( az mysql flexible-server show -n $DB_NAME -g $RESOURCE_GROUP_NAME --query "id")
 ```
 
 ## Deploy the Azure CycleCloud Slurm Workspaces environment
