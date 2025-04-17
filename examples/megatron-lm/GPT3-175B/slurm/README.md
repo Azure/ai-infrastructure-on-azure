@@ -28,7 +28,8 @@ The Azure environment suggested for the following example should contain:
     * The files are downloaded in `zst` format, so they will require extraction. This process can be ideally fully parallelized with 1 process per file.
     * In the current dataset processing flow, the `jsonl` files will be concatenated in a total of 72 chunks. This means that for data pre-processing, the parallelism can be pushed up to approximately 72 process in parallel
 * An Azure NetApp Files Premium Storage Pool and Volume area. The volume size is `4TiB` for the user environment and home directories
-* An Azure Managed Lustre File System for the shared cluster area. This will be used for data pre-processing, training data storage and checkpointing. Consider that the selected model size (independently from the number of nodes used) will save checkpoint data of approximately `2.3 TiB`. Consider that the AMLFS tier and size will determine the time (in case of use of synchronous checkpoint), as described below.
+* An Azure Managed Lustre File System for the shared cluster area. This will be used for data pre-processing, training data storage and checkpointing.  
+Consider that the selected model size (independently from the number of nodes used) will save checkpoint data of approximately `2.3 TiB`. Consider that the AMLFS tier and size will determine the time (in case of use of synchronous checkpoint), as described below.
 
 | Tier  | Size [TiB] | Bandwidth [GB/s] | Theoretical checkpoint write time (min)  |
 |----------|----------|----------|--------|
@@ -74,7 +75,7 @@ Here we will demonstrate the commands that would allow the tuning on AMLFS side.
 
 If we run the `lfs getstripe` command on one of the downloaded image, we will see that only 6 OSSs are hosting the file. Moreover, a sequential read of the file by all the nodes on job startup will probably make only even less OSSs contributing at any given time.
 
-```
+```bash
 lfs getsripe $STAGE_PATH/pytorch+25.03+py3.sqsh
 ...
      lmm_objects:
@@ -92,17 +93,17 @@ In order to increase the read performance, it is possible to create a number of 
 
 In order to count the number of OSS of your filesystem:
 
-```
+```bash
 lfs df -h <MOUNT_POINT>  | grep OST | wc -l
 ```
 
 In this case, the performace can enhanced adding to the image a number of mirrors able to create stripes on all the OSSs:
-```
+```bash
 lfs mirror extend -N2 $STAGE_PATH/<IMAGE_NAME>.sqsh
 ```
 
 In a similar way, the striping of the single mirror can be increased (this requires superuser priviledges):
-```
+```bash
 lfs setstripe -S 512M -E -1 -c -1 $STAGE_PATH/<IMAGE_NAME>.sqsh
 ```
 
@@ -133,14 +134,14 @@ This script is based on the examples from [NVIDIA documentation](https://docs.nv
 
 The example commandline is:
 
-```
-python3 01-download.py $STAGE_PATH/slimpajama
+```bash
+python3 01_-_download.py $STAGE_PATH/slimpajama
 ```
 
 This download, if done without using Huggingface methodologies, will take several hours.
 
 You can track the progress in another shell window with:
-```
+```bash
 watch "ls $STAGE_PATH/slimpajama/*.zst | wc -l"
 ```
 
@@ -153,7 +154,7 @@ This step is relying on NVIDIA NeMo Megatron framework and Docker image.
 
 In this example we are deciding to extract the dataset using 32 nodes and 32 tasks per nodes, with the `hpc` partition:
 
-```
+```bash
 export STAGE_PATH=<lustre-folder>
 TASKS_PER_NODE=32 NNODES=32 PARTITION=hpc ./02-extract_and_concat_dataset.sh
 ```
@@ -161,7 +162,7 @@ TASKS_PER_NODE=32 NNODES=32 PARTITION=hpc ./02-extract_and_concat_dataset.sh
 This will generate 2 Slurm array jobs, one for extraction and one for concatenation.
 
 To check the extraction was successful, this should return `72`:
-```
+```bash
 ls $STAGE_PATH/slimpajama/train*.jsonl | wc -l
 ```
 
@@ -172,7 +173,7 @@ This will generate the preprocessed dataset with the `bin` and `idx` files in th
 
 To run this using 4 nodes and 32 tasks per nodes with the `hpc` partition:
 
-```
+```bash
 export STAGE_PATH=<lustre-folder>
 TASKS_PER_NODE=32 NNODES=4 PARTITION=hpc ./03-preprocess_dataset.sh
 ```
@@ -196,14 +197,7 @@ Some elements to take into considerations:
 * `CHUNKS` variable defines the number of files used for validation and testing. Default is `15`
 * `GLOBAL_BATCH_SIZE` should be scaled accoringly to GPU number. Default is `512` Approximately we suggest `16 x NUMBER OF GPUS` 
 * `SAVE_INTERVAL` number of iterations between checkpoint save. Default is `10000`, but it can be decreased to generate higher frequency checkpointing.
-* GPT_MODEL_ARGS=(
-    --num-layers 96 
-    --hidden-size 12288 
-    --num-attention-heads 96 
-    --seq-length 2048 
-    --max-position-embeddings 2048 
-    --attention-backend auto 
-)EVAL_INTERVAL` number of iterations between evaluations. Default is `1000`.
+* `EVAL_INTERVAL` number of iterations between evaluations. Default is `1000`.
 * `NUMBER_OF_ITERATIONS` number of iterations up to completion
 
 This value above have been tuned to create a significant pressure on the storage with checkpointing. To look at the effective defaults refer to the official [Megatron-LM GPT175B example](https://github.com/NVIDIA/Megatron-LM/blob/main/examples/gpt3/train_gpt3_175b_distributed.sh)

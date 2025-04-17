@@ -7,14 +7,15 @@ This includes architecture examples and real use case scenarios on Azure AI Infr
 * [Azure Kubernetes Service](https://learn.microsoft.com/en-us/azure/aks/what-is-aks)
 * [Azure Machine Learning](https://learn.microsoft.com/en-us/azure/machine-learning/?view=azureml-api-2)  
 
-For each scenario and architecture, the repository will include storage recommendations among Azure Storage services ([Azure Blob Storage](https://azure.microsoft.com/en-us/products/storage/blobs), [Azure Managed Lustre](https://learn.microsoft.com/en-us/azure/azure-managed-lustre/amlfs-overview), [Azure NetApp Files](https://learn.microsoft.com/en-us/azure/azure-netapp-files/azure-netapp-files-introduction)), monitoring and observability.
+For each scenario and architecture, the repository will include storage recommendations among Azure Storage services ([Azure Blob Storage](https://azure.microsoft.com/en-us/products/storage/blobs),
+ [Azure Managed Lustre](https://learn.microsoft.com/en-us/azure/azure-managed-lustre/amlfs-overview), [Azure NetApp Files](https://learn.microsoft.com/en-us/azure/azure-netapp-files/azure-netapp-files-introduction)), monitoring and observability.
 
 ## Infrastructure references catalog
 
 1. [Azure CycleCloud Slurm Workspaces AI Cluster](./infrastructure_references/azure_cyclecloud_workspaces_for_slurm/README.md) - Prototypes for the creation of Azure CycleCloud Slurm Workspaces AI Clusters using CLI deployment
 
 ## AI training example catalogue
-1. [MegatronLM GPT3-175B with Slimpajama 627B dataset on Slurm](./examples/megatron-lm/GPT3-175B/slurm/README.md) - Guidance of an E2E training workflow based on MegatronLM, including data pre-processing from Slimpajama 627B dataset
+1. [MegatronLM GPT3-175B with Slimpajama 627B dataset on Slurm](./examples/megatron-lm/GPT3-175B/slurm/README.md) - Guidance of an end-to-end training workflow based on MegatronLM, including data pre-processing from Slimpajama 627B dataset
 
 
 ## Contributing

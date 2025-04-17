@@ -1,7 +1,9 @@
-# Modified from https://docs.nvidia.com/dgx-cloud/run-ai/latest/nemo-e2e-example.html
-# and from https://github.com/NVIDIA/NeMo-Framework-Launcher
-# Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
-# This script downloads Slimpajama 627B dataset from Hugging Face.
+"""
+Modified from https://docs.nvidia.com/dgx-cloud/run-ai/latest/nemo-e2e-example.html
+and from https://github.com/NVIDIA/NeMo-Framework-Launcher
+Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
+This script downloads Slimpajama 627B dataset from Hugging Face.
+"""
 import os
 import argparse
 import time
