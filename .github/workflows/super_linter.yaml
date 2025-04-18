@@ -1,0 +1,51 @@
+---
+name: Lint checker
+
+on:
+  pull_request: null
+
+permissions: {}
+
+jobs:
+  build:
+    name: Lint checker
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      packages: read
+      statuses: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.SUPER_LINTER_TOKEN }}
+
+      - name: Super-linter check
+        uses: super-linter/super-linter@v7.3.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FIX_JSON_PRETTIER: true
+          FIX_YAML_PRETTIER: true
+          FIX_MARKDOWN_PRETTIER: true
+          FIX_MARKDOWN: true
+          FIX_PYTHON_BLACK: true
+          FIX_PYTHON_ISORT: true
+          FIX_PYTHON_PYINKE: true
+          FIX_SHELL_SHFMT: true
+          BASH_SEVERITY: warning
+
+      - name: Commit and push linting fixes
+        # Run only on:
+        # - Pull requests
+        # - Not on the default branch
+        if: ${{ github.event_name == 'pull_request' && github.ref_name != github.event.repository.default_branch }}
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          branch: ${{ github.event.pull_request.head.ref || github.head_ref || github.ref }}
+          commit_message: "super-linter: fix linting issues [skip ci]"
+          skip-checks: true
+          commit_user_name: super-linter
+          commit_user_email: super-linter@super-linter.dev
