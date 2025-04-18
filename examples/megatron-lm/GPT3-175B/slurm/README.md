@@ -17,7 +17,7 @@ The references that have been used to build this example are:
 
 - [Megatron-LM](https://github.com/NVIDIA/Megatron-LM) - NVIDIA MegatronLM framework
 - [Megatron-LM GPT175B example](https://github.com/NVIDIA/Megatron-LM/blob/main/examples/gpt3/train_gpt3_175b_distributed.sh) - Example from the MegatronLM repository for GPT175B model
-- [SlimPajama 627B Dataset](https://huggingface.co/datasets/cerebras/SlimPajama-627B) - Cleaned and de-duplicated opensource version of Together's RedPajama. Please check the licensing of the different dataset sources before using in your enterprise environment. This dataset is composed of 59,166 jsonl files and a total of approximately 900 GiB of compressed data
+- [SlimPajama 627B Dataset](https://huggingface.co/datasets/cerebras/SlimPajama-627B) - Cleaned and de-duplicated open source version of Together's RedPajama. Please check the licensing of the different dataset sources before using in your enterprise environment. This dataset is composed of 59,166 jsonl files and a total of approximately 900 GiB of compressed data
 - [Azure CycleCloud Workspaces for Slurm](https://github.com/Azure/cyclecloud-slurm-workspace) - The Azure Marketplace offering allowing to stand-up a Slurm cluster powered by Azure CycleCloud and Azure Storage, with pre-configured `enroot` and `pyxis` to support containerized workloads
 
 All the scripts and code that have been derived by any of the above repositories will be explicitly marked and will contain the proper copyright disclaimer according to the relative licensing.
@@ -53,7 +53,7 @@ This will include:
 - [Nemo Frameweork Launcher Scripts](https://github.com/NVIDIA/NeMo-Framework-Launcher) - defaults to `24.12`
 - [Megatron-LM](https://github.com/NVIDIA/Megatron-LM) - defaults to commit `e958b2ca`
 
-The above version can be overriden with the environment variables described in `setup_environment.sh` script file.
+The above version can be overridden with the environment variables described in `setup_environment.sh` script file.
 
 A stage path folder should be identified for environment setup. This will contain all the scripts and input training data on the AMLFS volume.
 
@@ -69,7 +69,7 @@ sbatch -p hpc 00-setup_environment.sh
 
 During the training job startup, all the cluster nodes will read the squashed image files from the parallel file-system, generating a start-up storm on a single file read.
 
-This means that approximately 23 GiB of data will be read in a single file by hunderds of nodes, requiring an overall egress in the order of several TiBs from the filesystem.
+This means that approximately 23 GiB of data will be read in a single file by hundreds of nodes, requiring an overall egress in the order of several TiBs from the filesystem.
 
 If the image files just have default Lustre striping configuration, this may lead to get most of the pressure in I\O on a limited number of OSSs.
 
@@ -118,7 +118,7 @@ In this case, the performance can enhanced adding to the image a number of mirro
 lfs mirror extend -N2 ${STAGE_PATH}/${IMAGE_NAME}.sqsh
 ```
 
-In a similar way, the striping of the single mirror can be increased (this requires superuser priviledges):
+In a similar way, the striping of the single mirror can be increased (this requires superuser privileges):
 
 ```bash
 lfs setstripe -S 512M -E -1 -c -1 ${STAGE_PATH}/${IMAGE_NAME}.sqsh
@@ -215,7 +215,7 @@ sbatch -p gpu -N <NUMBER_OF_NODES> 04-gpt175B.sh
 Some elements to take into considerations:
 
 - `CHUNKS` variable defines the number of files used for validation and testing. Default is `15`
-- `GLOBAL_BATCH_SIZE` should be scaled accoringly to GPU number. Default is `512` Approximately we suggest `16 x NUMBER OF GPUS`
+- `GLOBAL_BATCH_SIZE` should be scaled accordingly to GPU number. Default is `512` Approximately we suggest `16 x NUMBER OF GPUS`
 - `SAVE_INTERVAL` number of iterations between checkpoint save. Default is `10000`, but it can be decreased to generate higher frequency checkpointing.
 - `EVAL_INTERVAL` number of iterations between evaluations. Default is `1000`.
 - `NUMBER_OF_ITERATIONS` number of iterations up to completion
