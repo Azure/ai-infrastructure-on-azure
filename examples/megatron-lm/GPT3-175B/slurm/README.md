@@ -249,30 +249,15 @@ Some elements to take into considerations:
 
 This value above have been tuned to create a significant pressure on the storage with checkpointing. To look at the effective defaults refer to the official [Megatron-LM GPT175B example](https://github.com/NVIDIA/Megatron-LM/blob/main/examples/gpt3/train_gpt3_175b_distributed.sh)
 
-It is possible to fine tune the model in this section of the execution file:
+It is possible to change the model configuration through the aforementioned environment variables. For example for a 857M model:
 
 ```bash
-GPT_MODEL_ARGS=(
-    --num-layers 96
-    --hidden-size 12288
-    --num-attention-heads 96
-    --seq-length 2048
-    --max-position-embeddings 2048
-    --attention-backend auto
-)
+export NUM_LAYERS=24
+export HIDDEN_SIZE=1024
+export NUM_ATTENTION_HEADS=16
+export SEQ_LENGTH=2048
+export TENSOR_MODEL_PARALLEL_SIZE=1
+export PIPELINE_MODEL_PARALLEL_SIZE=1
 ```
 
-This can be tune according to the related [table from the NVIDIA MegatronLM repository](https://github.com/NVIDIA/Megatron-LM/blob/main/images/model_table.png?raw=true).
-
-For example, for a GPT3 32B:
-
-```bash
-GPT_MODEL_ARGS=(
-    --num-layers 56
-    --hidden-size 7168
-    --num-attention-heads 48
-    --seq-length 2048
-    --max-position-embeddings 2048
-    --attention-backend auto
-)
-```
+This can be tuned according to the related [table from the NVIDIA MegatronLM repository](https://github.com/NVIDIA/Megatron-LM/blob/main/images/model_table.png?raw=true).
