@@ -58,6 +58,7 @@ TEST_DATA="\
  $(find $DATA_PATH -name "*.bin" -type f | sort | tail -n $(($CHUNKS + $CHUNKS)) | head -n $(($CHUNKS)) | xargs -n1 echo 1.0 | sed "s/.bin//g")
 "
 
+
 DISTRIBUTED_ARGS=(
 	--nproc_per_node "$SLURM_GPUS_PER_NODE"
 	--nnodes "$SLURM_NNODES"
