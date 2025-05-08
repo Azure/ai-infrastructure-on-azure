@@ -52,17 +52,11 @@ DATA_CACHE_DIR=${DATA_CACHE_DIR:-$STAGE_PATH/datacache}
 
 DATA_SET_SIZE=$(find $DATA_PATH -name "*.bin" -type f | wc -l)
 
-TRAIN_DATA="\
- $(find $DATA_PATH -name "*.bin" -type f | sort | head -n $(($DATA_SET_SIZE - $CHUNKS - $CHUNKS)) | xargs -n1 echo 1.0 | sed "s/.bin//g")
-"
+TRAIN_DATA=$(find $DATA_PATH -name "*.bin" -type f | sort | head -n $(($DATA_SET_SIZE - $CHUNKS - $CHUNKS)) | xargs -n 1 echo 1.0 | sed "s/.bin//g")
 
-VALID_DATA="\
- $(find $DATA_PATH -name "*.bin" -type f | sort | tail -n $(($CHUNKS)) | xargs -n1 echo 1.0 | sed "s/.bin//g")
-"
+VALID_DATA=$(find $DATA_PATH -name "*.bin" -type f | sort | tail -n $(($CHUNKS)) | xargs -n1  echo 1.0 | sed "s/.bin//g")
 
-TEST_DATA="\
- $(find $DATA_PATH -name "*.bin" -type f | sort | tail -n $(($CHUNKS + $CHUNKS)) | head -n $(($CHUNKS)) | xargs -n1 echo 1.0 | sed "s/.bin//g")
-"
+TEST_DATA=$(find $DATA_PATH -name "*.bin" -type f | sort | tail -n $(($CHUNKS + $CHUNKS)) | head -n $(($CHUNKS)) | xargs -n1 echo 1.0 | sed "s/.bin//g")
 
 
 DISTRIBUTED_ARGS=(
