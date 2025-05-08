@@ -207,9 +207,36 @@ After the data preparation is completed, the execution of the training on a cert
 
 The script has been adapted starting from [Megatron-LM GPT175B example](https://github.com/NVIDIA/Megatron-LM/blob/main/examples/gpt3/train_gpt3_175b_distributed.sh)
 
+The script in the repository runs a GPT3 175B model, but it is possible to do a simple system check on 2 nodes running an example with 375M parameters that allows to validate internode communication and environment configuration:
+
 ```bash
 export STAGE_PATH="your-stage-path"
+export NUM_LAYERS=12
+export HIDDEN_SIZE=512
+export NUM_ATTENTION_HEADS=8
+export SEQ_LENGTH=1024
+export TENSOR_MODEL_PARALLEL_SIZE=1
+export PIPELINE_MODEL_PARALLEL_SIZE=1
+sbatch -p gpu -N 2 04-gpt175B.sh
+```
+
+After validation on the smaller size model, it is possible to move to the larger size model with more confidence:
+
+```bash
+export STAGE_PATH="your-stage-path"
+unset NUM_LAYERS
+unset HIDDEN_SIZE
+unset NUM_ATTENTION_HEADS
+unset SEQ_LENGTH
+unset TENSOR_MODEL_PARALLEL_SIZE
+unset PIPELINE_MODEL_PARALLEL_SIZE
 sbatch -p gpu -N <NUMBER_OF_NODES> 04-gpt175B.sh
+```
+
+The job progress can be monitored looking at the job logs, where `SLURM_JOB_ID` is the ID of the Slurm job in progress:
+
+```bash
+tail -f gpt175b_<SLURM_JOB_ID>.*
 ```
 
 Some elements to take into considerations:
