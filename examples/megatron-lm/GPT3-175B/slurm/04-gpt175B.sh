@@ -54,10 +54,9 @@ DATA_SET_SIZE=$(find $DATA_PATH -name "*.bin" -type f | wc -l)
 
 readarray -t TRAIN_DATA < <(find $DATA_PATH -name "*.bin" -type f | sort | head -n $(($DATA_SET_SIZE - $CHUNKS - $CHUNKS)) | xargs -n 1 echo 1.0 | sed "s/.bin//g")
 
-readarray -t VALID_DATA< <(find $DATA_PATH -name "*.bin" -type f | sort | tail -n $(($CHUNKS)) | xargs -n1  echo 1.0 | sed "s/.bin//g")
+readarray -t VALID_DATA < <(find $DATA_PATH -name "*.bin" -type f | sort | tail -n $(($CHUNKS)) | xargs -n1 echo 1.0 | sed "s/.bin//g")
 
-readarray -t TEST_DATA< <(find $DATA_PATH -name "*.bin" -type f | sort | tail -n $(($CHUNKS + $CHUNKS)) | head -n $(($CHUNKS)) | xargs -n1 echo 1.0 | sed "s/.bin//g")
-
+readarray -t TEST_DATA < <(find $DATA_PATH -name "*.bin" -type f | sort | tail -n $(($CHUNKS + $CHUNKS)) | head -n $(($CHUNKS)) | xargs -n1 echo 1.0 | sed "s/.bin//g")
 
 DISTRIBUTED_ARGS=(
 	--nproc_per_node "$SLURM_GPUS_PER_NODE"
@@ -129,10 +128,10 @@ mkdir -p "$DATA_CACHE_DIR"
 
 srun --container-mounts="$TOPO_FILE:$TOPO_FILE,$STAGE_PATH:$STAGE_PATH,$DATA_PATH:$DATA_PATH,$WORK_DIR:$WORK_DIR,$VOCAB_FILE:$VOCAB_FILE,$MERGE_FILE:$MERGE_FILE,$CHECKPOINT_PATH:$CHECKPOINT_PATH,/var/tmp:/var/tmp,/opt/microsoft:/opt/microsoft" \
 	--container-env=CUDA_DEVICE_MAX_CONNECTIONS,NCCL_TOPO_FILE,LOGLEVEL \
-    --container-image=$SQUASHED_PYTORCH_IMAGE \
-    torchrun "${DISTRIBUTED_ARGS[@]}" $WORK_DIR/pretrain_gpt.py \
-    "${GPT_MODEL_ARGS[@]}" \
-    "${TRAINING_ARGS[@]}" \
-    "${MODEL_PARALLEL_ARGS[@]}" \
-    "${DATA_ARGS[@]}" \
-    "${EVAL_AND_LOGGING_ARGS[@]}"
+	--container-image=$SQUASHED_PYTORCH_IMAGE \
+	torchrun "${DISTRIBUTED_ARGS[@]}" $WORK_DIR/pretrain_gpt.py \
+	"${GPT_MODEL_ARGS[@]}" \
+	"${TRAINING_ARGS[@]}" \
+	"${MODEL_PARALLEL_ARGS[@]}" \
+	"${DATA_ARGS[@]}" \
+	"${EVAL_AND_LOGGING_ARGS[@]}"

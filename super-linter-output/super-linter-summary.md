@@ -10,8 +10,6 @@
 | GITLEAKS                   | Pass ✅           |
 | GIT_MERGE_CONFLICT_MARKERS | Pass ✅           |
 | JSCPD                      | Pass ✅           |
-| JSON                       | Pass ✅           |
-| JSON_PRETTIER              | Pass ✅           |
 | MARKDOWN                   | Pass ✅           |
 | MARKDOWN_PRETTIER          | Pass ✅           |
 | NATURAL_LANGUAGE           | Pass ✅           |

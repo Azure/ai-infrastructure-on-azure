@@ -103,7 +103,9 @@ lfs getsripe ${STAGE_PATH}/${IMAGE_NAME}.sqsh
       - 3: { l_ost_idx: 4, l_fid: [0x100040000:0x38338:0x0] }
       - 4: { l_ost_idx: 2, l_fid: [0x100020000:0x3841c:0x0] }
 ```
-The striping of the file can be optimized to ensure that the read happens with cooperation of all the OSSs (this requires superuser privileges). Below we create a new folder striped on all OSS (`-c -1`) and we copy the image inside the new folder: 
+
+The striping of the file can be optimized to ensure that the read happens with cooperation of all the OSSs (this requires superuser privileges). Below we create a new folder striped on all OSS (`-c -1`) and we copy the image inside the new folder:
+
 ```bash
 lfs setstripe -S 1M -E -1 -c -1  ${STAGE_PATH}/striped_directory
 cp ${STAGE_PATH}/${IMAGE_NAME}.sqsh ${STAGE_PATH}/striped_directory
@@ -111,10 +113,10 @@ cp ${STAGE_PATH}/${IMAGE_NAME}.sqsh ${STAGE_PATH}/striped_directory
 
 Here is a comparison on an `AMLFS 500 - 128 TiB` of the time to startup with `srun` a squashed image from the Azure Managed Lustre Filesystem with different settings:
 
-| Setting                          | OST occupation | Container startup time on 64 nodes [s] |
-| -------------------------------- | -------------- | -------------------------------------- |
-| Default striping     | 1 x 23 GiB     |                                     |
-| Full 32 OST striping | 1 x 23 GiB     |                                     |
+| Setting              | OST occupation | Container startup time on 64 nodes [s] |
+| -------------------- | -------------- | -------------------------------------- |
+| Default striping     | 1 x 23 GiB     |                                        |
+| Full 32 OST striping | 1 x 23 GiB     |                                        |
 
 ## 4. Data preparation
 

@@ -81,7 +81,6 @@ The deployment ready file can be generated with the following commands after the
 envsubst < large-ai-training-cluster-parameters.template > large-ai-training-cluster-parameters-deploy.json
 ```
 
-
 ## Deploy the Azure CycleCloud Slurm Workspaces environment
 
 > [!WARNING]  
