@@ -80,7 +80,7 @@ To avoid this issue, there are two alternatives:
 
 Here we will demonstrate the commands that would allow the tuning on AMLFS side.
 
-If we run the `lfs getstripe` command on one of the downloaded image, we will see that only 6 OSSs are hosting the file. Moreover, a sequential read of the file by all the nodes on job startup will probably make only even less OSSs contributing at any given time.
+If we run the `lfs getstripe` command on one of the downloaded image, we will see that only 6 OSSs are hosting the file. This is related to the default PFL configuration of AMLFS striping as default.
 
 In the following commands we assume the presence of some environment variables for the stage path, the AMLFS mount point and image name of the sqsh file:
 
@@ -103,37 +103,18 @@ lfs getsripe ${STAGE_PATH}/${IMAGE_NAME}.sqsh
       - 3: { l_ost_idx: 4, l_fid: [0x100040000:0x38338:0x0] }
       - 4: { l_ost_idx: 2, l_fid: [0x100020000:0x3841c:0x0] }
 ```
-
-In order to increase the read performance, it is possible to create a number of mirrors of the file components in order to fulfill, or even oversubscribe the OSSs.
-
-In order to count the number of OSS of your filesystem:
-
+The striping of the file can be optimized to ensure that the read happens with cooperation of all the OSSs (this requires superuser privileges). Below we create a new folder striped on all OSS (`-c -1`) and we copy the image inside the new folder: 
 ```bash
-lfs df -h ${MOUNT_PATH} | grep OST | wc -l
+lfs setstripe -S 1M -E -1 -c -1  ${STAGE_PATH}/striped_directory
+cp ${STAGE_PATH}/${IMAGE_NAME}.sqsh ${STAGE_PATH}/striped_directory
 ```
 
-In this case, the performance can enhanced adding to the image a number of mirrors able to create stripes on all the OSSs:
-
-```bash
-lfs mirror extend -N2 ${STAGE_PATH}/${IMAGE_NAME}.sqsh
-```
-
-In a similar way, the striping of the single mirror can be increased (this requires superuser privileges):
-
-```bash
-lfs setstripe -S 512M -E -1 -c -1 ${STAGE_PATH}/${IMAGE_NAME}.sqsh
-```
-
-Here is a comparison on an `AMLFS 500 - 256 TiB` of the time to startup with `srun` a squashed image from the Azure Managed Lustre Filesystem with different settings:
+Here is a comparison on an `AMLFS 500 - 128 TiB` of the time to startup with `srun` a squashed image from the Azure Managed Lustre Filesystem with different settings:
 
 | Setting                          | OST occupation | Container startup time on 64 nodes [s] |
 | -------------------------------- | -------------- | -------------------------------------- |
-| No mirror / Default striping     | 1 x 23 GiB     | 218                                    |
-| 5 mirror / Default striping      | 5 x 23 GiB     | 56                                     |
-| 10 mirror / Default striping     | 10 x 23 GiB    | 57                                     |
-| No mirror / Full 64 OST striping | 1 x 23 GiB     | 105                                    |
-| 5 mirror / Full 64 OST striping  | 5 x 23 GiB     | 73                                     |
-| 10 mirror / Full 64 OST striping | 10 x 23 GiB    | 70                                     |
+| Default striping     | 1 x 23 GiB     |                                     |
+| Full 32 OST striping | 1 x 23 GiB     |                                     |
 
 ## 4. Data preparation
 
