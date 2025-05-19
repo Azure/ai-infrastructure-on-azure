@@ -80,7 +80,7 @@ To avoid this issue, there are two alternatives:
 
 Here we will demonstrate the commands that would allow the tuning on AMLFS side.
 
-If we run the `lfs getstripe` command on one of the downloaded image, we will see that only 6 OSSs are hosting the file. This is related to the default PFL configuration of AMLFS striping as default.
+If we run the `lfs getstripe` command on one of the downloaded image, we will see that only 6 OSSs are hosting the file. This is related to the default PFL configuration of AMLFS striping.
 
 In the following commands we assume the presence of some environment variables for the stage path, the AMLFS mount point and image name of the sqsh file:
 
@@ -104,9 +104,10 @@ lfs getsripe ${STAGE_PATH}/${IMAGE_NAME}.sqsh
       - 4: { l_ost_idx: 2, l_fid: [0x100020000:0x3841c:0x0] }
 ```
 
-The striping of the file can be optimized to ensure that the read happens with cooperation of all the OSSs (this requires superuser privileges). Below we create a new folder striped on all OSS (`-c -1`) and we copy the image inside the new folder:
+The striping of the file can be optimized to ensure that reads happen with cooperation of all the OSSs (this requires superuser privileges). Below we create a new folder striped on all OSSs (`-c -1`) and we copy the image inside the new folder:
 
 ```bash
+mkdir ${STAGE_PATH}/striped_directory
 lfs setstripe -S 1M -E -1 -c -1  ${STAGE_PATH}/striped_directory
 cp ${STAGE_PATH}/${IMAGE_NAME}.sqsh ${STAGE_PATH}/striped_directory
 ```
@@ -115,8 +116,8 @@ Here is a comparison on an `AMLFS 500 - 128 TiB` of the time to startup with `sr
 
 | Setting              | OST occupation | Container startup time on 64 nodes [s] |
 | -------------------- | -------------- | -------------------------------------- |
-| Default striping     | 1 x 23 GiB     |                                        |
-| Full 32 OST striping | 1 x 23 GiB     |                                        |
+| Default striping     | 1 x 23 GiB     |                   200                  |
+| Full 32 OST striping | 1 x 23 GiB     |                   74                   |
 
 ## 4. Data preparation
 
@@ -137,6 +138,8 @@ The example commandline could be:
 export STAGE_PATH="your-stage-path"
 python3 download_slimpajama.py ${STAGE_PATH}/slimpajama
 ```
+
+Remember to set the `SQUASHED_NEMO_IMAGE` environment variable in case striping has been applied as described in the [filesystem tuning](#3-filesystem-tuning) section.
 
 This download, if done without using Huggingface methodologies, will take several hours.
 
@@ -202,6 +205,7 @@ export TENSOR_MODEL_PARALLEL_SIZE=1
 export PIPELINE_MODEL_PARALLEL_SIZE=1
 sbatch -p gpu -N 2 04-gpt175B.sh
 ```
+Remember to set the `SQUASHED_PYTORCH_IMAGE` environment variable in case striping has been applied as described in the [filesystem tuning](#3-filesystem-tuning) section.
 
 After validation on the smaller size model, it is possible to move to the larger size model with more confidence:
 
