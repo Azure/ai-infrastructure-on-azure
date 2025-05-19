@@ -116,8 +116,8 @@ Here is a comparison on an `AMLFS 500 - 128 TiB` of the time to startup with `sr
 
 | Setting              | OST occupation | Container startup time on 64 nodes [s] |
 | -------------------- | -------------- | -------------------------------------- |
-| Default striping     | 1 x 23 GiB     |                   200                  |
-| Full 32 OST striping | 1 x 23 GiB     |                   74                   |
+| Default striping     | 1 x 23 GiB     | 200                                    |
+| Full 32 OST striping | 1 x 23 GiB     | 74                                     |
 
 ## 4. Data preparation
 
@@ -205,6 +205,7 @@ export TENSOR_MODEL_PARALLEL_SIZE=1
 export PIPELINE_MODEL_PARALLEL_SIZE=1
 sbatch -p gpu -N 2 04-gpt175B.sh
 ```
+
 Remember to set the `SQUASHED_PYTORCH_IMAGE` environment variable in case striping has been applied as described in the [filesystem tuning](#3-filesystem-tuning) section.
 
 After validation on the smaller size model, it is possible to move to the larger size model with more confidence:
