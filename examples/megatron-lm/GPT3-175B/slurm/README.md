@@ -26,15 +26,18 @@ All the scripts and code that have been derived by any of the above repositories
 
 The first step in the process implies the creation of an Azure CycleCloud Slurm Workspace environment. The documentation [available in Microsoft Learn](https://learn.microsoft.com/en-us/azure/cyclecloud/overview-ccws?view=cyclecloud-8) guides through the deployment process.
 
+This can be done through infrastrucutre as code [following the infrastructure reference example](../../../../infrastructure_references/azure_cyclecloud_workspaces_for_slurm/README.md).
+
 The Azure environment suggested for the following example should contain:
 
-- A GPU partition `gpu` with ND-series nodes. The example has been tested on `Standard_ND96isr_H100_v5` and `Standard_ND96isr_H200_v5`
+- A GPU partition `gpu` with ND-series nodes. The example has been tested on `Standard_ND96isr_H100_v5` and `Standard_ND96isr_H200_v5`. This will be `GPU_SKU` environment variable in the deployment reference documentation.
 - A HTC partition `htc` with general purpose compute nodes for data preparation. For example a `Standard_D64ds_v5`. Please consider that:
   - The files are downloaded in `zst` format, so they will require extraction. This process can be ideally fully parallelized with 1 process per file.
   - In the current dataset processing flow, the `jsonl` files will be concatenated in a total of 72 chunks. This means that for data pre-processing, the parallelism can be pushed up to approximately 72 process in parallel
-- An Azure NetApp Files Premium Storage Pool and Volume area. The volume size is `4TiB` for the user environment and home directories
-- An Azure Managed Lustre File System for the shared cluster area. This will be used for data pre-processing, training data storage and checkpointing.  
-  Consider that the selected model size (independently from the number of nodes used) will save checkpoint data of approximately `2.3 TiB`. Consider that the AMLFS tier and size will determine the time (in case of use of synchronous checkpoint), as described below.
+- An Azure NetApp Files Premium Storage Pool and Volume area. The volume size is `4TiB` for the user environment and home directories. This is `ANF_SKU` and `ANF_SIZE` environment variable in the deployment reference.
+- An Azure Managed Lustre File System for the shared cluster area. This will be used for data pre-processing, training data storage and checkpointing. This is `AMLFS_SKU` and `AMLFS_SIZE` environment variable in the deployment reference.
+
+We should consider that the selected model size (independently from the number of nodes used) will save checkpoint data of approximately `2.3 TiB`. Consider that the AMLFS tier and size will determine the time (in case of use of synchronous checkpoint), as described below.
 
 | Tier      | Size [TiB] | Bandwidth [GB/s] | Theoretical checkpoint write time (min) |
 | --------- | ---------- | ---------------- | --------------------------------------- |
@@ -67,57 +70,7 @@ sbatch -p hpc 00-setup_environment.sh
 
 ## 3. Filesystem tuning
 
-During the training job startup, all the cluster nodes will read the squashed image files from the parallel file-system, generating a start-up storm on a single file read.
-
-This means that approximately 23 GiB of data will be read in a single file by hundreds of nodes, requiring an overall egress in the order of several TiBs from the filesystem.
-
-If the image files just have default Lustre striping configuration, this may lead to get most of the pressure in I\O on a limited number of OSSs.
-
-To avoid this issue, there are two alternatives:
-
-- Tuning the Lustre file striping on Lustre
-- At job start-up, rsyncing the image file on the nodes local NVME
-
-Here we will demonstrate the commands that would allow the tuning on AMLFS side.
-
-If we run the `lfs getstripe` command on one of the downloaded image, we will see that only 6 OSSs are hosting the file. This is related to the default PFL configuration of AMLFS striping.
-
-In the following commands we assume the presence of some environment variables for the stage path, the AMLFS mount point and image name of the sqsh file:
-
-```bash
-export STAGE_PATH="your-stage-path"
-export MOUNT_PATH="lustre-mount-point"
-export IMAGE_NAME="your-image-name"
-```
-
-```bash
-lfs getsripe ${STAGE_PATH}/${IMAGE_NAME}.sqsh
-...
-     lmm_objects:
-      - 0: { l_ost_idx: 5, l_fid: [0x100050000:0x38418:0x0] }
-...
-      lmm_objects:
-      - 0: { l_ost_idx: 3, l_fid: [0x100030000:0x38369:0x0] }
-      - 1: { l_ost_idx: 9, l_fid: [0x100090000:0x383c6:0x0] }
-      - 2: { l_ost_idx: 8, l_fid: [0x100080000:0x3833f:0x0] }
-      - 3: { l_ost_idx: 4, l_fid: [0x100040000:0x38338:0x0] }
-      - 4: { l_ost_idx: 2, l_fid: [0x100020000:0x3841c:0x0] }
-```
-
-The striping of the file can be optimized to ensure that reads happen with cooperation of all the OSSs (this requires superuser privileges). Below we create a new folder striped on all OSSs (`-c -1`) and we copy the image inside the new folder:
-
-```bash
-mkdir ${STAGE_PATH}/striped_directory
-lfs setstripe -S 1M -E -1 -c -1  ${STAGE_PATH}/striped_directory
-cp ${STAGE_PATH}/${IMAGE_NAME}.sqsh ${STAGE_PATH}/striped_directory
-```
-
-Here is a comparison on an `AMLFS 500 - 128 TiB` of the time to startup with `srun` a squashed image from the Azure Managed Lustre Filesystem with different settings:
-
-| Setting              | OST occupation | Container startup time on 64 nodes [s] |
-| -------------------- | -------------- | -------------------------------------- |
-| Default striping     | 1 x 23 GiB     | 200                                    |
-| Full 32 OST striping | 1 x 23 GiB     | 74                                     |
+To get the best filesystem performance on job startup [please refer to the optimizations](../../../../storage_references/squashed_images/README.md) to be applied to the `sqsh` image file.
 
 ## 4. Data preparation
 
