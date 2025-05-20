@@ -5,7 +5,7 @@ For a Slurm cluster using `pyxis` and `enroot` for multi-node and multi-GPU cont
 Taking the example of a PyTorch image, this means that approximately 23 GiB of data will be read in a single file by hundreds of nodes, requiring an overall egress in the order of several TiBs from the filesystem.
 
 Potential solutions to manage this initial I/O are:
-* [Adjusting the striping](#adjusting-azure-managed-lustre-striping) configuration if the `sqsh` file if it is stored on an Azure Managed Lustre instance
+* [Adjusting the striping](#adjusting-azure-managed-lustre-striping) configuration if the `sqsh` file is stored on an Azure Managed Lustre instance
 * [Staging](#staging-in-local-nvme) the `sqsh` file in the local NVME of the GPU nodes
 
 ## Adjusting Azure Managed Lustre striping
