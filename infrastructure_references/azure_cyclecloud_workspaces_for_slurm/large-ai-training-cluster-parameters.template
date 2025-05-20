@@ -24,7 +24,7 @@
     "value": {
       "type": "anf-new",
       "anfServiceTier": "${ANF_SKU}",
-      "anfCapacityInTiB": "${ANF_SIZE}"
+      "anfCapacityInTiB": ${ANF_SIZE}
     }
   },
   "additionalFilesystem": {
@@ -99,7 +99,7 @@
   "gpu": {
     "value": {
       "sku": "${GPU_SKU}",
-      "maxNodes": "${GPU_NODE_COUNT}",
+      "maxNodes": ${GPU_NODE_COUNT},
       "osImage": "microsoft-dsvm:ubuntu-hpc:2204:latest"
     }
   },

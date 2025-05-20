@@ -35,7 +35,7 @@ jobs:
           FIX_PYTHON_ISORT: true
           FIX_PYTHON_PYINKE: true
           FIX_SHELL_SHFMT: true
-          BASH_SEVERITY: warning
+          BASH_SEVERITY: error
 
       - name: Commit and push linting fixes
         # Run only on:

@@ -22,7 +22,7 @@ There are however a series of parameters that can be passed defining some enviro
 
 ### Large AI Training Cluster
 
-In order to define the deployment logic of the `large-ai-training-cluster-parameters.json` the following environment variables are required.
+In order to define the deployment parameters in `large-ai-training-cluster-parameters-deploy.json` the following environment variables are required.
 
 ```bash
 export LOCATION="your-azure-region"              # Azure region for resource deployment (e.g., eastus, westus2)
@@ -30,7 +30,7 @@ export USERNAME="your-admin-username"            # Administrator username for Az
 export PASSWORD="your-admin-password"            # Administrator password for Azure CycleCloud UI
 export SSH_PUBLIC_KEY="your-ssh-public-key"      # Public SSH key for secure access to all cluster nodes and Azure CycleCloud VM
 export RESOURCE_GROUP_NAME="your-resource-group" # Azure resource group name for deployment
-export NETWORK_RANGE="10.0.0.0/16"               # Address space for the virtual network in CIDR notation (if template creates a new VNET)
+export NETWORK_RANGE="10.0.0.0/21"               # Address space for the virtual network in CIDR notation (if template creates a new VNET)
 export DB_PASSWORD="your-db-password"            # MySQL Database administrator password (if required by the template)
 export DB_USERNAME="your-db-username"            # MySQL Database administrator username (if required by the template)
 export DB_NAME="your-database-name"              # Name of the MySQL database (if required by the template)
@@ -42,16 +42,10 @@ export GPU_SKU="Standard_ND96isr_H100_v5"        # GPU Node SKU
 export GPU_NODE_COUNT=64                         # Number of GPU nodes at maximum scale
 ```
 
-The deployment ready file can be generated with the following commands:
-
-```bash
-envsubst < large-ai-training-cluster-parameters.json > large-ai-training-cluster-parameters_deploy.json
-```
-
 > [!WARNING]  
-> Check other parameters in the template before proceeding with the deployment, like AMLFS file system size, the desired SKU and size.
+> Check other parameters in the template before proceeding with the deployment, like AMLFS file system size and the desired SKU.
 
-## (Optional) Create a MySQL Flexible server
+## Create a MySQL Flexible server
 
 Some of the templates in this folder require the presence of a pre-existing MySQL Flexible server for Slurm job accounting.
 
@@ -79,10 +73,18 @@ Let's then export the ID in a variable for the subsequent steps:
 export MYSQL_ID=$( az mysql flexible-server show -n $DB_NAME -g $RESOURCE_GROUP_NAME --query "id")
 ```
 
+## Create the parameters file
+
+The deployment ready file can be generated with the following commands after the steps described in the previous paragraphs are completed:
+
+```bash
+envsubst < large-ai-training-cluster-parameters.template > large-ai-training-cluster-parameters-deploy.json
+```
+
 ## Deploy the Azure CycleCloud Slurm Workspaces environment
 
 > [!WARNING]  
-> Check other parameters in the template before proceeding with the deployment, like AMLFS file system size, the desired SKU and size.
+> Check other parameters in the template before proceeding with the deployment, like AMLFS file system size and the desired SKU.
 
 ```bash
 export TENANT_ID="your-tenant-id"
@@ -91,5 +93,5 @@ az login --tenant $TENANT_ID
 az account show ### Check you are in the right subscription
 az account set --subscription $SUBSCRIPTION_NAME ### In case you are not in the right one
 git clone --depth 1 --branch 2025.02.06 https://github.com/azure/cyclecloud-slurm-workspace.git
-az deployment sub create --template-file cyclecloud-slurm-workspace/bicep/mainTemplate.bicep --parameters large-ai-training-cluster-parameters_deploy.json --location $LOCATION
+az deployment sub create --template-file cyclecloud-slurm-workspace/bicep/mainTemplate.bicep --parameters large-ai-training-cluster-parameters-deploy.json --location $LOCATION
 ```

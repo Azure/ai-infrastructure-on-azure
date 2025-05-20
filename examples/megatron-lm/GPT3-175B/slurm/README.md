@@ -80,7 +80,7 @@ To avoid this issue, there are two alternatives:
 
 Here we will demonstrate the commands that would allow the tuning on AMLFS side.
 
-If we run the `lfs getstripe` command on one of the downloaded image, we will see that only 6 OSSs are hosting the file. Moreover, a sequential read of the file by all the nodes on job startup will probably make only even less OSSs contributing at any given time.
+If we run the `lfs getstripe` command on one of the downloaded image, we will see that only 6 OSSs are hosting the file. This is related to the default PFL configuration of AMLFS striping.
 
 In the following commands we assume the presence of some environment variables for the stage path, the AMLFS mount point and image name of the sqsh file:
 
@@ -104,36 +104,20 @@ lfs getsripe ${STAGE_PATH}/${IMAGE_NAME}.sqsh
       - 4: { l_ost_idx: 2, l_fid: [0x100020000:0x3841c:0x0] }
 ```
 
-In order to increase the read performance, it is possible to create a number of mirrors of the file components in order to fulfill, or even oversubscribe the OSSs.
-
-In order to count the number of OSS of your filesystem:
+The striping of the file can be optimized to ensure that reads happen with cooperation of all the OSSs (this requires superuser privileges). Below we create a new folder striped on all OSSs (`-c -1`) and we copy the image inside the new folder:
 
 ```bash
-lfs df -h ${MOUNT_PATH} | grep OST | wc -l
+mkdir ${STAGE_PATH}/striped_directory
+lfs setstripe -S 1M -E -1 -c -1  ${STAGE_PATH}/striped_directory
+cp ${STAGE_PATH}/${IMAGE_NAME}.sqsh ${STAGE_PATH}/striped_directory
 ```
 
-In this case, the performance can enhanced adding to the image a number of mirrors able to create stripes on all the OSSs:
+Here is a comparison on an `AMLFS 500 - 128 TiB` of the time to startup with `srun` a squashed image from the Azure Managed Lustre Filesystem with different settings:
 
-```bash
-lfs mirror extend -N2 ${STAGE_PATH}/${IMAGE_NAME}.sqsh
-```
-
-In a similar way, the striping of the single mirror can be increased (this requires superuser privileges):
-
-```bash
-lfs setstripe -S 512M -E -1 -c -1 ${STAGE_PATH}/${IMAGE_NAME}.sqsh
-```
-
-Here is a comparison on an `AMLFS 500 - 256 TiB` of the time to startup with `srun` a squashed image from the Azure Managed Lustre Filesystem with different settings:
-
-| Setting                          | OST occupation | Container startup time on 64 nodes [s] |
-| -------------------------------- | -------------- | -------------------------------------- |
-| No mirror / Default striping     | 1 x 23 GiB     | 218                                    |
-| 5 mirror / Default striping      | 5 x 23 GiB     | 56                                     |
-| 10 mirror / Default striping     | 10 x 23 GiB    | 57                                     |
-| No mirror / Full 64 OST striping | 1 x 23 GiB     | 105                                    |
-| 5 mirror / Full 64 OST striping  | 5 x 23 GiB     | 73                                     |
-| 10 mirror / Full 64 OST striping | 10 x 23 GiB    | 70                                     |
+| Setting              | OST occupation | Container startup time on 64 nodes [s] |
+| -------------------- | -------------- | -------------------------------------- |
+| Default striping     | 1 x 23 GiB     | 200                                    |
+| Full 32 OST striping | 1 x 23 GiB     | 74                                     |
 
 ## 4. Data preparation
 
@@ -154,6 +138,8 @@ The example commandline could be:
 export STAGE_PATH="your-stage-path"
 python3 download_slimpajama.py ${STAGE_PATH}/slimpajama
 ```
+
+Remember to set the `SQUASHED_NEMO_IMAGE` environment variable in case striping has been applied as described in the [filesystem tuning](#3-filesystem-tuning) section.
 
 This download, if done without using Huggingface methodologies, will take several hours.
 
@@ -207,9 +193,38 @@ After the data preparation is completed, the execution of the training on a cert
 
 The script has been adapted starting from [Megatron-LM GPT175B example](https://github.com/NVIDIA/Megatron-LM/blob/main/examples/gpt3/train_gpt3_175b_distributed.sh)
 
+The script in the repository runs a GPT3 175B model, but it is possible to do a simple system check on 2 nodes running an example with 375M parameters that allows to validate internode communication and environment configuration:
+
 ```bash
 export STAGE_PATH="your-stage-path"
+export NUM_LAYERS=12
+export HIDDEN_SIZE=512
+export NUM_ATTENTION_HEADS=8
+export SEQ_LENGTH=1024
+export TENSOR_MODEL_PARALLEL_SIZE=1
+export PIPELINE_MODEL_PARALLEL_SIZE=1
+sbatch -p gpu -N 2 04-gpt175B.sh
+```
+
+Remember to set the `SQUASHED_PYTORCH_IMAGE` environment variable in case striping has been applied as described in the [filesystem tuning](#3-filesystem-tuning) section.
+
+After validation on the smaller size model, it is possible to move to the larger size model with more confidence:
+
+```bash
+export STAGE_PATH="your-stage-path"
+unset NUM_LAYERS
+unset HIDDEN_SIZE
+unset NUM_ATTENTION_HEADS
+unset SEQ_LENGTH
+unset TENSOR_MODEL_PARALLEL_SIZE
+unset PIPELINE_MODEL_PARALLEL_SIZE
 sbatch -p gpu -N <NUMBER_OF_NODES> 04-gpt175B.sh
+```
+
+The job progress can be monitored looking at the job logs, where `SLURM_JOB_ID` is the ID of the Slurm job in progress:
+
+```bash
+tail -f gpt175b_<SLURM_JOB_ID>.*
 ```
 
 Some elements to take into considerations:
@@ -222,30 +237,15 @@ Some elements to take into considerations:
 
 This value above have been tuned to create a significant pressure on the storage with checkpointing. To look at the effective defaults refer to the official [Megatron-LM GPT175B example](https://github.com/NVIDIA/Megatron-LM/blob/main/examples/gpt3/train_gpt3_175b_distributed.sh)
 
-It is possible to fine tune the model in this section of the execution file:
+It is possible to change the model configuration through the aforementioned environment variables. For example for a 857M model:
 
 ```bash
-GPT_MODEL_ARGS=(
-    --num-layers 96
-    --hidden-size 12288
-    --num-attention-heads 96
-    --seq-length 2048
-    --max-position-embeddings 2048
-    --attention-backend auto
-)
+export NUM_LAYERS=24
+export HIDDEN_SIZE=1024
+export NUM_ATTENTION_HEADS=16
+export SEQ_LENGTH=2048
+export TENSOR_MODEL_PARALLEL_SIZE=1
+export PIPELINE_MODEL_PARALLEL_SIZE=1
 ```
 
-This can be tune according to the related [table from the NVIDIA MegatronLM repository](https://github.com/NVIDIA/Megatron-LM/blob/main/images/model_table.png?raw=true).
-
-For example, for a GPT3 32B:
-
-```bash
-GPT_MODEL_ARGS=(
-    --num-layers 56
-    --hidden-size 7168
-    --num-attention-heads 48
-    --seq-length 2048
-    --max-position-embeddings 2048
-    --attention-backend auto
-)
-```
+This can be tuned according to the related [table from the NVIDIA MegatronLM repository](https://github.com/NVIDIA/Megatron-LM/blob/main/images/model_table.png?raw=true).

@@ -25,6 +25,12 @@ NUMBER_OF_ITERATIONS=${NUMBER_OF_ITERATIONS:-1500}
 SAVE_INTERVAL=${SAVE_INTERVAL:-100}
 EVAL_INTERVAL=${EVAL_INTERVAL:-100}
 LOGLEVEL=${LOGLEVEL:-"INFO"}
+NUM_LAYERS=${NUM_LAYERS:-96}
+HIDDEN_SIZE=${HIDDEN_SIZE:-12288}
+NUM_ATTENTION_HEADS=${NUM_ATTENTION_HEADS:-96}
+SEQ_LENGTH=${SEQ_LENGTH:-2048}
+TENSOR_MODEL_PARALLEL_SIZE=${TENSOR_MODEL_PARALLEL_SIZE:-8}
+PIPELINE_MODEL_PARALLEL_SIZE=${PIPELINE_MODEL_PARALLEL_SIZE:-16}
 
 export NCCL_TOPO_FILE=$TOPO_FILE
 export CUDA_DEVICE_MAX_CONNECTIONS=1
@@ -46,17 +52,11 @@ DATA_CACHE_DIR=${DATA_CACHE_DIR:-$STAGE_PATH/datacache}
 
 DATA_SET_SIZE=$(find $DATA_PATH -name "*.bin" -type f | wc -l)
 
-TRAIN_DATA="\
- $(find $DATA_PATH -name "*.bin" -type f | sort | head -n $(($DATA_SET_SIZE - $CHUNKS - $CHUNKS)) | xargs -n1 echo 1.0 | sed "s/.bin//g")
-"
+readarray -t TRAIN_DATA < <(find $DATA_PATH -name "*.bin" -type f | sort | head -n $(($DATA_SET_SIZE - $CHUNKS - $CHUNKS)) | xargs -n 1 echo 1.0 | sed "s/.bin//g")
 
-VALID_DATA="\
- $(find $DATA_PATH -name "*.bin" -type f | sort | tail -n $(($CHUNKS)) | xargs -n1 echo 1.0 | sed "s/.bin//g")
-"
+readarray -t VALID_DATA < <(find $DATA_PATH -name "*.bin" -type f | sort | tail -n $(($CHUNKS)) | xargs -n1 echo 1.0 | sed "s/.bin//g")
 
-TEST_DATA="\
- $(find $DATA_PATH -name "*.bin" -type f | sort | tail -n $(($CHUNKS + $CHUNKS)) | head -n $(($CHUNKS)) | xargs -n1 echo 1.0 | sed "s/.bin//g")
-"
+readarray -t TEST_DATA < <(find $DATA_PATH -name "*.bin" -type f | sort | tail -n $(($CHUNKS + $CHUNKS)) | head -n $(($CHUNKS)) | xargs -n1 echo 1.0 | sed "s/.bin//g")
 
 DISTRIBUTED_ARGS=(
 	--nproc_per_node "$SLURM_GPUS_PER_NODE"
@@ -67,10 +67,10 @@ DISTRIBUTED_ARGS=(
 )
 
 GPT_MODEL_ARGS=(
-	--num-layers 96
-	--hidden-size 12288
-	--num-attention-heads 96
-	--seq-length 2048
+	--num-layers "$NUM_LAYERS"
+	--hidden-size "$HIDDEN_SIZE"
+	--num-attention-heads "$NUM_ATTENTION_HEADS"
+	--seq-length "$SEQ_LENGTH"
 	--max-position-embeddings 2048
 	--attention-backend auto
 )
@@ -93,17 +93,17 @@ TRAINING_ARGS=(
 )
 
 MODEL_PARALLEL_ARGS=(
-	--tensor-model-parallel-size 8
-	--pipeline-model-parallel-size 16
+	--tensor-model-parallel-size "$TENSOR_MODEL_PARALLEL_SIZE"
+	--pipeline-model-parallel-size "$PIPELINE_MODEL_PARALLEL_SIZE"
 	--sequence-parallel
 	--use-distributed-optimizer
 )
 
 DATA_ARGS=(
 	--data-cache-path "$DATA_CACHE_DIR"
-	--train-data-path "$TRAIN_DATA"
-	--valid-data-path "$VALID_DATA"
-	--test-data-path "$TEST_DATA"
+	--train-data-path $(echo "${TRAIN_DATA[@]}")
+	--valid-data-path $(echo "${VALID_DATA[@]}")
+	--test-data-path $(echo "${TEST_DATA[@]}")
 	--vocab-file "$VOCAB_FILE"
 	--merge-file "$MERGE_FILE"
 )
