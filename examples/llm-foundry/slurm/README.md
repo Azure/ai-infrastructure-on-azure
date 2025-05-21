@@ -16,6 +16,23 @@ The references that have been used to build this example are:
 - [C4 (Colossal, Cleaned, Common Crawl) Dataset](https://huggingface.co/datasets/allenai/c4) - training dataset for the models
 - [Azure CycleCloud Workspaces for Slurm](https://github.com/Azure/cyclecloud-slurm-workspace) - The Azure Marketplace offering allowing to stand-up a Slurm cluster powered by Azure CycleCloud and Azure Storage, with pre-configured `enroot` and `pyxis` to support containerized workloads
 
+## Creating Azure CycleCloud Workspaces for Slurm Environment
+
+The first step in the process implies the creation of an Azure CycleCloud Slurm Workspace environment. The documentation [available in Microsoft Learn](https://learn.microsoft.com/en-us/azure/cyclecloud/overview-ccws?view=cyclecloud-8) guides through the deployment process.
+
+This can be done through infrastrucutre as code [following the infrastructure reference example](../../../../infrastructure_references/azure_cyclecloud_workspaces_for_slurm/README.md).
+
+The Azure environment suggested for the following example should contain:
+
+- A GPU partition `gpu` with ND-series nodes. The example has been tested on `Standard_ND96isr_H100_v5` and `Standard_ND96isr_H200_v5`. This will be `GPU_SKU` environment variable in the deployment reference documentation.
+- Any sort of NFS home directory will be suitable for this example.  There are no dependencies here for running this example.
+- An Azure Managed Lustre File System for the shared cluster area. This will be used for training data storage and checkpointing.
+
+The Azure Managed Lustre File System should be sized with the following considerations:
+
+- The training data read requires minimal bandwidth.  Any latencies can be hidden through the local storage.  Data can be predownloaded in the background.
+- Checkpointing will demand higher bandwidth and particularly if shared reads and writes are used.  The Lustre file system should be sized to accommodate the number of GPUs and the expected checkpoint size.  The mpt-30b model has a checkpoint size of 336 GiB and the mpt-70b model has a checkpoint size of 725 GiB.  The Lustre file system should be sized to accommodate reading and writing of these files in parallel to improved the operation times.  If a single file is used there will be a limit of 10GBps.
+- Squash files are used to store the container image.  The size of the squash file is 21 GiB.  All nodes will read this file at the start of the job - but this can be staged to the NVME to reduce bandwidth requirement for Lustre.  More details can be found [here](../../../../storage_references/squashed_images/README.md).
 
 ## Building the container
 
@@ -44,7 +61,7 @@ Now, download and convert the data:
 
 ```
 python /llm-foundry/scripts/data_prep/convert_dataset_hf.py \
-  --dataset allenai/c4 \0
+  --dataset allenai/c4 \
   --data_subset en \
   --out_root /data/my-copy-c4 \
   --splits train val \
@@ -63,17 +80,17 @@ NUM_WORKERS=8
 sbatch -N1 -p gpu download_c4_data.sh $CONTAINER_NAME $DATA_DIR $NUM_WORKERS
 ```
 
-> The `NUM_WORKERS` variable is used to specify the number of workers to use for downloading and converting the dataset. The default value is 16 but this may need to be lowered if throttling is observed.
+> The `NUM_WORKERS` variable is used to specify the number of workers to use for downloading and converting the dataset. A higher value will increase the speed of the download and conversion process.  However, this may need to be lowered if throttling is observed.
 
 ## Training run
 
-The example training configuration files are located in the `/llm-foundry/scripts/train/yamls/pretrain/` directory.  The example here has been run with the `mpt-30b` and `mpt-70b` configurations.  To training job can be run in the sbatch script with SLURM as follows:
+The example training configuration files are located in the `/llm-foundry/scripts/train/yamls/pretrain/` directory.  The example here has been run with the `mpt-30b` and `mpt-70b` configurations.  Below is an example of how to launch composer in an sbatch script:
 
 ```
 srun -l \
     --cpu-bind no \
-    --container-image $image \
-    --container-mounts $mounts \
+    --container-image $IMAGE \
+    --container-mounts $MOUNTS \
     bash -c "composer \
     --world_size $WORLD_SIZE \
     --node_rank \$SLURM_NODEID \
@@ -82,10 +99,10 @@ srun -l \
     --verbose \
     /llm-foundry/scripts/train/train.py \
     /llm-foundry/scripts/train/yamls/pretrain/mpt-30b.yaml \
-    ${yaml_updates}
+    $YAML_UPDATES
 ```
 
-The `yaml_updates` can be used to create/overide variables in the YAML file.  This is in the form of `key=value` pairs.  The following sections describe some of the options that have been tested and is followed by an overview of the `launch.sb` script that provide command line arguments to the set these values.
+The `YAML_UPDATES` can be used to create/overide variables in the YAML file.  This is in the form of space separated `key=value` pairs.  The following sections describe some of the options that have been tested and is followed by an overview of the `launch.sb` script that provides a utility script to set these values.
 
 ### Checkpointing
 

@@ -49,6 +49,3 @@ RUN apt install -y moreutils
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 ENV LD_LIBRARY_PATH=/usr/mpi/gcc/openmpi-4.1.7rc1/lib:$LD_LIBRARY_PATH
 ENV LD_PRELOAD=/opt/nccl/build/lib/libnccl.so
-
-
-#    https://content.mellanox.com/hpc/hpc-x/v2.22.1rc4/hpcx-v2.22.1-gcc-doca_ofed-ubuntu22.04-cuda12-x86_64.tbz
