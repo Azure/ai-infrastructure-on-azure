@@ -1,0 +1,115 @@
+#!/bin/bash
+#SBATCH --job-name=llmfoundry
+#SBATCH --output=%x_%j.out
+#SBATCH --ntasks-per-node=1
+#SBATCH --gpus-per-node=8
+#SBATCH --gpus-per-task=8
+#SBATCH --gres=gpu:8
+#SBATCH --exclusive
+#SBATCH --wait-all-nodes=1
+
+# Argument parsing
+usage() {
+    echo "Usage: $0 -c <config> -i <image> -d <datadir> [-s] [-I <save_interval>] [-N <save_num_checkpoints_to_keep>] [-F <save_folder>] [-u <usesharp>] [-S] -m <mounts> [-y <yaml_updates>]"
+    exit 1
+}
+
+checkpointing=0
+save_interval=1000
+save_num_checkpoints_to_keep=1
+save_folder=""
+usesharp=0
+sharded_checkpoint=0
+mounts=""
+yaml_updates=""
+
+while getopts "c:i:d:sI:N:F:u:Sm:y:" opt; do   
+    case ${opt} in
+        c) config=$OPTARG ;;
+        i) image=$OPTARG ;;
+        d) datadir=$OPTARG ;;
+        s) checkpointing=1 ;;
+        I) save_interval=$OPTARG ;;
+        N) save_num_checkpoints_to_keep=$OPTARG ;;
+        F) save_folder=$OPTARG ;;
+        u) usesharp=$OPTARG ;;
+        S) sharded_checkpoint=1 ;;
+        m) mounts=$OPTARG ;;
+        y) yaml_updates=$OPTARG ;;
+        *) usage ;;
+    esac
+done
+
+if [[ -z "$config" || -z "$image" || -z "$datadir" || -z "$mounts" ]]; then
+    usage
+fi
+
+if [[ $checkpointing -eq 1 && -z "$save_folder" ]]; then
+    echo "Error: Checkpointing is enabled but save_folder is not specified."
+    usage
+fi
+
+echo "Config:              $config"
+echo "Image:               $image"
+echo "Data Directory:      $datadir"
+echo "Container Mounts:    $mounts"
+echo "YAML Updates:        $yaml_updates"
+echo "Use SHARP:           $usesharp"
+echo "Checkpointing:       $checkpointing"
+if [[ $checkpointing -eq 1 ]]; then
+    echo "Save Interval:       $save_interval"   
+    echo "Checkpoints to Keep: $save_num_checkpoints_to_keep"
+    echo "Save Folder:         $save_folder"
+    echo "Sharded Checkpoint:  $sharded_checkpoint"
+fi
+
+NODES=( $( scontrol show hostnames $SLURM_JOB_NODELIST ) )
+NNODES=${#NODES[@]}
+MASTER_ADDR=$(getent hosts ${NODES[0]} | awk '{print $1}')
+MASTER_PORT=$(($RANDOM + 1024))
+NPROC=8
+WORLD_SIZE=$((NNODES * NPROC))
+
+export OMPI_MCA_coll_hcoll_enable=0 \
+       CUDA_DEVICE_ORDER=PCI_BUS_ID \
+       NCCL_SOCKET_IFNAME=eth0 \
+       NCCL_DEBUG=INFO \
+       UCX_TLS=rc \
+       UCX_NET_DEVICES=mlx5_ib0:1 \
+       NCCL_IB_QPS_PER_CONNECTION=4 \
+       NCCL_IGNORE_CPU_AFFINITY=1 \
+       NCCL_P2P_NET_CHUNKSIZE=$((512*1024)) \
+       NCCL_PXN_DISABLE=1 \
+       NCCL_MIN_NCHANNELS=32 \
+       NCCL_TOPO_FILE=/etc/ndv5-topo.xml \
+       SHARP_SMX_UCX_INTERFACE=mlx5_ib0:1 \
+       SHARP_COLL_ENABLE_SAT=1 \
+       SHARP_COLL_LOG_LEVEL=3 \
+       SHARP_COLL_ENABLE_PCI_RELAXED_ORDERING=1 \
+       NCCL_COLLNET_ENABLE=$usesharp
+
+checkpoint_args=""
+if [[ $checkpointing -eq 1 ]]; then
+    checkpoint_args="save_interval=${save_interval}ba save_num_checkpoints_to_keep=${save_num_checkpoints_to_keep}"
+    if [[ -n "$save_folder" ]]; then
+        checkpoint_args+=" save_folder=${save_folder}"
+    fi
+    if [[ $sharded_checkpoint -eq 1 ]]; then
+        checkpoint_args+=" fsdp_config.state_dict_type=sharded"
+    fi
+fi
+
+srun -l \
+    --cpu-bind no \
+    --container-image $image \
+    --container-mounts $mounts \
+    bash -c "composer \
+    --world_size $WORLD_SIZE \
+    --node_rank \$SLURM_NODEID \
+    --master_addr $MASTER_ADDR \
+    --master_port $MASTER_PORT \
+    --verbose \
+    /llm-foundry/scripts/train/train.py \
+    /llm-foundry/scripts/train/yamls/pretrain/${config}.yaml \
+    variables.data_local=${datadir} ${checkpoint_args} ${yaml_updates} 2>&1 | ts '[%Y-%m-%d %H:%M:%S]'"
+

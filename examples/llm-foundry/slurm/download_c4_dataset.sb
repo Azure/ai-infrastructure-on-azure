@@ -1,0 +1,25 @@
+#!/bin/bash
+#SBATCH --gpus-per-node=8
+#SBATCH --exclusive
+#SBATCH -o download_data_%j.log
+
+CONT=$1
+DATADIR=$2
+NUM_WORKERS=${3:-16}
+
+srun -l \
+    --cpu-b
+    ind no \
+    --container-image "${CONT}" \
+    --container-mounts "${DATADIR}:/data" \
+    --gpus-per-node=8 \
+    --mem=0 \
+        python /llm-foundry/scripts/data_prep/convert_dataset_hf.py \
+            --dataset allenai/c4 \
+            --data_subset en \
+            --out_root /data/my-copy-c4 \
+            --splits train val \
+            --concat_tokens 2048 \
+            --tokenizer EleutherAI/gpt-neox-20b \
+            --eos_text '<|endoftext|>' \
+            --num_workers $NUM_WORKERS
