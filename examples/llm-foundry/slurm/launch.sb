@@ -24,7 +24,7 @@ while getopts "c:i:m:y:" opt; do
     esac
 done
 
-if [[ -z "$config" || -z "$image" || -z "$mounts" || -z "$mounts" ]]; then
+if [[ -z "$config" || -z "$image" || -z "$mounts" || -z "$yaml_updates" ]]; then
     usage
 fi
 
