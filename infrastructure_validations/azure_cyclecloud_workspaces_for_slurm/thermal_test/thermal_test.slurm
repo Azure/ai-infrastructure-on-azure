@@ -7,4 +7,4 @@
 #SBATCH --error=job_%J.err
 
 # Run the thermal test script and save output
-srun --ntasks-per-node=1 --exclusive bash thermal_test.slurm
+srun --ntasks-per-node=1 --exclusive bash thermal_test.sh
