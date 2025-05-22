@@ -10,18 +10,18 @@ This file must be explicitly mounted into the container and passed to the job vi
 
 This configuration is crucial for low-latency communication using NCCL’s LL (Low-Latency) protocol, which transfers small and medium messages via pinned CPU buffers. Without proper CPU-GPU affinity, inter-NUMA communication introduces significant performance degradation.
 
-Further NCCL tuning on Azure includes the following recommended settings:  
+Further NCCL tuning on Azure includes the following recommended settings:
 
 | Variable                     | Value                          | Description                                            |
-|-----------------------------|--------------------------------|--------------------------------------------------------|
-| `NCCL_TOPO_FILE`            | `/opt/microsoft/ndv5-topo.xml` | Ensures NUMA-aware GPU/NIC/CPU mapping                |
-| `NCCL_P2P_NET_CHUNKSIZE`    | `2097152` (2MB)                | Increases P2P transfer granularity                    |
-| `NCCL_MIN_CHANNELS`         | `32`                           | Improves throughput for collectives like ReduceScatter |
-| `NCCL_IB_QPS_PER_CONNECTION`| `4`                            | Improves InfiniBand queue performance                 |
-| `NCCL_PXN_DISABLE`          | `1`                            | Enables zero-copy design for NCCL P2P                 |
-| `NCCL_IGNORE_CPU_AFFINITY`  | `1`                            | Ensures NCCL bindings override MPI-affinity           |
+| ---------------------------- | ------------------------------ | ------------------------------------------------------ |
+| `NCCL_TOPO_FILE`             | `/opt/microsoft/ndv5-topo.xml` | Ensures NUMA-aware GPU/NIC/CPU mapping                 |
+| `NCCL_P2P_NET_CHUNKSIZE`     | `2097152` (2MB)                | Increases P2P transfer granularity                     |
+| `NCCL_MIN_CHANNELS`          | `32`                           | Improves throughput for collectives like ReduceScatter |
+| `NCCL_IB_QPS_PER_CONNECTION` | `4`                            | Improves InfiniBand queue performance                  |
+| `NCCL_PXN_DISABLE`           | `1`                            | Enables zero-copy design for NCCL P2P                  |
+| `NCCL_IGNORE_CPU_AFFINITY`   | `1`                            | Ensures NCCL bindings override MPI-affinity            |
 
-The Slurm `srun` command must also include `--cpu-bind=mask_cpu:"..."` to specify optimal per-rank CPU binding based on the topology file. A Slurm job submission example is shown below:  
+The Slurm `srun` command must also include `--cpu-bind=mask_cpu:"..."` to specify optimal per-rank CPU binding based on the topology file. A Slurm job submission example is shown below:
 
 ```bash
 export NCCL_TOPO_FILE=/opt/microsoft/ndv5-topo.xml
@@ -47,4 +47,3 @@ Reducing `virtual_pipeline_model_parallel_size` from `12` to `2` significantly r
 ### Llama 3.1 70B
 
 Reducing `context_model_parallel_size` from `2` to `1` eliminated context-parallel all-gather operations. This reduced skew-induced delays in the downstream tensor-parallel reduce-scatter phase. Additionally, increasing the effective `data_parallel_size` enabled more efficient batch processing.
-
