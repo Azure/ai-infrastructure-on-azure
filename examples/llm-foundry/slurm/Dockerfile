@@ -7,12 +7,12 @@ RUN apt-get update -y \
  && apt-get install -y --fix-missing --allow-downgrades --allow-change-held-packages --no-install-recommends
 
 RUN apt-get update -y \
- && apt install -y curl \
+ && apt-get install -y curl \
  && curl https://linux.mellanox.com/public/repo/doca/GPG-KEY-Mellanox.pub | gpg --dearmor > /etc/apt/trusted.gpg.d/GPG-KEY-Mellanox.pub \
  && echo "deb [signed-by=/etc/apt/trusted.gpg.d/GPG-KEY-Mellanox.pub] ${DOCA_URL} ./" > /etc/apt/sources.list.d/doca.list \
- && apt update \
- && apt install -y mft=4.30.1-8 \
- && apt install -y doca-ofed-userspace
+ && apt-get update \
+ && apt-get install -y mft=4.30.1-8 \
+ && apt-get install -y doca-ofed-userspace
 
 WORKDIR /opt/
 RUN git clone https://github.com/Mellanox/nccl-rdma-sharp-plugins.git
@@ -43,8 +43,6 @@ RUN git clone https://github.com/NVIDIA/nccl-tests.git /opt/nccl-tests \
     MPI_HOME=/usr/mpi/gcc/openmpi-4.1.7rc1 \
     CUDA_HOME=/usr/local/cuda \
     NCCL_HOME=/opt/nccl/build
-
-RUN apt install -y moreutils
 
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 ENV LD_LIBRARY_PATH=/usr/mpi/gcc/openmpi-4.1.7rc1/lib:$LD_LIBRARY_PATH
