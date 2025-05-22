@@ -3,6 +3,19 @@
 #SBATCH --exclusive
 #SBATCH -o download_data_%j.log
 
+usage() {
+    echo "Usage: $0 <container_image> <data_directory> [num_workers]"
+    echo "  <container_image>: Path to the container image to use."
+    echo "  <data_directory>: Path to the directory where data will be stored."
+    echo "  [num_workers]: Optional. Number of workers to use (default: 16)."
+    exit 1
+}
+
+# Validate arguments
+if [ -z "$1" ] || [ -z "$2" ]; then
+    echo "Error: Missing required arguments."
+    usage
+fi
 CONT=$1
 DATADIR=$2
 NUM_WORKERS=${3:-16}
