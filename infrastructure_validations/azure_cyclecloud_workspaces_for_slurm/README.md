@@ -1,5 +1,8 @@
 # Node and cluster validations
-Ensuring cluster readiness is essential prior to executing large-scale LLM training benchmarks. Our validation process on Azure involved several components, *i.e.* node health checks, NCCL all-reduce performance testing, and GPU thermal screening. This systematic approach enabled early detection of hardware or software inconsistencies and ensured consistent baseline performance. To get a more consistent test result, we recommend setting the persistent mode and locking the GPU frequency on all GPU nodes.
+Ensuring cluster readiness is essential prior to executing large-scale LLM training benchmarks.  
+Our validation process on Azure involved several components, *i.e.* node health checks, NCCL all-reduce performance testing, and GPU thermal screening.  
+This systematic approach enabled early detection of hardware or software inconsistencies and ensured consistent baseline performance.  
+To get a more consistent test result, we recommend setting the persistent mode and locking the GPU frequency on all GPU nodes.
 
 Example for NDv5 H100 GPU
 ```bash

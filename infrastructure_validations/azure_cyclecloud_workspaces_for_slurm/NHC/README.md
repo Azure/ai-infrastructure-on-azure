@@ -1,4 +1,4 @@
-## Single node NHC example
+# Single node NHC example
 ```bash
 # Run NHC on a given set of nodes
 sbatch -w ccw-gpu-[1-10] nhc.slurm
