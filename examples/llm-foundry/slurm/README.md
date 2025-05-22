@@ -116,7 +116,7 @@ LLM Foundry provides a script to download and convert datasets from huggingface.
 
 ```
 DATA_DIR=/data
-srun --cpu-bind no -N1 --exclusive -p gpu --container-image llm-foundrty-0.18.0.sqsh --gres=gpu:8 --container-mounts $DATA_DIR:$DATA_DIR --pty bash
+srun --cpu-bind no -N1 --exclusive -p gpu --container-image llm-foundry-0.18.0.sqsh --gres=gpu:8 --container-mounts $DATA_DIR:$DATA_DIR --pty bash
 ```
 
 Now, download and convert the data:
