@@ -26,11 +26,11 @@ All the scripts and code that have been derived by any of the above repositories
 
 The first step in the process implies the creation of an Azure CycleCloud Slurm Workspace environment. The documentation [available in Microsoft Learn](https://learn.microsoft.com/en-us/azure/cyclecloud/overview-ccws?view=cyclecloud-8) guides through the deployment process.
 
-This can be done through infrastrucutre as code [following the infrastructure reference example](../../../../infrastructure_references/azure_cyclecloud_workspaces_for_slurm/README.md).
+This can be done through infrastructure-as-code [following the infrastructure reference example](../../../../infrastructure_references/azure_cyclecloud_workspaces_for_slurm/README.md).
 
 The Azure environment suggested for the following example should contain:
 
-- A GPU partition `gpu` with ND-series nodes. The example has been tested on `Standard_ND96isr_H100_v5` and `Standard_ND96isr_H200_v5`. This will be `GPU_SKU` environment variable in the deployment reference documentation.
+- A GPU partition `gpu` with ND-series nodes. The example has been tested on `Standard_ND96isr_H100_v5` and `Standard_ND96isr_H200_v5`. This will be `GPU_SKU` environment variables in the deployment reference documentation.
 - A HTC partition `htc` with general purpose compute nodes for data preparation. For example a `Standard_D64ds_v5`. Please consider that:
   - The files are downloaded in `zst` format, so they will require extraction. This process can be ideally fully parallelized with 1 process per file.
   - In the current dataset processing flow, the `jsonl` files will be concatenated in a total of 72 chunks. This means that for data pre-processing, the parallelism can be pushed up to approximately 72 process in parallel

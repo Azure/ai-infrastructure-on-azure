@@ -1,8 +1,9 @@
-# Introduction
+# Squashed image file tuning
+## Introduction
 
 For a Slurm cluster using `pyxis` and `enroot` for multi-node and multi-GPU container runs, during the training job startup, all the cluster nodes will read the squashed image files from the shared file-system, generating a start-up storm on a single file read.
 
-Taking the example of a PyTorch image, this means that approximately 23 GiB of data will be read in a single file by hundreds of nodes, requiring an overall egress in the order of several TiBs from the filesystem.
+In this example we will be taking a PyTorch image, this means that approximately 23 GiB of data will be read in a single file by hundreds of nodes, requiring an overall egress in the order of several TiBs from the filesystem.
 
 Potential solutions to manage this initial I/O are:
 * [Adjusting the striping](#adjusting-azure-managed-lustre-striping) configuration if the `sqsh` file is stored on an Azure Managed Lustre instance
@@ -23,7 +24,7 @@ export IMAGE_NAME="your-image-name"
 ```
 
 ```bash
-lfs getsripe ${STAGE_PATH}/${IMAGE_NAME}.sqsh
+lfs getstripe ${STAGE_PATH}/${IMAGE_NAME}.sqsh
 ...
      lmm_objects:
       - 0: { l_ost_idx: 5, l_fid: [0x100050000:0x38418:0x0] }
@@ -47,10 +48,10 @@ cp ${STAGE_PATH}/${IMAGE_NAME}.sqsh ${STAGE_PATH}/striped_directory
 The container image to be used in `srun` command then becomes `${STAGE_PATH}/striped_directory/${IMAGE_NAME}.sqsh`:
 
 ```bash
-sun --container-image=${STAGE_PATH}/striped_directory/${IMAGE_NAME}.sqsh ...
+srun --container-image=${STAGE_PATH}/striped_directory/${IMAGE_NAME}.sqsh ...
 ```
 
-Here is a comparison on an `AMLFS 500 - 128 TiB` of the time to startup with `srun` a squashed image from the Azure Managed Lustre Filesystem with different striping settings:
+Here is a comparison on an `AMLFS 500 - 128 TiB` of the time to startup with `srun` a squashed image of PyTorch (23 GiB) from the Azure Managed Lustre Filesystem with different striping settings:
 
 | Setting              | OST occupation | Container startup time on 64 nodes [s] |
 | -------------------- | -------------- | -------------------------------------- |
