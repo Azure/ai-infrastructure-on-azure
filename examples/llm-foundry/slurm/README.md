@@ -2,10 +2,21 @@
 
 ## Table of Contents
 
-1. [Introduction](#introduction)
-2. [Building the container](#building-the-container)
+1. [Introduction](#1-introduction)
+2. [Creating Azure CycleCloud Workspaces for Slurm Environment](#2-creating-azure-cyclecloud-workspaces-for-slurm-environment)
 
-## Introduction
+   2.1. [Blob storage for training data and checkpointing](#2-1-blob-storage-for-training-data-and-checkpointing)
+3. [Building the container](#3-building-the-container)
+4. [Dataset preparation](#4-dataset-preparation)
+5. [Training run](#5-training-run)
+
+   5.1. [Training data storage](#5-1-training-data-storage)
+
+   5.2. [Checkpointing](#5-2-checkpointing)
+   
+   5.3. [Example Slurm job submissions](#5-3-example-slurm-job-submissions)
+
+## 1. Introduction
 
 In this example, we will demonstrate how to train a Mosaic Pretrained Transformer (MPT) model, using a slurm cluster.
 
@@ -16,7 +27,7 @@ The references that have been used to build this example are:
 - [C4 (Colossal, Cleaned, Common Crawl) Dataset](https://huggingface.co/datasets/allenai/c4) - training dataset for the models
 - [Azure CycleCloud Workspaces for Slurm](https://github.com/Azure/cyclecloud-slurm-workspace) - The Azure Marketplace offering allowing to stand-up a Slurm cluster powered by Azure CycleCloud and Azure Storage, with pre-configured `enroot` and `pyxis` to support containerized workloads
 
-## Creating Azure CycleCloud Workspaces for Slurm Environment
+## 2. Creating Azure CycleCloud Workspaces for Slurm Environment
 
 The guide requires an Azure CycleCloud Slurm Workspace environment. The documentation [available in Microsoft Learn](https://learn.microsoft.com/en-us/azure/cyclecloud/overview-ccws?view=cyclecloud-8) guides through the deployment process.
 
@@ -32,7 +43,7 @@ The Azure Managed Lustre File System should be sized with the following consider
 - Checkpointing will demand higher bandwidth and particularly if shared reads and writes are used.  The Lustre file system should be sized to accommodate the number of GPUs and the expected checkpoint size.  The mpt-30b model has a checkpoint size of 336 GiB and the mpt-70b model has a checkpoint size of 725 GiB.  The Lustre file system should be sized to accommodate reading and writing of these files in parallel to improved the operation times.  If a single file is used there will be a limit of 10GBps.
 - Squash files are used to store the container image.  The size of the squash file generated in this example is 21 GiB.  All nodes will read this file at the start of the job - but this can be staged to the NVME to reduce bandwidth requirement for Lustre.  More details can be found [here](../../../../storage_references/squashed_images/README.md).
 
-### Blob storage for training data and checkpointing
+### 2.1. Blob storage for training data and checkpointing
 
 As an alternative to Azure Managed Lustre, Blob storage can be used for the training data and checkpointing.  This is a cost effective solution but will require more tuning to get the performance required.  The Blob storage can be mounted using [blobfuse](https://github.com/Azure/azure-storage-fuse).  The default limits for a standard Blob storage account are shown [here](https://learn.microsoft.com/en-us/azure/storage/common/scalability-targets-standard-account) but you can contact [Azure support](https://azure.microsoft.com/support/faq/) to request an increase in account limits if required.  Reading the data is not so much of an issue for the MPT examples if the the dataloader is set to stream to a local cache.  This was the higher latency for Blob storage will be hidden.
 
@@ -85,7 +96,7 @@ To create the Blob mount on the nodes, you must do the following on each of the 
 
 > Note: When using Blob storage, check the metrics to ensure you are not being throttled.
 
-## Building the container
+## 3. Building the container
 
 Copy the Dockerfile to your cluster and build the container as follows:
 
@@ -99,7 +110,7 @@ Convert the Docker image into a squash file:
 sudo enroot import -o llm-foundry-v0.18.0.sqsh dockerd://llm-foundry:v0.18.0
 ```
 
-## Dataset preparation
+## 4. Dataset preparation
 
 LLM Foundry provides a script to download and convert datasets from huggingface. The script is located in the `scripts/data_prep` directory of the LLM Foundry repository. The script can be run as follows to download and convert the full [C4](https://huggingface.co/datasets/allenai/c4) dataset.  First, start a container to use:
 
@@ -133,7 +144,7 @@ sbatch -N1 -p gpu download_c4_data.sh $CONTAINER_NAME $DATA_DIR $NUM_WORKERS
 
 > The `NUM_WORKERS` variable is used to specify the number of workers to use for downloading and converting the dataset. A higher value will increase the speed of the download and conversion process.  However, this may need to be lowered if throttling is observed.
 
-## Training run
+## 5. Training run
 
 The example training configuration files are located in the `/llm-foundry/scripts/train/yamls/pretrain/` directory.  An example launch script, `launch.sb`, is included:
 
@@ -211,7 +222,7 @@ The script arguments are:
 
 The following sections describe some of the YAML options that can be used.
 
-### Training data storage
+### 5.1. Training data storage
 
 LLM Foundry has two paths for data storage: `data_local` and `data_remote`.  The minimum requirement is to set `data_local` to a local directory/mount on the nodes.  However, using *both* `data_local` and `data_remote` can provide efficient data streaming, which is particularly beneficial with Blob Storage.
 
@@ -222,7 +233,7 @@ If the `data_remote` option is set, the dataloader works by transferring the req
 
 In essence, `data_local` is your fast local cache for `data_remote`, hiding latency from cloud storage and maximizing GPU utilization by ensuring data is always available quickly.
 
-### Checkpointing
+### 5.2. Checkpointing
 
 The parameters to control the checkpointing are:
 
@@ -232,7 +243,7 @@ The parameters to control the checkpointing are:
 
 The `fdsp_config.state_dict_type` setting determines how model checkpoints are saved.  The default is `full` and aggregates all the data to a single process and writes a single file for the whole model.  However, `sharded` saves the model in parallel across multiple processes, offering faster read and write times and requiring high-bandwidth storage like Azure Managed Lustre or Azure Blob Storage. A key consideration with sharded is that reloading typically requires the same number of processes used for saving. The choice depends on balancing I/O performance, storage capabilities, and the flexibility needed for restarting or loading checkpoints.
 
-### Example Slurm job submissions
+### 5.3. Example Slurm job submissions
 
 This example sets the parameters for sharded checkpoints:
 
