@@ -31,7 +31,7 @@ The references that have been used to build this example are:
 
 The guide requires an Azure CycleCloud Slurm Workspace environment. The documentation [available in Microsoft Learn](https://learn.microsoft.com/en-us/azure/cyclecloud/overview-ccws?view=cyclecloud-8) guides through the deployment process.
 
-This can be done through infrastrucutre as code [following the infrastructure reference example](../../../../infrastructure_references/azure_cyclecloud_workspaces_for_slurm/README.md) where the Azure environment suggested for the following example should contain:
+This can be done through infrastructure as code [following the infrastructure reference example](../../../../infrastructure_references/azure_cyclecloud_workspaces_for_slurm/README.md) where the Azure environment suggested for the following example should contain:
 
 - A GPU partition `gpu` with ND-series nodes. The example has been tested on `Standard_ND96isr_H100_v5` and `Standard_ND96isr_H200_v5`. This will be `GPU_SKU` environment variable in the deployment reference documentation.
 - Any sort of NFS home directory will be suitable for this example.  There are no dependencies here for running this example.
@@ -39,7 +39,7 @@ This can be done through infrastrucutre as code [following the infrastructure re
 
 The Azure Managed Lustre File System should be sized with the following considerations:
 
-- The training data read requires minimal bandwidth.  Any latencies can be hidden through the local storage.  Data can be predownloaded in the background.
+- Reading training data requires minimal bandwidth and LLM Foundry supports streaming the data to local caches in the background to hide any latencies.
 - Checkpointing will demand higher bandwidth and particularly if shared reads and writes are used.  The Lustre file system should be sized to accommodate the number of GPUs and the expected checkpoint size.  The mpt-30b model has a checkpoint size of 336 GiB and the mpt-70b model has a checkpoint size of 725 GiB.  The Lustre file system should be sized to accommodate reading and writing of these files in parallel to improved the operation times.  If a single file is used there will be a limit of 10GBps.
 - Squash files are used to store the container image.  The size of the squash file generated in this example is 21 GiB.  All nodes will read this file at the start of the job - but this can be staged to the NVME to reduce bandwidth requirement for Lustre.  More details can be found [here](../../../../storage_references/squashed_images/README.md).
 
@@ -227,7 +227,7 @@ The following sections describe some of the YAML options that can be used.
 LLM Foundry has two paths for data storage: `data_local` and `data_remote`.  The minimum requirement is to set `data_local` to a local directory/mount on the nodes.  However, using *both* `data_local` and `data_remote` can provide efficient data streaming, which is particularly beneficial with Blob Storage.
 
 * `data_remote`: This is the primary storage location containing the whole dataset.
-* `data_local`: This is for fast local storage on your training machine (e.g. NVMe drives on Azure NDv5 nodes).
+* `data_local`: This is for fast local storage on your training VM (e.g. NVMe drives on Azure NDv5 nodes).
 
 If the `data_remote` option is set, the dataloader works by transferring the required data into `data_local` in the background.
 
