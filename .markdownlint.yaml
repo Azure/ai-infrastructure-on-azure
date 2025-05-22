@@ -1,0 +1,3 @@
+# .markdownlint.yaml
+MD013:
+  line_length: 800
