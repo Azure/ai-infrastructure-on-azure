@@ -49,7 +49,7 @@ As an alternative to Azure Managed Lustre, Blob storage can be used for the trai
 
 Block cache performs better in my tests for checkpointing, where the files are streamed rather than uploading/downloading all at once.  Below is a template configuration file:
 
-```
+```yaml
 logging:
   type: syslog
   level: log_debug
@@ -100,13 +100,13 @@ To create the Blob mount on the nodes, you must do the following on each of the 
 
 Copy the Dockerfile to your cluster and build the container as follows:
 
-```
+```bash
 sudo docker build -t llm-foundry:v0.18.0 -f Dockerfile .
 ```
 
 Convert the Docker image into a squash file:
 
-```
+```bash
 sudo enroot import -o llm-foundry-v0.18.0.sqsh dockerd://llm-foundry:v0.18.0
 ```
 
@@ -114,14 +114,14 @@ sudo enroot import -o llm-foundry-v0.18.0.sqsh dockerd://llm-foundry:v0.18.0
 
 LLM Foundry provides a script to download and convert datasets from huggingface. The script is located in the `scripts/data_prep` directory of the LLM Foundry repository. The script can be run as follows to download and convert the full [C4](https://huggingface.co/datasets/allenai/c4) dataset.  First, start a container to use:
 
-```
+```bash
 DATA_DIR=/data
 srun --cpu-bind no -N1 --exclusive -p gpu --container-image llm-foundry-0.18.0.sqsh --gres=gpu:8 --container-mounts $DATA_DIR:$DATA_DIR --pty bash
 ```
 
 Now, download and convert the data:
 
-```
+```bash
 python /llm-foundry/scripts/data_prep/convert_dataset_hf.py \
   --dataset allenai/c4 \
   --data_subset en \
@@ -135,7 +135,7 @@ python /llm-foundry/scripts/data_prep/convert_dataset_hf.py \
 
 Alternatively, an sbatch script, `download_c4_data.sh`, is provided to perform the download and conversion:
 
-```
+```bash
 DATA_DIR=/data
 CONTAINER_NAME=llm-foundry-v0.18.0.sqsh
 NUM_WORKERS=8
@@ -148,7 +148,7 @@ sbatch -N1 -p gpu download_c4_dataset.sb $CONTAINER_NAME $DATA_DIR $NUM_WORKERS
 
 The example training configuration files are located in the `/llm-foundry/scripts/train/yamls/pretrain/` directory.  An example launch script, `launch.sb`, is included:
 
-```
+```bash
 #!/bin/bash
 #SBATCH --job-name=llmfoundry
 #SBATCH --output=%x_%j.out
@@ -247,7 +247,7 @@ The `fdsp_config.state_dict_type` setting determines how model checkpoints are s
 
 This example sets the parameters for sharded checkpoints:
 
-```
+```bash
 SQUASH_FILE=/data/llm-foundry-v0.18.0.sqsh
 AMLFS_MOUNT=/data
 
@@ -269,7 +269,7 @@ sbatch -N 16 -p gpu ./launch.sb \
 
 This example streams data to the local disk:
 
-```
+```bash
 SQUASH_FILE=/data/llm-foundry-v0.18.0.sqsh
 BLOB_MOUNT=/blob
 
