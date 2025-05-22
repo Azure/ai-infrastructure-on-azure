@@ -10,25 +10,25 @@
 
 # Argument parsing
 usage() {
-    echo "Usage: $0 -c <config> -i <image> -m <mounts> -y <yaml_updates>"
-    exit 1
+	echo "Usage: $0 -c <config> -i <image> -m <mounts> -y <yaml_updates>"
+	exit 1
 }
 
-while getopts "c:i:m:y:" opt; do   
-    case ${opt} in
-        c) config=$OPTARG ;;
-        i) image=$OPTARG ;;
-        m) mounts=$OPTARG ;;
-        y) yaml_updates=$OPTARG ;;
-        *) usage ;;
-    esac
+while getopts "c:i:m:y:" opt; do
+	case ${opt} in
+	c) config=$OPTARG ;;
+	i) image=$OPTARG ;;
+	m) mounts=$OPTARG ;;
+	y) yaml_updates=$OPTARG ;;
+	*) usage ;;
+	esac
 done
 
 if [[ -z "$config" || -z "$image" || -z "$mounts" || -z "$yaml_updates" ]]; then
-    usage
+	usage
 fi
 
-NODES=( $( scontrol show hostnames $SLURM_JOB_NODELIST ) )
+NODES=($(scontrol show hostnames $SLURM_JOB_NODELIST))
 NNODES=${#NODES[@]}
 MASTER_ADDR=$(getent hosts ${NODES[0]} | awk '{print $1}')
 MASTER_PORT=$(($RANDOM + 1024))
@@ -36,23 +36,23 @@ NPROC=8
 WORLD_SIZE=$((NNODES * NPROC))
 
 export CUDA_DEVICE_ORDER=PCI_BUS_ID \
-       NCCL_SOCKET_IFNAME=eth0 \
-       NCCL_DEBUG=INFO \
-       UCX_TLS=rc \
-       UCX_NET_DEVICES=mlx5_ib0:1 \
-       NCCL_IB_QPS_PER_CONNECTION=4 \
-       NCCL_IGNORE_CPU_AFFINITY=1 \
-       NCCL_P2P_NET_CHUNKSIZE=$((512*1024)) \
-       NCCL_PXN_DISABLE=1 \
-       NCCL_MIN_NCHANNELS=32 \
-       NCCL_TOPO_FILE=/etc/ndv5-topo.xml \
-       TRITON_CACHE_DIR=/tmp/triton-cache-$SLURM_JOBID
+	NCCL_SOCKET_IFNAME=eth0 \
+	NCCL_DEBUG=INFO \
+	UCX_TLS=rc \
+	UCX_NET_DEVICES=mlx5_ib0:1 \
+	NCCL_IB_QPS_PER_CONNECTION=4 \
+	NCCL_IGNORE_CPU_AFFINITY=1 \
+	NCCL_P2P_NET_CHUNKSIZE=$((512 * 1024)) \
+	NCCL_PXN_DISABLE=1 \
+	NCCL_MIN_NCHANNELS=32 \
+	NCCL_TOPO_FILE=/etc/ndv5-topo.xml \
+	TRITON_CACHE_DIR=/tmp/triton-cache-$SLURM_JOBID
 
 srun -l \
-    --cpu-bind no \
-    --container-image $image \
-    --container-mounts $mounts \
-    bash -c "composer \
+	--cpu-bind no \
+	--container-image $image \
+	--container-mounts $mounts \
+	bash -c "composer \
     --world_size $WORLD_SIZE \
     --node_rank \$SLURM_NODEID \
     --master_addr $MASTER_ADDR \

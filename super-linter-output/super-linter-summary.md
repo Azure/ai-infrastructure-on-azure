@@ -4,7 +4,6 @@
 | -------------------------- | ----------------- |
 | BASH                       | Pass ✅           |
 | BASH_EXEC                  | Pass ✅           |
-| CHECKOV                    | Pass ✅           |
 | EDITORCONFIG               | Pass ✅           |
 | GITHUB_ACTIONS             | Pass ✅           |
 | GITLEAKS                   | Pass ✅           |
@@ -12,7 +11,6 @@
 | JSCPD                      | Pass ✅           |
 | MARKDOWN                   | Pass ✅           |
 | MARKDOWN_PRETTIER          | Pass ✅           |
-| NATURAL_LANGUAGE           | Pass ✅           |
 | PYTHON_BLACK               | Pass ✅           |
 | PYTHON_PYLINT              | Pass ✅           |
 | PYTHON_FLAKE8              | Pass ✅           |
