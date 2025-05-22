@@ -5,16 +5,16 @@
 1. [Introduction](#1-introduction)
 2. [Creating Azure CycleCloud Workspaces for Slurm Environment](#2-creating-azure-cyclecloud-workspaces-for-slurm-environment)
 
-   2.1. [Blob storage for training data and checkpointing](#2-1-blob-storage-for-training-data-and-checkpointing)
+   2.1. [Blob storage for training data and checkpointing](#21-blob-storage-for-training-data-and-checkpointing)
 3. [Building the container](#3-building-the-container)
 4. [Dataset preparation](#4-dataset-preparation)
 5. [Training run](#5-training-run)
 
-   5.1. [Training data storage](#5-1-training-data-storage)
+   5.1. [Training data storage](#51-training-data-storage)
 
-   5.2. [Checkpointing](#5-2-checkpointing)
-   
-   5.3. [Example Slurm job submissions](#5-3-example-slurm-job-submissions)
+   5.2. [Checkpointing](#52-checkpointing)
+
+   5.3. [Example Slurm job submissions](#53-example-slurm-job-submissions)
 
 ## 1. Introduction
 
