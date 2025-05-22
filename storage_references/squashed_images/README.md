@@ -1,4 +1,5 @@
 # Squashed image file tuning
+
 ## Introduction
 
 For a Slurm cluster using `pyxis` and `enroot` for multi-node and multi-GPU container runs, during the training job startup, all the cluster nodes will read the squashed image files from the shared file-system, generating a start-up storm on a single file read.
@@ -6,8 +7,9 @@ For a Slurm cluster using `pyxis` and `enroot` for multi-node and multi-GPU cont
 In this example we will be taking a PyTorch image, this means that approximately 23 GiB of data will be read in a single file by hundreds of nodes, requiring an overall egress in the order of several TiBs from the filesystem.
 
 Potential solutions to manage this initial I/O are:
-* [Adjusting the striping](#adjusting-azure-managed-lustre-striping) configuration if the `sqsh` file is stored on an Azure Managed Lustre instance
-* [Staging](#staging-in-local-nvme) the `sqsh` file in the local NVME of the GPU nodes
+
+- [Adjusting the striping](#adjusting-azure-managed-lustre-striping) configuration if the `sqsh` file is stored on an Azure Managed Lustre instance
+- [Staging](#staging-in-local-nvme) the `sqsh` file in the local NVME of the GPU nodes
 
 ## Adjusting Azure Managed Lustre striping
 
@@ -63,6 +65,7 @@ Here is a comparison on an `AMLFS 500 - 128 TiB` of the time to startup with `sr
 Alternatively to adjusting Azure Managed Lustre striping, it is possible to stage the image in the local NVME disks of the GPU nodes (which are automatically paired in a software RAID 0 under `/mnt/nvme` in an Azure CycleCloud Workspace for Slurm deployment).
 
 This can be achieved using in the Slurm execution script:
+
 ```bash
 export STAGE_PATH="your-stage-path"
 export MOUNT_PATH="lustre-mount-point"
