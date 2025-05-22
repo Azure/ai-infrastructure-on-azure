@@ -75,7 +75,7 @@ rsync -avSH ${STAGE_PATH}/${IMAGE_NAME} ${NVME_IMAGE_PATH}
 Then in the `srun` command, the image to be used as container image is:
 
 ```bash
-sun --container-image=${NVME_IMAGE_PATH} ...
+srun --container-image=${NVME_IMAGE_PATH} ...
 ```
 
 Using `rsync` the image will be copied only if not present in the local NVME path of the nodes on job startup. This however should not be the case most of the times if nodes are kept allocated in the environment with data persisting on the NVME drives.
