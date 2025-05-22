@@ -1,4 +1,5 @@
 # Single node NHC example
+
 ```bash
 # Run NHC on a given set of nodes
 sbatch -w ccw-gpu-[1-10] nhc.slurm
@@ -13,4 +14,4 @@ bash collect_failed.sh reboot
 bash collect_failed.sh drain
 ```
 
-Suggested approach is to run NHC on all nodes, then reboot failed ones and rerun NHC on them. For nodes that cannot be fixed with soft reboot, drain and deallocate. 
+Suggested approach is to run NHC on all nodes, then reboot failed ones and rerun NHC on them. For nodes that cannot be fixed with soft reboot, drain and deallocate.

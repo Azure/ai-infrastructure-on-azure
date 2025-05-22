@@ -23,15 +23,15 @@ WORKLOAD_PID=$!
 
 # Collect data from multiple GPU sensors using the nvidia-smi tool (needed for tlimit) every 1 second (--loop=1)
 export RUN_INFO="$(hostname),$target,$DURATION"
-echo `date` starting ${RUN_INFO}
-nvidia-smi --query-gpu=serial,name,timestamp,index,temperature.gpu,temperature.memory,temperature.gpu.tlimit,power.draw,clocks.current.sm,clocks_throttle_reasons.active,utilization.gpu  --loop=1 --format=csv --filename=$LOGPATH &
+echo $(date) starting ${RUN_INFO}
+nvidia-smi --query-gpu=serial,name,timestamp,index,temperature.gpu,temperature.memory,temperature.gpu.tlimit,power.draw,clocks.current.sm,clocks_throttle_reasons.active,utilization.gpu --loop=1 --format=csv --filename=$LOGPATH &
 
 # Capture the process ID (PID) of the last command (telemetry)
 TELEMETRY_PID=$!
 
 tail --pid=$WORKLOAD_PID -f /dev/null
-echo `date` Done workload ${WORKLOAD_PID}
+echo $(date) Done workload ${WORKLOAD_PID}
 kill -s INT $TELEMETRY_PID
 sleep 1
-awk '{print ENVIRON["RUN_INFO"]","$0}' $LOGPATH >  ${LOGPATH}.tmp
+awk '{print ENVIRON["RUN_INFO"]","$0}' $LOGPATH >${LOGPATH}.tmp
 mv ${LOGPATH}.tmp $LOGPATH
