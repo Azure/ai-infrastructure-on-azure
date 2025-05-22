@@ -18,11 +18,9 @@ The references that have been used to build this example are:
 
 ## Creating Azure CycleCloud Workspaces for Slurm Environment
 
-The first step in the process implies the creation of an Azure CycleCloud Slurm Workspace environment. The documentation [available in Microsoft Learn](https://learn.microsoft.com/en-us/azure/cyclecloud/overview-ccws?view=cyclecloud-8) guides through the deployment process.
+The guide requires an Azure CycleCloud Slurm Workspace environment. The documentation [available in Microsoft Learn](https://learn.microsoft.com/en-us/azure/cyclecloud/overview-ccws?view=cyclecloud-8) guides through the deployment process.
 
-This can be done through infrastrucutre as code [following the infrastructure reference example](../../../../infrastructure_references/azure_cyclecloud_workspaces_for_slurm/README.md).
-
-The Azure environment suggested for the following example should contain:
+This can be done through infrastrucutre as code [following the infrastructure reference example](../../../../infrastructure_references/azure_cyclecloud_workspaces_for_slurm/README.md) where the Azure environment suggested for the following example should contain:
 
 - A GPU partition `gpu` with ND-series nodes. The example has been tested on `Standard_ND96isr_H100_v5` and `Standard_ND96isr_H200_v5`. This will be `GPU_SKU` environment variable in the deployment reference documentation.
 - Any sort of NFS home directory will be suitable for this example.  There are no dependencies here for running this example.
@@ -32,7 +30,60 @@ The Azure Managed Lustre File System should be sized with the following consider
 
 - The training data read requires minimal bandwidth.  Any latencies can be hidden through the local storage.  Data can be predownloaded in the background.
 - Checkpointing will demand higher bandwidth and particularly if shared reads and writes are used.  The Lustre file system should be sized to accommodate the number of GPUs and the expected checkpoint size.  The mpt-30b model has a checkpoint size of 336 GiB and the mpt-70b model has a checkpoint size of 725 GiB.  The Lustre file system should be sized to accommodate reading and writing of these files in parallel to improved the operation times.  If a single file is used there will be a limit of 10GBps.
-- Squash files are used to store the container image.  The size of the squash file is 21 GiB.  All nodes will read this file at the start of the job - but this can be staged to the NVME to reduce bandwidth requirement for Lustre.  More details can be found [here](../../../../storage_references/squashed_images/README.md).
+- Squash files are used to store the container image.  The size of the squash file generated in this example is 21 GiB.  All nodes will read this file at the start of the job - but this can be staged to the NVME to reduce bandwidth requirement for Lustre.  More details can be found [here](../../../../storage_references/squashed_images/README.md).
+
+### Blob storage for training data and checkpointing
+
+As an alternative to Azure Managed Lustre, Blob storage can be used for the training data and checkpointing.  This is a cost effective solution but will require more tuning to get the performance required.  The Blob storage can be mounted using [blobfuse](https://github.com/Azure/azure-storage-fuse).  The default limits for a standard Blob storage account are shown [here](https://learn.microsoft.com/en-us/azure/storage/common/scalability-targets-standard-account) but you can contact [Azure support](https://azure.microsoft.com/support/faq/) to request an increase in account limits if required.  Reading the data is not so much of an issue for the MPT examples if the the dataloader is set to stream to a local cache.  This was the higher latency for Blob storage will be hidden.
+
+Block cache performs better in my tests for checkpointing, where the files are streamed rather than uploading/downloading all at once.  Below is a template configuration file:
+
+```
+logging:
+  type: syslog
+  level: log_debug
+
+components:
+  - libfuse
+  - block_cache
+  - attr_cache
+  - azstorage
+
+libfuse:
+  attribute-expiration-sec: 120
+  entry-expiration-sec: 120
+  negative-entry-expiration-sec: 240
+
+block_cache:
+  block-size-mb: 32
+  mem-size-mb: 65536
+  prefetch: 80
+  parallelism: 128
+
+attr_cache:
+  timeout-sec: 7200
+
+azstorage:
+  type: block
+  account-name: $ACCOUNT_NAME
+  mode: msi
+  container: $CONTAINER_NAME
+  appid: $APP_ID
+```
+
+To create the Blob mount on the nodes, you must do the following on each of the nodes:
+
+1. Assign the `Storage Blob Data Contributor` role to the Managed Identity of the VMSS (see [here](https://learn.microsoft.com/en-us/azure/storage/blobs/assign-azure-role-data-access?tabs=portal) for details)
+2. Install blobfuse2 on the nodes
+   `sudo apt-get install blobfuse2`
+3. Create a mount point for the blob storage
+   `sudo mkdir /blob`
+4. Create the config file from template above (ensure ACCOUNT_NAME, CONTAINER_NAME and APP_ID are set before running)
+   `envsubst < blobfuse.template.yaml > blobfuse.yaml`
+5. Mount the blob storage using blobfuse
+   `sudo blobfuse2 mount /blob --config-file blobfuse.yaml -o allow_other`
+
+> Note: When using Blob storage, check the metrics to ensure you are not being throttled.
 
 ## Building the container
 
@@ -84,13 +135,63 @@ sbatch -N1 -p gpu download_c4_data.sh $CONTAINER_NAME $DATA_DIR $NUM_WORKERS
 
 ## Training run
 
-The example training configuration files are located in the `/llm-foundry/scripts/train/yamls/pretrain/` directory.  The example here has been run with the `mpt-30b` and `mpt-70b` configurations.  Below is an example of how to launch composer in an sbatch script:
+The example training configuration files are located in the `/llm-foundry/scripts/train/yamls/pretrain/` directory.  An example launch script, `launch.sb`, is included:
 
 ```
+#!/bin/bash
+#SBATCH --job-name=llmfoundry
+#SBATCH --output=%x_%j.out
+#SBATCH --ntasks-per-node=1
+#SBATCH --gpus-per-node=8
+#SBATCH --gpus-per-task=8
+#SBATCH --gres=gpu:8
+#SBATCH --exclusive
+#SBATCH --wait-all-nodes=1
+
+# Argument parsing
+usage() {
+    echo "Usage: $0 -c <config> -i <image> -m <mounts> -y <yaml_updates>"
+    exit 1
+}
+
+while getopts "c:i:m:y:" opt; do   
+    case ${opt} in
+        c) config=$OPTARG ;;
+        i) image=$OPTARG ;;
+        m) mounts=$OPTARG ;;
+        y) yaml_updates=$OPTARG ;;
+        *) usage ;;
+    esac
+done
+
+if [[ -z "$config" || -z "$image" || -z "$mounts" || -z "$mounts" ]]; then
+    usage
+fi
+
+NODES=( $( scontrol show hostnames $SLURM_JOB_NODELIST ) )
+NNODES=${#NODES[@]}
+MASTER_ADDR=$(getent hosts ${NODES[0]} | awk '{print $1}')
+MASTER_PORT=$(($RANDOM + 1024))
+NPROC=8
+WORLD_SIZE=$((NNODES * NPROC))
+
+export CUDA_DEVICE_ORDER=PCI_BUS_ID \
+       NCCL_SOCKET_IFNAME=eth0 \
+       NCCL_DEBUG=INFO \
+       UCX_TLS=rc \
+       UCX_NET_DEVICES=mlx5_ib0:1 \
+       NCCL_IB_QPS_PER_CONNECTION=4 \
+       NCCL_IGNORE_CPU_AFFINITY=1 \
+       NCCL_P2P_NET_CHUNKSIZE=$((512*1024)) \
+       NCCL_PXN_DISABLE=1 \
+       NCCL_MIN_NCHANNELS=32 \
+       NCCL_TOPO_FILE=/etc/ndv5-topo.xml \
+       TRITON_CACHE_DIR=/tmp/triton-cache-$SLURM_JOBID
+
 srun -l \
     --cpu-bind no \
-    --container-image $IMAGE \
-    --container-mounts $MOUNTS \
+    --container-image $image \
+    --container-mounts $mounts \
     bash -c "composer \
     --world_size $WORLD_SIZE \
     --node_rank \$SLURM_NODEID \
@@ -98,11 +199,28 @@ srun -l \
     --master_port $MASTER_PORT \
     --verbose \
     /llm-foundry/scripts/train/train.py \
-    /llm-foundry/scripts/train/yamls/pretrain/mpt-30b.yaml \
-    $YAML_UPDATES
+    /llm-foundry/scripts/train/yamls/pretrain/${config}.yaml \
+    ${yaml_updates}"
 ```
 
-The `YAML_UPDATES` can be used to create/overide variables in the YAML file.  This is in the form of space separated `key=value` pairs.  The following sections describe some of the options that have been tested and is followed by an overview of the `launch.sb` script that provides a utility script to set these values.
+The script arguments are:
+- `-c <config>`: The name of the configuration file from the LLM Foundry repository to use for training.  This has been tested with the `mpt-30b` and `mpt-70b` configurations.
+- `-i <image>`: The name of the container image to use for training.  This should be the path to the squash file.
+- `-m <mounts>`: The container mount paths.  This should be a comma separated list of the mount paths to use for the training data and checkpoints.
+- `-y <yaml_updates>`: The option for YAML updates can be used to create/override variables in the YAML file. This is in the form of space separated `key=value` pairs.
+
+The following sections describe some of the YAML options that can be used.
+
+### Training data storage
+
+LLM Foundry has two paths for data storage: `data_local` and `data_remote`.  The minimum requirement is to set `data_local` to a local directory/mount on the nodes.  However, using *both* `data_local` and `data_remote` can provide efficient data streaming, which is particularly beneficial with Blob Storage.
+
+* `data_remote`: This is the primary storage location containing the whole dataset.
+* `data_local`: This is for fast local storage on your training machine (e.g. NVMe drives on Azure NDv5 nodes).
+
+If the `data_remote` option is set, the dataloader works by transferring the required data into `data_local` in the background.
+
+In essence, `data_local` is your fast local cache for `data_remote`, hiding latency from cloud storage and maximizing GPU utilization by ensuring data is always available quickly.
 
 ### Checkpointing
 
@@ -114,322 +232,45 @@ The parameters to control the checkpointing are:
 
 The `fdsp_config.state_dict_type` setting determines how model checkpoints are saved.  The default is `full` and aggregates all the data to a single process and writes a single file for the whole model.  However, `sharded` saves the model in parallel across multiple processes, offering faster read and write times and requiring high-bandwidth storage like Azure Managed Lustre or Azure Blob Storage. A key consideration with sharded is that reloading typically requires the same number of processes used for saving. The choice depends on balancing I/O performance, storage capabilities, and the flexibility needed for restarting or loading checkpoints.
 
-### Preloading to local storage
+### Example Slurm job submissions
 
-
-
-
-### Example sbatch script
-
-This `scripts/launch.sb` script can be used to launch one of the example jobs in LLM Foundry.
-
-#### Arguments
-
-- `-c <config>`  
-  Specifies the configuration file for the training. This is a required argument. The config file should be located in the `/llm-foundry/scripts/train/yamls/pretrain/` directory.
-
-- `-i <image>`  
-  Specifies the container image to use for the training job. This argument is required.
-
-- `-d <datadir>`  
-  Specifies the path to the data directory. This argument is required.
-
-- `-s`  
-  Enables checkpointing during training. This flag is optional. If specified, additional checkpointing arguments must be provided (e.g., `-I`, `-N`, `-F`).
-
-- `-I <save_interval>`  
-  Sets the interval (in steps) at which checkpoints will be saved. This argument is optional and defaults to 1000 if checkpointing (`-s`) is enabled.
-
-- `-N <save_num_checkpoints_to_keep>`  
-  Specifies the number of recent checkpoints to keep. Older checkpoints will be deleted. This argument is optional and defaults to 1 if checkpointing (`-s`) is enabled.
-
-- `-F <save_folder>`  
-  Specifies the folder where checkpoints will be saved. This argument is required if checkpointing (`-s`) is enabled. The folder path must be provided.
-
-- `-u <usesharp>`  
-  Enables SHARP (a communication library) for optimized collective operations. Set this to `1` to enable SHARP, or `0` to disable it. This argument is optional. Defaults to `0`.
-
-- `-S`  
-  Enables sharded checkpointing. This flag is optional. If specified, the `fsdp_config.state_dict_type` will be set to `sharded`.
-
-- `-m <mounts>`  
-  Specifies the container mount paths. This argument is required. Multiple mounts should be separated by commas (e.g., `/data:/data,/blob:/blob`).
-
-- `-y <yaml_updates>`  
-  Provides additional YAML variable updates to be passed during training. This argument is optional. It allows you to dynamically override specific values in the YAML config file.
-
-
-## Appendix A: Setting up docker to use the nvme
+This example sets the parameters for sharded checkpoints:
 
 ```
-sudo systemctl stop docker
-sudo mv /etc/docker/daemon.json /etc/docker/daemon.json.old
-jq '. + {"data-root": "/mnt/nvme/docker-root"}' /etc/docker/daemon.json.old | sudo tee /etc/docker/daemon.json
-sudo systemctl start docker
+SQUASH_FILE=/data/llm-foundry-v0.18.0.sqsh
+AMLFS_MOUNT=/data
+
+YAML_UPDATES=$(cat <<EOF
+variables.data_local=/data/my-copy-c4
+save_folder=/data/checkpoints
+save_interval=1000ba
+save_num_checkpoints_to_keep=10
+fsdp_config.state_dict_type=sharded
+EOF
+)
+
+sbatch -N 16 -p gpu ./launch.sb \
+  -c mpt-30b \
+  -i SQUASH_FILE \
+  -m /$AMLFS_MOUNT:/$AMLFS_MOUNT \
+  -y "$YAML_UPDATES"
 ```
 
-## Appendix B: Profiling
-
-profiling:
-    schedule:
-        skip_first: 0,
-        wait: 0,
-        warmup: 1,
-        active: 4,
-        repeat: 1,
-    json_trace_handler:
-        
+This example streams data to the local disk:
 
 ```
-    # Profiling
-    profiler: Optional[Profiler] = None
-    profiler_cfg = train_cfg.profiler
-    if profiler_cfg:
-        profiler_schedule_cfg: dict = pop_config(
-            profiler_cfg,
-            'schedule',
-            must_exist=True,
-        )
-        profiler_schedule = cyclic_schedule(**profiler_schedule_cfg)
-        # Only support json trace handler
-        profiler_trace_handlers: list[TraceHandler] = []
-        profiler_trace_cfg: Optional[dict] = pop_config(
-            profiler_cfg,
-            'json_trace_handler',
-            must_exist=False,
-            default_value=None,
-        )
-        if profiler_trace_cfg:
-            profiler_trace_handlers.append(
-                JSONTraceHandler(**profiler_trace_cfg),
-            )
-        profiler = Profiler(
-            **profiler_cfg,
-            trace_handlers=profiler_trace_handlers,
-            schedule=profiler_schedule,
-        )
-```
-
-
-Benchmarks using the example from the main [repo](https://github.com/mosaicml/llm-foundry/tree/main).
-
-
-## Setting up the nodes
-
-GPUs are in persistent mode and clocks are fixed:
-
-```
-sudo nvidia-smi -pm 1
-sudo nvidia-smi -lgc 1980
-sudo nvidia-smi -ac 2619,1980
-```
-
-
-## Blobfuse
-
-Use different containers for checkpoints and data.  The main thing to consider for BLOB is the number of transactions as this is a cost.  Keeping the blocksize high will limit this.  However, for training data, this could bring in more that is required and end up with bandwidth throttling.  Running with different configurations and looking at the transactions, egress and ingress can help optimise parameters.
-
-![BLOB Metrics](blob-metrics.png)
-
-Below are the config files used.  They were mounted on the nodes as follows:
-
-```
-sudo blobfuse2 mount /blob --config-file <config-file> --tmp-path=/mnt/nvme/blobfuse -o allow_other
-```
-
-### Data container
-
-```
-logging:
-  type: syslog
-  level: log_debug
-
-components:
-  - libfuse
-  - block_cache
-  - attr_cache
-  - azstorage
-
-libfuse:
-  attribute-expiration-sec: 120
-  entry-expiration-sec: 120
-  negative-entry-expiration-sec: 240
-
-block_cache:
-  block-size-mb: 16 
-  mem-size-mb: 65536
-  prefetch: 16
-  prefetch-on-open: false
-  parallelism: 128
-
-attr_cache:
-  timeout-sec: 7200
-
-azstorage:
-  type: block
-  account-name: ccswblobstore
-  mode: msi
-  container: data
-  appid: <insert-app-id>
-```
-
-### Checkpoint container:
-
-```
-logging:
-  type: syslog
-  level: log_debug
-
-components:
-  - libfuse
-  - block_cache
-  - attr_cache
-  - azstorage
-
-libfuse:
-  attribute-expiration-sec: 120
-  entry-expiration-sec: 120
-  negative-entry-expiration-sec: 240
-
-block_cache:
-  block-size-mb: 32
-  mem-size-mb: 65536
-  prefetch: 80
-  parallelism: 128
-
-attr_cache:
-  timeout-sec: 7200
-
-azstorage:
-  type: block
-  account-name: ccswblobstore
-  mode: msi
-  container: checkpoints
-  appid: <insert-app-id>
-```
-
-
-### Example Usage
-
-```
-sbatch -N 16 -p gpu ./scripts/launch.sb -c mpt-30b -i /data/llm-foundry-v0.18.0.sqsh -d /data/my-copy-c4-full -s -I 10 -N 5 -F /data/checkpoints -S -m /data:/data
-```
-
-
-
-sbatch -N 32 -p gpu ./launch_test.sb -c mpt-30b -i /data/llm-foundry-v0.18.0.sqsh -d /data/paedwar/my-copy-c4-full -s -I 100 -N 5 -F /mnt/nvme/paedwar/checkpoints -S -m /data:/data
-
-## Results
-
-
-
-
-sbatch -N 32 -p gpu --reservation=paul ./launch_test.sb -c mpt-30b -i /data/paedwar/llm-foundry-v0.18.0.sqsh -d /blob_data_auto/paedwar/data/my-copy-c4-full -I 100 -N 5 -F /mnt/nvme/paedwar/checkpoints-32n -S -m /data:/data,/lustre-fs-480:/lustre-fs-480,/blob_data_auto:/blob_data_auto -y max_duration=100ba
-
-sbatch -N 32 -p gpu --reservation=paul ./launch_test.sb -c mpt-70b -i /data/paedwar/llm-foundry-v0.18.0.sqsh -d /blob_data_auto/paedwar/data/my-copy-c4-full -I 100 -N 5 -F /mnt/nvme/paedwar/checkpoints-32n -S -m /data:/data,/lustre-fs-480:/lustre-fs-480,/blob_data_auto:/blob_data_auto -y max_duration=100ba
-
-sbatch -N 32 -p gpu --reservation=paul ./launch_test.sb -c mpt-30b -i /data/paedwar/llm-foundry-v0.18.0.sqsh -d /lustre-fs-480/paedwar/data/my-copy-c4-full -I 100 -N 5 -F /mnt/nvme/paedwar/checkpoints-32n -S -m /data:/data,/lustre-fs-480:/lustre-fs-480,/blob_data_auto:/blob_data_auto -y max_duration=100ba
-
-sbatch -N 32 -p gpu --reservation=paul ./launch_test.sb -c mpt-70b -i /data/paedwar/llm-foundry-v0.18.0.sqsh -d /lustre-fs-480/paedwar/data/my-copy-c4-full -I 100 -N 5 -F /mnt/nvme/paedwar/checkpoints-32n -S -m /data:/data,/lustre-fs-480:/lustre-fs-480,/blob_data_auto:/blob_data_auto -y max_duration=100ba
-
-# custom-read-1 params
-block_cache:
-  block-size-mb: 16 
-  mem-size-mb: 65536
-  prefetch: 16
-  prefetch-on-open: false
-  parallelism: 128
-
-llmfoundry_1975
-sbatch -N 32 -p gpu --reservation=paul ./launch_test.sb -c mpt-30b -i /data/paedwar/llm-foundry-v0.18.0.sqsh -d /blob_data_read/paedwar/data/my-copy-c4-full -I 100 -N 5 -F /mnt/nvme/paedwar/checkpoints-32n -S -m /data:/data,/lustre-fs-480:/lustre-fs-480,/blob_data_read:/blob_data_read -y max_duration=100ba
-
-llmfoundry_1976
-sbatch -N 32 -p gpu --reservation=paul ./launch_test.sb -c mpt-70b -i /data/paedwar/llm-foundry-v0.18.0.sqsh -d /blob_data_read/paedwar/data/my-copy-c4-full -I 100 -N 5 -F /mnt/nvme/paedwar/checkpoints-32n -S -m /data:/data,/lustre-fs-480:/lustre-fs-480,/blob_data_read:/blob_data_read -y max_duration=100ba
-
-
-
-
-llmfoundry_1952 *
-sbatch -N 32 -p gpu --reservation=paul ./launch_test.sb -c mpt-30b -i /data/paedwar/llm-foundry-v0.18.0.sqsh -d /lustre-fs-480/paedwar/data/my-copy-c4-full -s -I 1 -N 6 -F /mnt/nvme/paedwar/checkpoints/$(uuidgen) -S -m /data:/data,/lustre-fs-480:/lustre-fs-480,/blob_data_auto:/blob_data_auto -y max_duration=11ba
-
-llmfoundry_1953 *
-sbatch -N 32 -p gpu --reservation=paul ./launch_test.sb -c mpt-70b -i /data/paedwar/llm-foundry-v0.18.0.sqsh -d /lustre-fs-480/paedwar/data/my-copy-c4-full -s -I 1 -N 6 -F /mnt/nvme/paedwar/checkpoints/$(uuidgen) -S -m /data:/data,/lustre-fs-480:/lustre-fs-480,/blob_data_auto:/blob_data_auto -y max_duration=11ba
-
-llmfoundry_1954 *
-sbatch -N 32 -p gpu --reservation=paul ./launch_test.sb -c mpt-30b -i /data/paedwar/llm-foundry-v0.18.0.sqsh -d /lustre-fs-480/paedwar/data/my-copy-c4-full -s -I 1 -N 6 -F /blob_data_auto/paedwar/checkpoints/$(uuidgen) -S -m /data:/data,/lustre-fs-480:/lustre-fs-480,/blob_data_auto:/blob_data_auto -y max_duration=11ba
-
-llmfoundry_1955 *
-sbatch -N 32 -p gpu --reservation=paul ./launch_test.sb -c mpt-70b -i /data/paedwar/llm-foundry-v0.18.0.sqsh -d /lustre-fs-480/paedwar/data/my-copy-c4-full -s -I 1 -N 6 -F /blob_data_auto/paedwar/checkpoints/$(uuidgen) -S -m /data:/data,/lustre-fs-480:/lustre-fs-480,/blob_data_auto:/blob_data_auto -y max_duration=11ba
-
-llmfoundry_1956 *
-sbatch -N 32 -p gpu --reservation=paul ./launch_test.sb -c mpt-30b -i /data/paedwar/llm-foundry-v0.18.0.sqsh -d /lustre-fs-480/paedwar/data/my-copy-c4-full -s -I 1 -N 6 -F /lustre-fs-480/paedwar/checkpoints/$(uuidgen) -S -m /data:/data,/lustre-fs-480:/lustre-fs-480,/blob_data_auto:/blob_data_auto -y max_duration=11ba
-
-llmfoundry_1957 *
-sbatch -N 32 -p gpu --reservation=paul ./launch_test.sb -c mpt-70b -i /data/paedwar/llm-foundry-v0.18.0.sqsh -d /lustre-fs-480/paedwar/data/my-copy-c4-full -s -I 1 -N 6 -F /lustre-fs-480/paedwar/checkpoints/$(uuidgen) -S -m /data:/data,/lustre-fs-480:/lustre-fs-480,/blob_data_auto:/blob_data_auto -y max_duration=11ba
-
-llmfoundry_1961
-sbatch -N 32 -p gpu --reservation=paul ./launch_test.sb -c mpt-30b -i /data/paedwar/llm-foundry-v0.18.0.sqsh -d /lustre-fs-480/paedwar/data/my-copy-c4-full -s -I 1 -N 6 -F /nvme/paedwar/checkpoints/$(uuidgen) -S -m /data:/data,/lustre-fs-480:/lustre-fs-480,/blob_data_auto:/blob_data_auto,/mnt/nvme:/mnt/nvme -y max_duration=11ba
-
-llmfoundry_196
-5   sbatch -N 32 -p gpu --reservation=paul ./launch_test.sb -c mpt-70b -i /data/paedwar/llm-foundry-v0.18.0.sqsh -d /lustre-fs-480/paedwar/data/my-copy-c4-full -s -I 1 -N 6 -F /mnt/nvme/paedwar/checkpoints/$(uuidgen) -S -m /data:/data,/lustre-fs-480:/lustre-fs-480,/blob_data_auto:/blob_data_auto,/mnt/nvme:/mnt/nvme -y max_duration=11ba
-
-
-paedwar@ccw-login-1:/data/paedwar/example$ squeue
-             JOBID PARTITION     NAME     USER ST       TIME  NODES NODELIST(REASON)
-              1955       gpu llmfound  paedwar PD       0:00     32 (Resources)
-              1956       gpu llmfound  paedwar PD       0:00     32 (Priority)
-              1957       gpu llmfound  paedwar PD       0:00     32 (Priority)
-              1961       gpu llmfound  paedwar PD       0:00     32 (Priority)
-              1962       gpu llmfound  paedwar PD       0:00     32 (Priority)
-              1954       gpu llmfound  paedwar  R      56:38     32 ccw-gpu-[1,10,19,37,54,63,108,141-165]  first lustre
-
-
--rw-rw-r--  1 paedwar paedwar   2800743 Apr  2 15:57 llmfoundry_1953.out
--rw-rw-r--  1 paedwar paedwar   2812759 Apr  2 17:08 llmfoundry_1954.out
-
-
-30b 1.31GiB x 256 = 336GiB
-70b 2.83GiB x 256 = 725GiB
-
-
-
-block_cache:
-  block-size-mb: 32
-  mem-size-mb: 65536
-  prefetch: 80
-  parallelism: 128
-
-
-llmfoundry_1966 *
-sbatch -N 32 -p gpu --reservation=paul ./launch_test.sb -c mpt-30b -i /data/paedwar/llm-foundry-v0.18.0.sqsh -d /lustre-fs-480/paedwar/data/my-copy-c4-full -s -I 1 -N 6 -F /blob_data/paedwar/checkpoints/$(uuidgen) -S -m /data:/data,/lustre-fs-480:/lustre-fs-480,/blob_data:/blob_data -y max_duration=11ba
-
-llmfoundry_1967 *
-sbatch -N 32 -p gpu --reservation=paul ./launch_test.sb -c mpt-70b -i /data/paedwar/llm-foundry-v0.18.0.sqsh -d /lustre-fs-480/paedwar/data/my-copy-c4-full -s -I 1 -N 6 -F /blob_data/paedwar/checkpoints/$(uuidgen) -S -m /data:/data,/lustre-fs-480:/lustre-fs-480,/blob_data:/blob_data -y max_duration=11ba
-
-file_cache:
-  path: /mnt/nvme/blobfuse-cache
-
-#llmfoundry_1983 *
-sbatch -N 32 -p gpu --reservation=paul ./launch_test.sb -c mpt-30b -i /data/paedwar/llm-foundry-v0.18.0.sqsh -d /lustre-fs-480/paedwar/data/my-copy-c4-full -s -I 1 -N 6 -F /blob_data_filecache/paedwar/checkpoints/$(uuidgen) -S -m /data:/data,/lustre-fs-480:/lustre-fs-480,/blob_data_filecache:/blob_data_filecache -y max_duration=11ba
-
-#llmfoundry_1984 *
-sbatch -N 32 -p gpu --reservation=paul ./launch_test.sb -c mpt-70b -i /data/paedwar/llm-foundry-v0.18.0.sqsh -d /lustre-fs-480/paedwar/data/my-copy-c4-full -s -I 1 -N 6 -F /blob_data_filecache/paedwar/checkpoints/$(uuidgen) -S -m /data:/data,/lustre-fs-480:/lustre-fs-480,/blob_data_filecache:/blob_data_filecache -y max_duration=11ba
-
-
-
-
-
-
-
-# get metrics
-
-az monitor metrics list --resource "/subscriptions/75d1e0d5-9fed-4ae1-aec7-2ecc19de26fa/resourceGroups/JZ-ccwsamlfs5/providers/Microsoft.Storage/storageAccounts/ccswblobstore" --interval PT1M --metric Ingress --start-time 2025-04-02T17:13:00Z --end-time 2025-04-02T18:45:00Z -o table
-
-
-# create a reservation for 8 nodes in the gpu partition with slurm
-
-```
-sudo scontrol create reservation=paul users=paul nodes=ccw-gpu-[1-8] starttime=now duration=infinite
-sudo scontrol delete reservation=paul
-scontrol show reservations
+SQUASH_FILE=/data/llm-foundry-v0.18.0.sqsh
+BLOB_MOUNT=/blob
+
+YAML_UPDATES=$(cat <<EOF
+variables.data_local=/tmp/local-storage
+variables.data_remote=/blob/my-copy-c4
+EOF
+)
+
+sbatch -N 16 -p gpu ./launch.sb \
+  -c mpt-30b \
+  -i SQUASH_FILE \
+  -m /$BLOB_MOUNT:/$BLOB_MOUNT \
+  -y "$YAML_UPDATES"
 ```
