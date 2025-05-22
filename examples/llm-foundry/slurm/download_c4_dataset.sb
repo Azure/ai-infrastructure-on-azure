@@ -21,8 +21,7 @@ DATADIR=$2
 NUM_WORKERS=${3:-16}
 
 srun -l \
-    --cpu-b
-    ind no \
+    --cpu-bind no \
     --container-image "${CONT}" \
     --container-mounts "${DATADIR}:/data" \
     --gpus-per-node=8 \
