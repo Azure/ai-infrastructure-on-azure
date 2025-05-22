@@ -139,7 +139,7 @@ Alternatively, an sbatch script, `download_c4_data.sh`, is provided to perform t
 DATA_DIR=/data
 CONTAINER_NAME=llm-foundry-v0.18.0.sqsh
 NUM_WORKERS=8
-sbatch -N1 -p gpu download_c4_data.sh $CONTAINER_NAME $DATA_DIR $NUM_WORKERS
+sbatch -N1 -p gpu download_c4_dataset.sb $CONTAINER_NAME $DATA_DIR $NUM_WORKERS
 ```
 
 > The `NUM_WORKERS` variable is used to specify the number of workers to use for downloading and converting the dataset. A higher value will increase the speed of the download and conversion process.  However, this may need to be lowered if throttling is observed.
