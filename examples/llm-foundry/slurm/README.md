@@ -40,14 +40,17 @@ This can be done through infrastructure as code [following the infrastructure re
 The Azure Managed Lustre File System should be sized with the following considerations:
 
 - Reading training data requires minimal bandwidth and LLM Foundry supports streaming the data to local caches in the background to hide any latencies.
-- Checkpointing will demand higher bandwidth and particularly if shared reads and writes are used.  The Lustre file system should be sized to accommodate the number of GPUs and the expected checkpoint size.  The mpt-30b model has a checkpoint size of 336 GiB and the mpt-70b model has a checkpoint size of 725 GiB.  The Lustre file system should be sized to accommodate reading and writing of these files in parallel to improved the operation times.  If a single file is used there will be a limit of 10GBps.
+- Checkpointing will demand higher bandwidth and particularly if shared reads and writes are used.  The Lustre file system should be sized to accommodate the number of GPUs and the expected checkpoint size.  The mpt-30b model has a checkpoint size of 336 GiB and the mpt-70b model has a checkpoint size of 725 GiB.
+The Lustre file system should be sized to accommodate reading and writing of these files in parallel to improved the operation times.  If a single file is used there will be a limit of 10GBps.
 - Squash files are used to store the container image.  The size of the squash file generated in this example is 21 GiB.  All nodes will read this file at the start of the job - but this can be staged to the NVME to reduce bandwidth requirement for Lustre.  More details can be found [here](../../../../storage_references/squashed_images/README.md).
 
 ### 2.1. Blob storage for training data and checkpointing
 
-As an alternative to Azure Managed Lustre, Blob storage can be used for the training data and checkpointing.  This is a cost effective solution but will require more tuning to get the performance required.  The Blob storage can be mounted using [blobfuse](https://github.com/Azure/azure-storage-fuse).  The default limits for a standard Blob storage account are shown [here](https://learn.microsoft.com/en-us/azure/storage/common/scalability-targets-standard-account) but you can contact [Azure support](https://azure.microsoft.com/support/faq/) to request an increase in account limits if required.  Reading the data is not so much of an issue for the MPT examples if the the dataloader is set to stream to a local cache.  This was the higher latency for Blob storage will be hidden.
+As an alternative to Azure Managed Lustre, Blob storage can be used for the training data and checkpointing.  This is a cost effective solution but will require more tuning to get the performance required.  
+The Blob storage can be mounted using [blobfuse](https://github.com/Azure/azure-storage-fuse).  The default limits for a standard Blob storage account are shown [here](https://learn.microsoft.com/en-us/azure/storage/common/scalability-targets-standard-account) but you can contact [Azure support](https://azure.microsoft.com/support/faq/) to request an increase in account limits if required.
+Reading the data is not so much of an issue for the MPT examples if the the dataloader is set to stream to a local cache.  This was the higher latency for Blob storage will be hidden.
 
-Block cache performs better in my tests for checkpointing, where the files are streamed rather than uploading/downloading all at once.  Below is a template configuration file:
+Block cache performs better in my tests for checkpointing, where the files are streamed rather than uploadin1g/downloading all at once.  Below is a template configuration file:
 
 ```yaml
 logging:
@@ -241,7 +244,8 @@ The parameters to control the checkpointing are:
 * `save_num_checkpoints_to_keep`: The number of checkpoints to keep.  The oldest checkpoints will be deleted.
 * `save_folder`: The folder where the checkpoints will be saved.
 
-The `fdsp_config.state_dict_type` setting determines how model checkpoints are saved.  The default is `full` and aggregates all the data to a single process and writes a single file for the whole model.  However, `sharded` saves the model in parallel across multiple processes, offering faster read and write times and requiring high-bandwidth storage like Azure Managed Lustre or Azure Blob Storage. A key consideration with sharded is that reloading typically requires the same number of processes used for saving. The choice depends on balancing I/O performance, storage capabilities, and the flexibility needed for restarting or loading checkpoints.
+The `fdsp_config.state_dict_type` setting determines how model checkpoints are saved.  The default is `full` and aggregates all the data to a single process and writes a single file for the whole model.  However, `sharded` saves the model in parallel across multiple processes, offering faster read and write times and requiring high-bandwidth storage like Azure Managed Lustre or Azure Blob Storage. 
+A key consideration with sharded is that reloading typically requires the same number of processes used for saving. The choice depends on balancing I/O performance, storage capabilities, and the flexibility needed for restarting or loading checkpoints.
 
 ### 5.3. Example Slurm job submissions
 
