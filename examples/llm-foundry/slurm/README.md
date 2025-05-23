@@ -51,7 +51,7 @@ As an alternative to Azure Managed Lustre, Blob storage can be used for the trai
 The Blob storage can be mounted using [blobfuse](https://github.com/Azure/azure-storage-fuse). The default limits for a standard Blob storage account are shown [here](https://learn.microsoft.com/en-us/azure/storage/common/scalability-targets-standard-account) but you can contact [Azure support](https://azure.microsoft.com/support/faq/) to request an increase in account limits if required.
 Reading the data is not so much of an issue for the MPT examples if the the dataloader is set to stream to a local cache. This was the higher latency for Blob storage will be hidden.
 
-Block cache performs better in my tests for checkpointing, where the files are streamed rather than uploadin1g/downloading all at once. Below is a template configuration file:
+Block cache performs better in my tests for checkpointing, where the files are streamed rather than uploading/downloading all at once. Below is a template configuration file:
 
 ```yaml
 logging:
