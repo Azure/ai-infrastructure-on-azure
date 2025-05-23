@@ -3,8 +3,8 @@
 ## Table of Contents
 
 1. [Introduction](#1-introduction)
-2. [Creating Azure CycleCloud Workspaces for Slurm Environment](#2-creating-azure-cyclecloud-workspaces-for-slurm-environment)
-3. [Building the container](#3-building-the-container)
+2. [Creating and Configuring Azure CycleCloud Workspaces for Slurm Environment](#2-creating-and-configuring-azure-cyclecloud-workspaces-for-slurm-environment)
+3. [Finetune and Inference with NeMo-Run](#3-finetune-and-inference-with-nemo-run)
 
 ## 1. Introduction
 
@@ -19,7 +19,7 @@ The references that have been used to build this example are:
 - [Azure CycleCloud Workspaces for Slurm](https://github.com/Azure/cyclecloud-slurm-workspace) - The Azure Marketplace offering which can be used to stand-up a Slurm cluster powered by Azure CycleCloud and Azure Storage, with pre-configured `enroot` and `pyxis` to support containerized workloads.
 - [Open OnDemand](https://openondemand.org/) - an open-source web-based interface developed by the Ohio Supercomputer Center (OSC) that provides a user-friendly way to access and use high-performance computing (HPC) resources.
 
-## 2. Creating & Configuring Azure CycleCloud Workspaces for Slurm Environment
+## 2. Creating and Configuring Azure CycleCloud Workspaces for Slurm Environment
 
 The guide requires an Azure CycleCloud Workspace for Slurm (CCWS) environment. The NeMo-Run framework uses `sacct` to check the status of jobs, so the CCWS environment should be configured to use a pre-existing MySQL Flexible server for Slurm job accounting. Additionally, this exercise is executed through a Jupyter notebook to highlight features from NeMo-Run like tailing logs in real time (or viewing logs after job completion), checking the status of an experiment, canceling it, within an interactive environment. The notebook retains the information about the expermient, which allows end-users to revisit the notebook to review how the experiment was submitted, the results that were produced, and to re-run the experiment, if desired. Consequently, it is recommended to use the OnDemand integration within CCWS to run this example. 
 
@@ -68,7 +68,7 @@ Once your cluster starts, make sure to create a local user account in CycleCloud
 
 Update your app registration to use the OnDemand VM's IP address as the redirect URI. 
 
-## 3. Finetune & Inference with NeMo-Run
+## 3. Finetune and Inference with NeMo-Run
 
 ### Install required packages 
 Use Open OnDemand to log in to your cluster through your browser:
