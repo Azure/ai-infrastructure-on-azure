@@ -35,18 +35,22 @@ Keep in mind that CCWS does not allow connections via public IP, so if a Bastion
 
 ### Create an  Azure Database for MySQL Flexible Server
 
-Refer to this [quickstart](https://learn.microsoft.com/en-us/azure/mysql/flexible-server/quickstart-create-connect-server-vnet) to create an instance of MySQL Flexible Server with private access. Make sure to select **Private Access** in the **Networking** tab, and to select the VNET and subnet that you created earlier. 
-
+Refer to this [quickstart](https://learn.microsoft.com/en-us/azure/mysql/flexible-server/quickstart-create-connect-server-vnet) to create an instance of MySQL Flexible Server with private access. Make sure to select **Private Access** in the **Networking** tab, and to select the VNET and subnet that you created earlier:
+ 
 Once the instance is created, adjust the server parameters as [needed](https://slurm.schedmd.com/accounting.html#:~:text=NOTE%3A%20Before%20running,than%20max_script_size.).
 
-### Create an App registration & managed identity
+### Create an App Registration & Managed Identity
 
 An **app registration** and a **managed identity** must be created to authenticate to the Open OnDemand portal via OIDC. The app registration should be configured to: 
 
-- Issue ID tokens
-- Use the managed identity as a credential
-- Provide the upn as an optional claim
-- Have access to view users' basic profile and to sign in and read user profiles
+- Issue ID tokens: 
+![auth-id-tokens](https://github.com/user-attachments/assets/8e5a19da-13a5-40b1-a139-6243b8607e00)
+- Use the managed identity as a credential:
+![auth-federated-creds](https://github.com/user-attachments/assets/dee5f0e5-f362-45b8-9898-b4e9ce16761e)
+- Provide the upn as an optional claim:
+![upn-token-setup](https://github.com/user-attachments/assets/f1913a2a-9e8a-46b1-a3ba-9222afd7ae2a)
+- Have access to view users' basic profile and to sign in and read user profiles:
+![graph-api-setup](https://github.com/user-attachments/assets/b21c9513-ca75-4902-981c-5662286fa7db)
 
 ### Deploy CCWS
 
@@ -66,8 +70,9 @@ Once your cluster starts, make sure to create a local user account in CycleCloud
 
 ### Update your App registration
 
-Update your app registration to use the OnDemand VM's IP address as the redirect URI. 
-
+Update your app registration to use the OnDemand VM's IP address as the redirect URI: 
+![redirect-uri](https://github.com/user-attachments/assets/10b4f657-4a42-44e0-a6f0-76295a746ec8)
+ 
 ## 3. Finetune and Inference with NeMo-Run
 
 ### Install required packages 
