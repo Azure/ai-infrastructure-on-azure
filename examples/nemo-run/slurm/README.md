@@ -8,7 +8,7 @@
 
 ## 1. Introduction
 
-In this example, we will demonstrate how to use NeMo-Run for distributed training and finetuning, using a slurm cluster. We will also show how you can run a slurm job for inferencing to test your model. 
+In this example, we will demonstrate how to use NeMo-Run for distributed finetuning, using a slurm cluster. We will also show how you can run a slurm job for inferencing to test your model. 
 
 The references that have been used to build this example are:
 - [NeMo](https://github.com/NVIDIA/NeMo) -  a scalable, cloud-native generative AI framework designed to support the development of Large Language Models (LLMs) and Multimodal Models (MMs). The NeMo Framework provides comprehensive tools for efficient training, including Supervised Fine-Tuning (SFT) and Parameter Efficient Fine-Tuning (PEFT).
