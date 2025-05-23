@@ -66,7 +66,11 @@ Any sort of NFS home directory will be suitable for this example. There are no d
 
 ### Create User Accounts
 
-Once your cluster starts, make sure to create a local user account in CycleCloud that maps to the account that will be used to log in to the OnDemand portal. For example, if you are going to login with the account aiuser@contoso.com, create a user account with `aiuser` as the username and grant node access.
+Once your cluster starts, make sure to create a local user account in CycleCloud that maps to the account that will be used to log in to the OnDemand portal. For example, if you are going to login with the account aiuser@contoso.com, create a user account with `aiuser` as the username and grant node access: 
+
+![image](https://github.com/user-attachments/assets/40fcb199-f37b-4071-9f5b-3c9982791e8d)
+![node-access](https://github.com/user-attachments/assets/fa83e5a1-ed2c-4f07-bdfd-500f8b0cbb5a)
+
 
 ### Update your App registration
 
@@ -82,6 +86,8 @@ https://< PRIVATE IP OF ONDEMAND >
 ```
 
 Once you authenticate, OnDemand will redirect you to the landing page. Select **Clusters** > **Slurm ccw Shell Access**, to access an interactive shell against the login node of your cluster.
+
+![shell-ood](https://github.com/user-attachments/assets/53aea4ec-66d4-4ab0-a0c1-1a65b31b5970)
  
 From the shell, clone this project from github:
  ```bash
@@ -95,6 +101,7 @@ Once the script completes, you should see a folder in your home directory named 
 
 ### Run example 
 Go back to the main page of OnDemand and select the **VSCode on Login Node** application. 
+![image](https://github.com/user-attachments/assets/75e7080d-0e03-46c1-a83e-40f3855e312f)
 
 You will be redirected to a page where you can input how long you want to run your VSCode session and provide the path of your working directory. If you installed the project in your home directory, you can proceed with the defaults by clicking on **Launch**.
 
