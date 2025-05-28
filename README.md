@@ -1,10 +1,10 @@
-# AI on Azure
+# AI Infrastructure on Azure
 
 This repository is meant to collect architectural guidance and AI training examples meant to run on Azure AI Infrastructure.
 
 This includes architecture examples and real use case scenarios on Azure AI Infrastructure involving different orchestration solutions:
 
-- [Azure CycleCloud Workspaces for Slurm](https://learn.microsoft.com/en-us/azure/cyclecloud/overview-ccws?view=cyclecloud-8)
+- [Azure CycleCloud Workspace for Slurm](https://learn.microsoft.com/en-us/azure/cyclecloud/overview-ccws?view=cyclecloud-8)
 - [Azure Kubernetes Service](https://learn.microsoft.com/en-us/azure/aks/what-is-aks)
 - [Azure Machine Learning](https://learn.microsoft.com/en-us/azure/machine-learning/?view=azureml-api-2)
 
@@ -13,11 +13,18 @@ For each scenario and architecture, the repository will include storage recommen
 
 ## Infrastructure references catalog
 
-1. [Azure CycleCloud Slurm Workspaces AI Cluster](./infrastructure_references/azure_cyclecloud_workspaces_for_slurm/README.md) - Prototypes for the creation of Azure CycleCloud Slurm Workspaces AI Clusters using CLI deployment
+1. [Azure CycleCloud Slurm Workspace AI Cluster](./infrastructure_references/azure_cyclecloud_workspace_for_slurm/README.md) - Prototypes for the creation of Azure CycleCloud Slurm Workspace AI Clusters using CLI deployment
 
 ## AI training example catalogue
 
-1. [MegatronLM GPT3-175B with Slimpajama 627B dataset on Slurm](./examples/megatron-lm/GPT3-175B/slurm/README.md) - Guidance of an end-to-end training workflow based on MegatronLM, including data pre-processing from Slimpajama 627B dataset
+1. [MegatronLM GPT3-175B with Slimpajama 627B dataset on Slurm](./examples/megatron-lm/GPT3-175B/slurm/README.md) - Example of an end-to-end training workflow based on MegatronLM, including data pre-processing from Slimpajama 627B dataset
+2. [LLM Foundry MPT Training](./examples/llm-foundry/slurm/README.md) - Example of an end-to-end training workflow of Mosaic Pretrained Transformer (MPT) model on [C4](https://huggingface.co/datasets/allenai/c4) dataset, based on LLM Foundry
+
+## Infrastructure validation catalogue
+
+1. [NCCL All-reduce](./infrastructure_validations/slurm/NCCL/README.md)
+2. [Node Health Checks](./infrastructure_validations/slurm/NHC/README.md)
+3. [Thermal Test](./infrastructure_validations/slurm/thermal_test/README.md)
 
 ## Contributing
 
@@ -45,4 +52,4 @@ Any use of third-party trademarks or logos is subject to those third-party's pol
 
 Please join us in contributing to the project
 
-[![Contributors](https://contrib.rocks/image?repo=Azure/ai-on-azure)](https://github.com/Azure/ai-on-azure/graphs/contributors)
+[![Contributors](https://contrib.rocks/image?repo=Azure/ai-on-azure)](https://github.com/Azure/ai-infrastructure-on-azure/graphs/contributors)

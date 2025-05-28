@@ -3,7 +3,7 @@
 ## Table of Contents
 
 1. [Introduction](#1-introduction)
-2. [Creating Azure CycleCloud Workspaces for Slurm Environment](#2-creating-azure-cyclecloud-workspaces-for-slurm-environment)
+2. [Creating Azure CycleCloud Workspace for Slurm Environment](#2-creating-azure-cyclecloud-workspace-for-slurm-environment)
 
    2.1. [Blob storage for training data and checkpointing](#21-blob-storage-for-training-data-and-checkpointing)
 
@@ -26,13 +26,13 @@ The references that have been used to build this example are:
 - [LLM-Foundry](https://github.com/mosaicml/llm-foundry) - a framework by MosaicML for training, fine-tuning, and deploying large language models efficiently
 - [LLM-Foundry Training Walkthrough](https://github.com/mosaicml/llm-foundry/tree/main/scripts/train) - example training scripts
 - [C4 (Colossal, Cleaned, Common Crawl) Dataset](https://huggingface.co/datasets/allenai/c4) - training dataset for the models
-- [Azure CycleCloud Workspaces for Slurm](https://github.com/Azure/cyclecloud-slurm-workspace) - The Azure Marketplace offering allowing to stand-up a Slurm cluster powered by Azure CycleCloud and Azure Storage, with pre-configured `enroot` and `pyxis` to support containerized workloads
+- [Azure CycleCloud Workspace for Slurm](https://github.com/Azure/cyclecloud-slurm-workspace) - The Azure Marketplace offering allowing to stand-up a Slurm cluster powered by Azure CycleCloud and Azure Storage, with pre-configured `enroot` and `pyxis` to support containerized workloads
 
-## 2. Creating Azure CycleCloud Workspaces for Slurm Environment
+## 2. Creating Azure CycleCloud Workspace for Slurm Environment
 
 The guide requires an Azure CycleCloud Slurm Workspace environment. The documentation [available in Microsoft Learn](https://learn.microsoft.com/en-us/azure/cyclecloud/overview-ccws?view=cyclecloud-8) guides through the deployment process.
 
-This can be done through infrastructure as code [following the infrastructure reference example](../../../../infrastructure_references/azure_cyclecloud_workspaces_for_slurm/README.md) where the Azure environment suggested for the following example should contain:
+This can be done through infrastructure as code [following the infrastructure reference example](../../../../infrastructure_references/azure_cyclecloud_workspace_for_slurm/README.md) where the Azure environment suggested for the following example should contain:
 
 - A GPU partition `gpu` with ND-series nodes. The example has been tested on `Standard_ND96isr_H100_v5` and `Standard_ND96isr_H200_v5`. This will be `GPU_SKU` environment variable in the deployment reference documentation.
 - Any sort of NFS home directory will be suitable for this example. There are no dependencies here for running this example.

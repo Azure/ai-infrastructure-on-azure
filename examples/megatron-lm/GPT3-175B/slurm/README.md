@@ -3,7 +3,7 @@
 ## Table of Contents
 
 1. [Introduction](#introduction)
-2. [Creation of an Azure CycleCloud Workspaces for Slurm environment](#1-creation-of-an-azure-cyclecloud-workspaces-for-slurm-environment)
+2. [Creation of an Azure CycleCloud Workspace for Slurm environment](#1-creation-of-an-azure-cyclecloud-workspace-for-slurm-environment)
 3. [Environment setup](#2-environment-setup)
 4. [Filesystem Tuning](#3-filesystem-tuning)
 5. [Data Preparation](#4-data-preparation)
@@ -18,15 +18,15 @@ The references that have been used to build this example are:
 - [Megatron-LM](https://github.com/NVIDIA/Megatron-LM) - NVIDIA MegatronLM framework
 - [Megatron-LM GPT175B example](https://github.com/NVIDIA/Megatron-LM/blob/main/examples/gpt3/train_gpt3_175b_distributed.sh) - Example from the MegatronLM repository for GPT175B model
 - [SlimPajama 627B Dataset](https://huggingface.co/datasets/cerebras/SlimPajama-627B) - Cleaned and de-duplicated open source version of Together's RedPajama. Please check the licensing of the different dataset sources before using in your enterprise environment. This dataset is composed of 59,166 jsonl files and a total of approximately 900 GiB of compressed data
-- [Azure CycleCloud Workspaces for Slurm](https://github.com/Azure/cyclecloud-slurm-workspace) - The Azure Marketplace offering allowing to stand-up a Slurm cluster powered by Azure CycleCloud and Azure Storage, with pre-configured `enroot` and `pyxis` to support containerized workloads
+- [Azure CycleCloud Workspace for Slurm](https://github.com/Azure/cyclecloud-slurm-workspace) - The Azure Marketplace offering allowing to stand-up a Slurm cluster powered by Azure CycleCloud and Azure Storage, with pre-configured `enroot` and `pyxis` to support containerized workloads
 
 All the scripts and code that have been derived by any of the above repositories will be explicitly marked and will contain the proper copyright disclaimer according to the relative licensing.
 
-## 1. Creation of an Azure CycleCloud Workspaces for Slurm environment
+## 1. Creation of an Azure CycleCloud Workspace for Slurm environment
 
 The first step in the process implies the creation of an Azure CycleCloud Slurm Workspace environment. The documentation [available in Microsoft Learn](https://learn.microsoft.com/en-us/azure/cyclecloud/overview-ccws?view=cyclecloud-8) guides through the deployment process.
 
-This can be done through infrastructure-as-code [following the infrastructure reference example](../../../../infrastructure_references/azure_cyclecloud_workspaces_for_slurm/README.md).
+This can be done through infrastructure-as-code [following the infrastructure reference example](../../../../infrastructure_references/azure_cyclecloud_workspace_for_slurm/README.md).
 
 The Azure environment suggested for the following example should contain:
 

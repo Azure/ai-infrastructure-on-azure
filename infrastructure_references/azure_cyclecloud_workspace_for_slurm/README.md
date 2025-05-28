@@ -1,10 +1,10 @@
-# Deploying Azure CycleCloud Workspaces for Slurm
+# Deploying Azure CycleCloud Workspace for Slurm
 
-This section of the repository contains the guidance to deploy Azure CycleCloud Workspaces for Slurm environments.
+This section of the repository contains the guidance to deploy Azure CycleCloud Workspace for Slurm environments.
 
 The templates contained in this folder have some deployment examples with different features and storage types.
 
-The deployment guide follows what described in the [official Azure CycleCloud Workspaces for Slurm documentation pages](https://learn.microsoft.com/en-us/azure/cyclecloud/how-to/ccws/deploy-with-cli?view=cyclecloud-8).
+The deployment guide follows what described in the [official Azure CycleCloud Workspace for Slurm documentation pages](https://learn.microsoft.com/en-us/azure/cyclecloud/how-to/ccws/deploy-with-cli?view=cyclecloud-8).
 
 ## Prequisites
 
@@ -81,7 +81,7 @@ The deployment ready file can be generated with the following commands after the
 envsubst < large-ai-training-cluster-parameters.template > large-ai-training-cluster-parameters-deploy.json
 ```
 
-## Deploy the Azure CycleCloud Slurm Workspaces environment
+## Deploy the Azure CycleCloud Slurm Workspace environment
 
 > [!WARNING]  
 > Check other parameters in the template before proceeding with the deployment, like AMLFS file system size and the desired SKU.
