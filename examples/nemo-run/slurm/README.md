@@ -35,7 +35,10 @@ Keep in mind that CCWS does not allow connections via public IP, so if a Bastion
 
 ### Create an  Azure Database for MySQL Flexible Server
 
-Refer to this [quickstart](https://learn.microsoft.com/en-us/azure/mysql/flexible-server/quickstart-create-connect-server-vnet) to create an instance of MySQL Flexible Server with private access. Make sure to select **Private Access** in the **Networking** tab, and to select the VNET and subnet that you created earlier:
+Refer to this [quickstart](https://learn.microsoft.com/en-us/azure/mysql/flexible-server/quickstart-create-connect-server-vnet) to create an instance of MySQL Flexible Server with private access. Make sure to select **Private Access** in the **Networking** tab, and to select the VNET and subnet that you created earlier. 
+
+This can be done through infrastructure-as-code [following the infrastructure reference example](../../../infrastructure_references/azure_cyclecloud_workspaces_for_slurm/README.md#create-a-mysql-flexible-server).
+
  
 Once the instance is created, adjust the server parameters as [needed](https://slurm.schedmd.com/accounting.html#:~:text=NOTE%3A%20Before%20running,than%20max_script_size.).
 
@@ -110,26 +113,27 @@ From VSCode, open the terminal and source the virtual environment that was previ
 source ~/ccws-nemo-venv/bin/activate
 ```
 
-The following paths are required to run the project:
-- `NEMO_HOME` - A directory to store the models and datasets that are converted by the framework to the NeMo format
-- `CHECKPOINT_DIR` - A directory to store the model checkpoints
-- `HF_TOKEN_PATH` - A path to a file that has a huggingface token with permissions to download datasets and models 
-- `HF_HOME` - A directory for your huggingface cache 
+Open the `.env-sample` file and populate the file with the required parameters: 
 
-Note, these paths need to be on shared storage, as they will be mounted within the container when the job runs. 
-
-Open the `.env-sample` file and populate the file with the required parameters. You can modify the `GPUS_PER_NODE` and `NUM_NODES` parameter to change the number of nodes and GPUs to use for the finetuning example: 
 ```
 GPUS_PER_NODE=8
 NUM_NODES=2
 GPU_PARTITION="gpu"
 WALLTIME="1:00:00"
 CONTAINER="nvcr.io#nvidia/nemo:dev"
-NEMO_HOME="/path/to/folder/where/nemo/will/store/converted/models/and/datasets"
-CHECKPOINT_DIR="/path/to/folder/where/nemo/will/store/model/checkpoints"
-HF_TOKEN_PATH="/path/to/file/that/contains/huggingface/token"
-HF_HOME="/path/for/huggingface/cache"
+NEMO_HOME="path-to-your-nemo-home"
+CHECKPOINT_DIR="path-to-your-checkpoint-dir"
+HF_TOKEN_PATH="path-to-your-huggingface-token"
+HF_HOME="path-for-your-huggingface-cache"
 ```
+
+You can modify the `GPUS_PER_NODE` and `NUM_NODES` parameter to change the number of nodes and GPUs to use for the finetuning example. The following paths are required to run the project:
+- `NEMO_HOME` - A directory to store the models and datasets that are converted by the framework to the NeMo format
+- `CHECKPOINT_DIR` - A directory to store the model checkpoints
+- `HF_TOKEN_PATH` - A path to a file that has a huggingface token with permissions to download datasets and models 
+- `HF_HOME` - A directory for your huggingface cache 
+
+Note, these paths need to be on shared storage, as they will be mounted within the container when the job runs. 
 
 Rename the file to .env. You can do this from the terminal via the following command: 
 ```
