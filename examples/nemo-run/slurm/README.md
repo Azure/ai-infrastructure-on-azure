@@ -8,7 +8,7 @@
 
 ## 1. Introduction
 
-In this example, we will demonstrate how to use NeMo-Run for distributed finetuning, using a slurm cluster. We will also show how you can run a slurm job for inferencing to test your model. 
+In this example, we will demonstrate how to use NeMo-Run for distributed finetuning, using a Slurm cluster. We will also show how you can run a Slurm job for inferencing to test your model. 
 
 The references that have been used to build this example are:
 - [NeMo](https://github.com/NVIDIA/NeMo) -  a scalable, cloud-native generative AI framework designed to support the development of Large Language Models (LLMs) and Multimodal Models (MMs). The NeMo Framework provides comprehensive tools for efficient training, including Supervised Fine-Tuning (SFT) and Parameter Efficient Fine-Tuning (PEFT).
@@ -65,7 +65,7 @@ As you customize your cluster, make sure to:
 - Configure a GPU partition gpu with ND-series nodes. The example has been tested on Standard_ND96isr_H200_v5.
 - Provide the client ID of your registered application, and the managed identity that you created in the **Open OnDemand** tab
 
-Any sort of NFS home directory will be suitable for this example. There are no dependencies here for running this example.
+Any sort of NFS home directory will be suitable for this example. There are no dependencies here for running this example. However, for running experiments at scale across a shared cluster, it is recommended to deploy an Azure Machine Learning Filesystem (AMLFS) or equivalent high-throughput shared storage.
 
 ### Create User Accounts
 
@@ -85,7 +85,7 @@ Update your app registration to use the OnDemand VM's IP address as the redirect
 ### Install required packages 
 Use Open OnDemand to log in to your cluster through your browser:
 ```
-https://< PRIVATE IP OF ONDEMAND >
+https://< PRIVATE IP OR FQDN OF ONDEMAND >
 ```
 
 Once you authenticate, OnDemand will redirect you to the landing page. Select **Clusters** > **Slurm ccw Shell Access**, to access an interactive shell against the login node of your cluster.
@@ -102,12 +102,16 @@ Run the setup script. The script will install uv and leverage it to create a pyt
 ```
 Once the script completes, you should see a folder in your home directory named `ccws-nemo-venv`. 
 
-### Run example 
+### Run Example 
 Go back to the main page of OnDemand and select the **VSCode on Login Node** application. 
 ![image](https://github.com/user-attachments/assets/75e7080d-0e03-46c1-a83e-40f3855e312f)
 
-You will be redirected to a page where you can input how long you want to run your VSCode session and provide the path of your working directory. If you installed the project in your home directory, you can proceed with the defaults by clicking on **Launch**.
+You will be redirected to a page where you can input how long you want to run your VSCode session and provide the path of your working directory. If you installed the project in your home directory, you can proceed with the defaults by clicking on **Launch**:
+![image](https://github.com/user-attachments/assets/9a0cd4ce-17ed-4dc6-b3fc-abc50a5af3db)
 
+After requesting the session, you will land on a page that lists your active interactive sessions. From that page, select **Connect to VS Code** for the session that you just created: 
+![image](https://github.com/user-attachments/assets/a3c076f1-8c46-4f60-a6e0-28d4e32a2202)
+  
 From VSCode, open the terminal and source the virtual environment that was previously created:
 ```bash
 source ~/ccws-nemo-venv/bin/activate
@@ -133,16 +137,30 @@ You can modify the `GPUS_PER_NODE` and `NUM_NODES` parameter to change the numbe
 - `HF_TOKEN_PATH` - A path to a file that has a huggingface token with permissions to download datasets and models 
 - `HF_HOME` - A directory for your huggingface cache 
 
-Note, these paths need to be on shared storage, as they will be mounted within the container when the job runs. 
+>[!NOTE]
+>These paths need to be on shared storage, as they will be mounted within the container when the job runs. 
 
 Rename the file to .env. You can do this from the terminal via the following command: 
 ```
 mv .env-sample .env
 ```
 
-From VSCode, open the `ccws-nemo-finetune.ipynb` notebook. VSCode will recommend the installation of the python and jupyter extensions. Proceed with installation of both extensions. Once the extensions are installed, you can select your kernel. VSCode should detect your virtual environment, which will allow you to select it as the desired kernel for the notebook. 
+From VSCode, open the `ccws-nemo-finetune.ipynb` notebook. VSCode will recommend the installation of the Python and Jupyter extensions. Proceed with installation of both extensions. 
 
-Execute the cells, to run the finetune & inference examples. Due the features of NeMo-Run, the Jupyter notebook will be able to retain the information of your experiments, which will allow you to revisit the project, re-submit the experiments, or test different configurations. 
+Once the extensions are installed, you can select your kernel:
+
+![image](https://github.com/user-attachments/assets/bf00b6df-5692-44c3-826f-b9f3aac2abe1)
+
+![image](https://github.com/user-attachments/assets/eef5a50e-1ff7-4b05-915c-fa5043f224b6)
+
+VSCode should detect your virtual environment, which will allow you to select it as the desired kernel for the notebook:
+
+![image](https://github.com/user-attachments/assets/95578ddb-f4e0-40ac-933b-cd0b8215e49e)
+
+
+Once the kernel is selected, you can execute the cells, to run the finetune & inference examples. 
+
+By integrating NeMo-Run within a Jupyter Notebook, you gain the ability to seamlessly track, revisit, and re-submit experiments—enabling a reproducible and iterative research workflow with minimal overhead.
 
 
 
