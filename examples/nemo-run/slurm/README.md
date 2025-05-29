@@ -21,7 +21,11 @@ The references that have been used to build this example are:
 
 ## 2. Creating and Configuring Azure CycleCloud Workspaces for Slurm Environment
 
-The guide requires an Azure CycleCloud Workspace for Slurm (CCWS) environment. The NeMo-Run framework uses `sacct` to check the status of jobs, so the CCWS environment should be configured to use a pre-existing MySQL Flexible server for Slurm job accounting. Additionally, this exercise is executed through a Jupyter notebook to highlight features from NeMo-Run like tailing logs in real time (or viewing logs after job completion), checking the status of an experiment, canceling it, within an interactive environment. The notebook retains the information about the expermient, which allows end-users to revisit the notebook to review how the experiment was submitted, the results that were produced, and to re-run the experiment, if desired. Consequently, it is recommended to use the OnDemand integration within CCWS to run this example. 
+The guide requires an Azure CycleCloud Workspace for Slurm (CCWS) environment. The NeMo-Run framework uses `sacct` to check the status of jobs, so the CCWS environment should be configured to use a pre-existing MySQL Flexible server for Slurm job accounting. 
+
+Additionally, this exercise is executed through a Jupyter notebook to highlight features from NeMo-Run like tailing logs in real time (or viewing logs after job completion), checking the status of an experiment, canceling it, within an interactive environment. 
+
+The notebook retains the information about the expermient, which allows end-users to revisit the notebook to review how the experiment was submitted, the results that were produced, and to re-run the experiment, if desired. Consequently, it is recommended to use the OnDemand integration within CCWS to run this example. 
 
 ### Create a VNET
 
