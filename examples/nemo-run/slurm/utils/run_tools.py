@@ -1,7 +1,8 @@
 """Utilities for configuring and creating SlurmExecutor instances for NeMo jobs.
 
-This module provides a helper function to create and configure a SlurmExecutor object from the nemo_run package. 
-Through the use of this utility, you can simplify and standardize the creation of Slurm job executors for NeMo experiments.
+This module provides a helper function to create and configure a SlurmExecutor object from the
+nemo_run package. Through the use of this utility, you can simplify and standardize the creation 
+of Slurm job executors for NeMo experiments.
 """
 from typing import Optional
 import nemo_run as run
