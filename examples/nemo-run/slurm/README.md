@@ -84,7 +84,7 @@ Update your app registration to use the OnDemand VM's IP address as the redirect
 
 ### Install required packages 
 Use Open OnDemand to log in to your cluster through your browser:
-```
+```bash
 https://< PRIVATE IP OR FQDN OF ONDEMAND >
 ```
 
@@ -119,7 +119,7 @@ source ~/ccws-nemo-venv/bin/activate
 
 Open the `.env-sample` file and populate the file with the required parameters: 
 
-```
+```bash
 GPUS_PER_NODE=8
 NUM_NODES=2
 GPU_PARTITION="gpu"
@@ -141,7 +141,7 @@ You can modify the `GPUS_PER_NODE` and `NUM_NODES` parameter to change the numbe
 >These paths need to be on shared storage, as they will be mounted within the container when the job runs. 
 
 Rename the file to .env. You can do this from the terminal via the following command: 
-```
+```bash
 mv .env-sample .env
 ```
 
