@@ -1,6 +1,6 @@
 # AI Infrastructure on Azure
 
-This repository is collects architectural guidance and AI training examples meant to run on Azure AI Infrastructure.
+This repository collects architectural guidance and AI training examples meant to run on Azure AI Infrastructure.
 
 This includes infrastructure examples and real use case scenarios on Azure AI Infrastructure involving different orchestration solutions:
 
