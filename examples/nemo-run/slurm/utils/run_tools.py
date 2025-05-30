@@ -33,7 +33,8 @@ def slurm_executor(
         time (str, optional): Walltime for the job. Defaults to "01:00:00".
         custom_mounts (list[str], optional): Additional container mounts.
         custom_env_vars (dict[str, str], optional): Additional environment variables.
-        container_image (str, optional): Container image to use. Defaults to "nvcr.io#nvidia/nemo:dev".
+        container_image (str, optional): Container image to use. 
+            Defaults to "nvcr.io#nvidia/nemo:dev".
         retries (int, optional): Number of retries for the job. Defaults to 0.
         gres (str, optional): Generic resources string for Slurm.
 
