@@ -1,8 +1,8 @@
 # AI Infrastructure on Azure
 
-This repository is meant to collect architectural guidance and AI training examples meant to run on Azure AI Infrastructure.
+This repository collects architectural guidance and AI training examples meant to run on Azure AI Infrastructure.
 
-This includes architecture examples and real use case scenarios on Azure AI Infrastructure involving different orchestration solutions:
+This includes infrastructure examples and real use case scenarios on Azure AI Infrastructure involving different orchestration solutions:
 
 - [Azure CycleCloud Workspace for Slurm](https://learn.microsoft.com/en-us/azure/cyclecloud/overview-ccws?view=cyclecloud-8)
 - [Azure Kubernetes Service](https://learn.microsoft.com/en-us/azure/aks/what-is-aks)
@@ -15,12 +15,12 @@ For each scenario and architecture, the repository will include storage recommen
 
 1. [Azure CycleCloud Slurm Workspace AI Cluster](./infrastructure_references/azure_cyclecloud_workspace_for_slurm/README.md) - Prototypes for the creation of Azure CycleCloud Slurm Workspace AI Clusters using CLI deployment
 
-## AI training example catalogue
+## AI training example catalog
 
 1. [MegatronLM GPT3-175B with Slimpajama 627B dataset on Slurm](./examples/megatron-lm/GPT3-175B/slurm/README.md) - Example of an end-to-end training workflow based on MegatronLM, including data pre-processing from Slimpajama 627B dataset
 2. [LLM Foundry MPT Training](./examples/llm-foundry/slurm/README.md) - Example of an end-to-end training workflow of Mosaic Pretrained Transformer (MPT) model on [C4](https://huggingface.co/datasets/allenai/c4) dataset, based on LLM Foundry
 
-## Infrastructure validation catalogue
+## Infrastructure validation catalog
 
 1. [NCCL All-reduce](./infrastructure_validations/slurm/NCCL/README.md)
 2. [Node Health Checks](./infrastructure_validations/slurm/NHC/README.md)
