@@ -42,6 +42,7 @@ jobs:
           FIX_JUPYTER_NBQA_ISORT: true
           FIX_JUPYTER_NBQA_RUFF: true
           PYTHON_PYLINT_CONFIG_FILE: ".python-lint"
+          LINTER_RULES_PATH: ""
 
       - name: Commit and push linting fixes
         # Run only on:
