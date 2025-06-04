@@ -1,16 +1,19 @@
 """Utilities for configuring and creating SlurmExecutor instances for NeMo jobs.
 
 This module provides a helper function to create and configure a SlurmExecutor object from the
-nemo_run package. Through the use of this utility, you can simplify and standardize the creation 
+nemo_run package. Through the use of this utility, you can simplify and standardize the creation
 of Slurm job executors for NeMo experiments.
 """
+
 from typing import Optional
+
 import nemo_run as run
 
+
 def slurm_executor(
-    #user: str,
-    #host: str,
-    #remote_job_dir: str,
+    # user: str,
+    # host: str,
+    # remote_job_dir: str,
     account: str,
     partition: str,
     nodes: int,
@@ -33,7 +36,7 @@ def slurm_executor(
         time (str, optional): Walltime for the job. Defaults to "01:00:00".
         custom_mounts (list[str], optional): Additional container mounts.
         custom_env_vars (dict[str, str], optional): Additional environment variables.
-        container_image (str, optional): Container image to use. 
+        container_image (str, optional): Container image to use.
             Defaults to "nvcr.io#nvidia/nemo:dev".
         retries (int, optional): Number of retries for the job. Defaults to 0.
         gres (str, optional): Generic resources string for Slurm.
@@ -57,7 +60,7 @@ def slurm_executor(
     if custom_env_vars:
         env_vars |= custom_env_vars
 
-    local_tunnel = run.LocalTunnel(job_dir='')
+    local_tunnel = run.LocalTunnel(job_dir="")
     # This defines the slurm executor.
     # We connect to the executor via the tunnel defined by user, host, and remote_job_dir.
     executor = run.SlurmExecutor(
