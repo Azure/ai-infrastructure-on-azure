@@ -149,7 +149,7 @@ Rename the file to .env. You can do this from the terminal via the following com
 mv .env-sample .env
 ```
 
-From VSCode, open the `ccws-nemo-finetune.ipynb` notebook. VSCode will recommend the installation of the Python and Jupyter extensions. Proceed with installation of both extensions. 
+From VSCode, open the `ccws_nemo_finetune.ipynb` notebook. VSCode will recommend the installation of the Python and Jupyter extensions. Proceed with installation of both extensions. 
 
 Once the extensions are installed, you can select your kernel:
 
