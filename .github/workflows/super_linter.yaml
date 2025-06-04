@@ -41,7 +41,7 @@ jobs:
           FIX_JUPYTER_NBQA_BLACK: true
           FIX_JUPYTER_NBQA_ISORT: true
           FIX_JUPYTER_NBQA_RUFF: true
-          PYTHON_PYLINT_CONFIG_FILE: "/github/workspace/.python-lint"
+          PYTHON_PYLINT_CONFIG_FILE: ".pythonlint"
 
       - name: Commit and push linting fixes
         # Run only on:
