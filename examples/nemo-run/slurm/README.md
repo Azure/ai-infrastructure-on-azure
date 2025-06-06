@@ -52,13 +52,20 @@ Once the instance is created, adjust the server parameters as [needed](https://s
 An **app registration** and a **managed identity** must be created to authenticate to the Open OnDemand portal via OIDC. The app registration should be configured to:
 
 - Issue ID tokens:
-  ![auth-id-tokens](https://github.com/user-attachments/assets/8e5a19da-13a5-40b1-a139-6243b8607e00)
+
+![auth-id-tokens](images/grant-tokens.png)
+
 - Use the managed identity as a credential:
-  ![auth-federated-creds](https://github.com/user-attachments/assets/dee5f0e5-f362-45b8-9898-b4e9ce16761e)
+
+![auth-federated-creds](images/fed-creds.png)
+
 - Provide the upn as an optional claim:
-  ![upn-token-setup](https://github.com/user-attachments/assets/f1913a2a-9e8a-46b1-a3ba-9222afd7ae2a)
+
+![upn-token-setup](images/upn.png)
+
 - Have access to view users' basic profile and to sign in and read user profiles:
-  ![graph-api-setup](https://github.com/user-attachments/assets/b21c9513-ca75-4902-981c-5662286fa7db)
+
+![graph-api-setup](images/graph-perms.png)
 
 ### Deploy CCWS
 
@@ -77,13 +84,14 @@ Any sort of NFS home directory will be suitable for this example. There are no d
 
 Once your cluster starts, make sure to create a local user account in CycleCloud that maps to the account that will be used to log in to the OnDemand portal. For example, if you are going to login with the account <aiuser@contoso.com>, create a user account with `aiuser` as the username and grant node access:
 
-![image](https://github.com/user-attachments/assets/40fcb199-f37b-4071-9f5b-3c9982791e8d)
-![node-access](https://github.com/user-attachments/assets/fa83e5a1-ed2c-4f07-bdfd-500f8b0cbb5a)
+![user-create](images/user-create.png)
+
+![user-perms](images/user-perms.png)
 
 ### Update your App registration
 
 Update your app registration to use the OnDemand VM's IP address as the redirect URI:
-![redirect-uri](https://github.com/user-attachments/assets/10b4f657-4a42-44e0-a6f0-76295a746ec8)
+![redirect-uri](images/redirect.png)
 
 ## 3. Finetune and Inference with NeMo-Run
 
@@ -97,7 +105,7 @@ https://< PRIVATE IP OR FQDN OF ONDEMAND >
 
 Once you authenticate, OnDemand will redirect you to the landing page. Select **Clusters** > **Slurm ccw Shell Access**, to access an interactive shell against the login node of your cluster.
 
-![shell-ood](https://github.com/user-attachments/assets/53aea4ec-66d4-4ab0-a0c1-1a65b31b5970)
+![shell-ood](images/ood-shell.png)
 
 From the shell, clone this project from github:
 
@@ -116,13 +124,16 @@ Once the script completes, you should see a folder in your home directory named 
 ### Run Example
 
 Go back to the main page of OnDemand and select the **VSCode on Login Node** application.
-![image](https://github.com/user-attachments/assets/75e7080d-0e03-46c1-a83e-40f3855e312f)
+
+![ood-vscode](images/ood-vscode.png)
 
 You will be redirected to a page where you can input how long you want to run your VSCode session and provide the path of your working directory. If you installed the project in your home directory, you can proceed with the defaults by clicking on **Launch**:
-![image](https://github.com/user-attachments/assets/9a0cd4ce-17ed-4dc6-b3fc-abc50a5af3db)
+
+![vscode-launch](images/vscode-launch.png)
 
 After requesting the session, you will land on a page that lists your active interactive sessions. From that page, select **Connect to VS Code** for the session that you just created:
-![image](https://github.com/user-attachments/assets/a3c076f1-8c46-4f60-a6e0-28d4e32a2202)
+
+![vscode-connect](images/vscode-connect.png)
 
 From VSCode, open the terminal and source the virtual environment that was previously created:
 
@@ -164,13 +175,13 @@ From VSCode, open the `ccws_nemo_finetune.ipynb` notebook. VSCode will recommend
 
 Once the extensions are installed, you can select your kernel:
 
-![image](https://github.com/user-attachments/assets/bf00b6df-5692-44c3-826f-b9f3aac2abe1)
+![select-kernel](images/select-kernel.png)
 
-![image](https://github.com/user-attachments/assets/eef5a50e-1ff7-4b05-915c-fa5043f224b6)
+![jupyter-kernel](images/jupyter-kernel.png)
 
 VSCode should detect your virtual environment, which will allow you to select it as the desired kernel for the notebook:
 
-![image](https://github.com/user-attachments/assets/95578ddb-f4e0-40ac-933b-cd0b8215e49e)
+![python-venv](images/python-venv.png)
 
 Once the kernel is selected, you can execute the cells, to run the finetune & inference examples.
 
