@@ -153,6 +153,7 @@ NEMO_HOME="path-to-your-nemo-home"
 CHECKPOINT_DIR="path-to-your-checkpoint-dir"
 HF_TOKEN_PATH="path-to-your-huggingface-token"
 HF_HOME="path-for-your-huggingface-cache"
+MODEL_NAME="llama3_ft_ccws"
 ```
 
 You can modify the `GPUS_PER_NODE` and `NUM_NODES` parameter to change the number of nodes and GPUs to use for the finetuning example. The following paths are required to run the project:
