@@ -6,19 +6,14 @@
 #SBATCH --exclusive
 #SBATCH --output=job.%J.out
 
-export OMPI_MCA_coll_hcoll_enable=0
-export NCCL_IB_PCI_RELAXED_ORDERING=1
-export CUDA_DEVICE_ORDER=PCI_BUS_ID
-export NCCL_SOCKET_IFNAME=eth0
-export NCCL_TOPO_FILE=/opt/microsoft/ndv5-topo.xml
-export NCCL_DEBUG=WARN
-export NCCL_MIN_NCHANNELS=32
-
 export OMPI_MCA_coll_hcoll_enable=0 \
 	CUDA_DEVICE_ORDER=PCI_BUS_ID \
 	NCCL_SOCKET_IFNAME=eth0 \
 	UCX_TLS=rc \
 	UCX_NET_DEVICES=mlx5_ib0:1 \
+	NCCL_DEBUG=WARN \
+	NCCL_TOPO_FILE=/opt/microsoft/ndv5-topo.xml \
+	NCCL_IB_PCI_RELAXED_ORDERING=1 \
 	NCCL_IB_QPS_PER_CONNECTION=4 \
 	NCCL_IGNORE_CPU_AFFINITY=1 \
 	NCCL_P2P_NET_CHUNKSIZE=$((512 * 1024)) \
