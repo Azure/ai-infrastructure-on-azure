@@ -9,6 +9,12 @@
 | GITLEAKS                   | Pass ✅           |
 | GIT_MERGE_CONFLICT_MARKERS | Pass ✅           |
 | JSCPD                      | Pass ✅           |
+| JUPYTER_NBQA_BLACK         | Pass ✅           |
+| JUPYTER_NBQA_FLAKE8        | Pass ✅           |
+| JUPYTER_NBQA_ISORT         | Pass ✅           |
+| JUPYTER_NBQA_MYPY          | Pass ✅           |
+| JUPYTER_NBQA_PYLINT        | Pass ✅           |
+| JUPYTER_NBQA_RUFF          | Pass ✅           |
 | MARKDOWN                   | Pass ✅           |
 | MARKDOWN_PRETTIER          | Pass ✅           |
 | PYTHON_BLACK               | Pass ✅           |
