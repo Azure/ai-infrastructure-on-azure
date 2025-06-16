@@ -1,6 +1,6 @@
 # Multi-node NCCL all_reduce test
 
-## Launch with SLURM:
+## Launch with SLURM
 
 ```bash
 # Run NCCL all_reduce on a given set of nodes
