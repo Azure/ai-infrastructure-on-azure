@@ -268,8 +268,8 @@ EOF
 
 sbatch -N 16 -p gpu ./launch.sb \
   -c mpt-30b \
-  -i SQUASH_FILE \
-  -m /$AMLFS_MOUNT:/$AMLFS_MOUNT \
+  -i $SQUASH_FILE \
+  -m /$AMLFS_MOUNT:/data \
   -y "$YAML_UPDATES"
 ```
 
@@ -287,7 +287,7 @@ EOF
 
 sbatch -N 16 -p gpu ./launch.sb \
   -c mpt-30b \
-  -i SQUASH_FILE \
-  -m /$BLOB_MOUNT:/$BLOB_MOUNT \
+  -i $SQUASH_FILE \
+  -m /$BLOB_MOUNT:/data \
   -y "$YAML_UPDATES"
 ```
