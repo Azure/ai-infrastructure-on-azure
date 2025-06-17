@@ -31,7 +31,7 @@
     "value": {
       "type": "aml-new",
       "lustreTier": "${AMLFS_SKU}",
-      "lustreCapacityInTib": "${AMLFS_SIZE}",
+      "lustreCapacityInTib": ${AMLFS_SIZE},
       "mountPath": "/data"
     }
   },
