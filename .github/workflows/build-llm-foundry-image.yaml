@@ -1,4 +1,4 @@
-name: Build & Push Infiniband Tools Container Image
+name: Build & Push LLM Foundry Container Image
 
 on:
   push:
