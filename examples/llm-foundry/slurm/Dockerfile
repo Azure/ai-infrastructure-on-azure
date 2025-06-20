@@ -1,49 +1,55 @@
 FROM mosaicml/llm-foundry:2.6.0_cu124-latest
-ENV DEBIAN_FRONTEND=noninteractive
 
+ENV DEBIAN_FRONTEND=noninteractive
 ARG DOCA_URL=https://linux.mellanox.com/public/repo/doca/2.9.1/ubuntu22.04/x86_64/
 
-RUN apt-get update -y \
- && apt-get install -y --fix-missing --allow-downgrades --allow-change-held-packages --no-install-recommends
+# Install system dependencies, DOCA, and Mellanox tools
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends \
+        curl gnupg git wget build-essential \
+        libtool m4 automake \
+        ca-certificates && \
+    curl ${DOCA_URL}/GPG-KEY-Mellanox.pub | gpg --dearmor -o /etc/apt/trusted.gpg.d/mellanox.gpg && \
+    echo "deb [signed-by=/etc/apt/trusted.gpg.d/mellanox.gpg] ${DOCA_URL} ./" > /etc/apt/sources.list.d/doca.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        mft=4.30.1-8 doca-ofed-userspace && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update -y \
- && apt-get install -y curl \
- && curl https://linux.mellanox.com/public/repo/doca/GPG-KEY-Mellanox.pub | gpg --dearmor > /etc/apt/trusted.gpg.d/GPG-KEY-Mellanox.pub \
- && echo "deb [signed-by=/etc/apt/trusted.gpg.d/GPG-KEY-Mellanox.pub] ${DOCA_URL} ./" > /etc/apt/sources.list.d/doca.list \
- && apt-get update \
- && apt-get install -y mft=4.30.1-8 \
- && apt-get install -y doca-ofed-userspace
+# Build nccl-rdma-sharp-plugins
+RUN git clone --depth 1 https://github.com/Mellanox/nccl-rdma-sharp-plugins.git /opt/nccl-rdma-sharp-plugins && \
+    cd /opt/nccl-rdma-sharp-plugins && \
+    ./autogen.sh && \
+    ./configure --with-cuda=/usr/local/cuda && \
+    make -j16 && make install && \
+    rm -rf /opt/nccl-rdma-sharp-plugins
 
-WORKDIR /opt/
-RUN git clone https://github.com/Mellanox/nccl-rdma-sharp-plugins.git
-WORKDIR /opt/nccl-rdma-sharp-plugins
-RUN ./autogen.sh
-RUN ./configure --with-cuda=/usr/local/cuda
-RUN make
-RUN make install
-ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
+# Clone LLM Foundry and install Python packages
+RUN git clone --branch release/v0.18.0 --depth 1 https://github.com/mosaicml/llm-foundry.git /llm-foundry && \
+    pip install -U pip && \
+    pip install -e /llm-foundry[gpu] IPython
 
-RUN git clone --branch release/v0.18.0 https://github.com/mosaicml/llm-foundry.git /llm-foundry
-WORKDIR /llm-foundry
-RUN pip install -U pip
-RUN pip install -e ".[gpu]"
-RUN pip install IPython
+# Add NDv5 topology
+RUN wget -O /etc/ndv5-topo.xml https://raw.githubusercontent.com/Azure/azhpc-images/refs/heads/master/topology/ndv5-topo.xml
 
-WORKDIR /etc
-RUN wget https://raw.githubusercontent.com/Azure/azhpc-images/refs/heads/master/topology/ndv5-topo.xml
+# Build NCCL
+RUN git clone --depth 1 https://github.com/NVIDIA/nccl.git /opt/nccl && \
+    make -C /opt/nccl -j16 src.build CUDA_HOME=/usr/local/cuda && \
+    make -C /opt/nccl install && \
+    rm -rf /opt/nccl
 
-RUN git clone https://github.com/NVIDIA/nccl /opt/nccl \
-    && cd /opt/nccl \
-    && make -j src.build CUDA_HOME=/usr/local/cuda \
-    && make install
+# Build NCCL tests
+RUN git clone --depth 1 https://github.com/NVIDIA/nccl-tests.git /opt/nccl-tests && \
+    make -C /opt/nccl-tests MPI=1 \
+        MPI_HOME=/usr/mpi/gcc/openmpi-4.1.7rc1 \
+        CUDA_HOME=/usr/local/cuda \
+        NCCL_HOME=/opt/nccl/build && \
+    rm -rf /opt/nccl-tests/.git
 
-RUN git clone https://github.com/NVIDIA/nccl-tests.git /opt/nccl-tests \
-    && cd /opt/nccl-tests \
-    && make MPI=1 \
-    MPI_HOME=/usr/mpi/gcc/openmpi-4.1.7rc1 \
-    CUDA_HOME=/usr/local/cuda \
-    NCCL_HOME=/opt/nccl/build
-
-RUN apt-get clean && rm -rf /var/lib/apt/lists/*
-ENV LD_LIBRARY_PATH=/usr/mpi/gcc/openmpi-4.1.7rc1/lib:$LD_LIBRARY_PATH
+# Set environment variables
+ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/mpi/gcc/openmpi-4.1.7rc1/lib:$LD_LIBRARY_PATH
 ENV LD_PRELOAD=/opt/nccl/build/lib/libnccl.so
+
+# Set a default command and healthcheck
+CMD ["ipython"]
+HEALTHCHECK CMD ["python3", "-c", "import torch; assert torch.cuda.is_available()"]
