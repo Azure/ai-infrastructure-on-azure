@@ -94,7 +94,7 @@ RUN git clone --depth=1 https://github.com/Azure/azhpc-images.git /tmp/azhpc-ima
 ### ---- Copy azurerhpc-health-checks files ----
 RUN git clone --depth=1 https://github.com/Azure/azurehpc-health-checks.git /tmp/azurehpc-health-checks && \
     cp -r /tmp/azurehpc-health-checks/conf ${AZ_NHC_ROOT} && \
-    cp /tmp/azurehpc-health-checks/customTests/* /etc/nhc/scripts/. && \
+    cp -r /tmp/azurehpc-health-checks/customTests/* /etc/nhc/scripts/. && \
     rm -rf /tmp/azurehpc-health-checks
 
 ### ---- Copy Entrypoint ----
