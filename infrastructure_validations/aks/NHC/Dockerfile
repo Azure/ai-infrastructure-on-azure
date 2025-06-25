@@ -98,9 +98,9 @@ RUN git clone --depth=1 https://github.com/Azure/azurehpc-health-checks.git /tmp
     rm -rf /tmp/azurehpc-health-checks
 
 ### ---- Copy Entrypoint ----
-COPY aznhc-entrypoint.sh ${AZ_NHC_ROOT}/
-RUN chmod +x ${AZ_NHC_ROOT}/aznhc-entrypoint.sh
+COPY aznhc_entrypoint.sh ${AZ_NHC_ROOT}/
+RUN chmod +x ${AZ_NHC_ROOT}/aznhc_entrypoint.sh
 
 ENV PATH="${AZ_NHC_ROOT}/bin:$PATH"
 WORKDIR ${AZ_NHC_ROOT}
-ENTRYPOINT ["./aznhc-entrypoint.sh"]
+ENTRYPOINT ["./aznhc_entrypoint.sh"]
