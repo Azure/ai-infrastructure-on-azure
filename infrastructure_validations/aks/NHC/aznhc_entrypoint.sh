@@ -1,0 +1,32 @@
+#!/bin/bash
+
+aznhc_root=/azure-nhc
+
+vm_hostname=$(hostname)
+vm_id=$(curl -H Metadata:true --max-time 10 -s  "http://169.254.169.254/metadata/instance/compute/vmId?api-version=2021-03-01&format=text")
+vm_name=$(curl -H Metadata:true --max-time 10 -s "http://169.254.169.254/metadata/instance/compute/name?api-version=2021-11-15&format=text")
+kernel_version=$(uname -r)
+sku=$(curl -H Metadata:true --max-time 10 -s "http://169.254.169.254/metadata/instance/compute/vmSize?api-version=2021-01-01&format=text" | tr '[:upper:]' '[:lower:]' | sed 's/standard_//')
+if [ -f /var/lib/hyperv/.kvp_pool_3 ]; then
+    physical_id=$(tr -d '\0' < /var/lib/hyperv/.kvp_pool_3 | sed -e 's/.*Qualified\(.*\)VirtualMachineDynamic.*/\1/')
+else
+    physical_id="Not available"
+fi
+
+cat <<EOF
+HOSTNAME: $vm_hostname
+VMNAME: $vm_name
+VMID: $vm_id
+PHYSICALID: $physical_id
+KERNEL: $kernel_version
+SKU: $sku
+EOF
+
+conf_file=${AZ_NHC_ROOT}/conf/${sku}.conf
+
+if [ ! -f "$conf_file" ]; then
+    echo "The vm SKU 'standard_$sku' is currently not supported by Azure health checks."
+    return 1
+fi
+
+nhc -t 600 -c $conf_file
