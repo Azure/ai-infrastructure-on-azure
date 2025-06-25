@@ -46,7 +46,7 @@ RUN git clone --branch ${NCCL_TESTS_VERSION} --depth 1 https://github.com/NVIDIA
     make MPI=1 MPI_HOME=/usr/lib/x86_64-linux-gnu/openmpi NVCC_GENCODE="-gencode=arch=compute_90,code=sm_90 -gencode=arch=compute_90,code=compute_90" && \
     mkdir -p ${AZ_NHC_ROOT}/bin && \
     cp -r build/* ${AZ_NHC_ROOT}/bin && \
-    mkdir /opt/nccl-tests/build && \
+    mkdir -p /opt/nccl-tests/build && \
     ln -s ${AZ_NHC_ROOT}/bin/all_reduce_perf /opt/nccl-tests/build/all_reduce_perf # hardcoded path in azurehpc-health-checks
 
 ### ---- Build NVBandwidth ----
