@@ -265,6 +265,7 @@ save_num_checkpoints_to_keep=10
 fsdp_config.state_dict_type=sharded
 EOF
 )
+YAML_UPDATES="${YAML_UPDATES//$'\n'/ }"
 
 sbatch -N 16 -p gpu ./launch.sb \
   -c mpt-30b \
@@ -284,6 +285,7 @@ variables.data_local=/tmp/local-storage
 variables.data_remote=/blob/my-copy-c4
 EOF
 )
+YAML_UPDATES="${YAML_UPDATES//$'\n'/ }"
 
 sbatch -N 16 -p gpu ./launch.sb \
   -c mpt-30b \
