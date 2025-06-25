@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: aznhc
+spec:
+  containers:
+  - name: aznhc
+    image: ghcr.io/azure/ai-infrastructure-on-azure/aznhc:latest
+    securityContext:
+      capabilities:
+        add: ["IPC_LOCK"]
+    resources:
+      requests:
+        nvidia.com/gpu: 8
+        rdma/ib: 8
+      limits:
+        nvidia.com/gpu: 8
+        rdma/ib: 8
+    restartPolicy: Never
+    volumeMounts:
+    - mountPath: /dev/shm
+      name: shmem
+    - mountPath: /azure-nhc/syslog
+      name: syslog-volume
+      readOnly: true
+    - mountPath: /var/lib/hyperv/.kvp_pool_3
+      name: kvp-pool-volume
+      readOnly: true
+  volumes:
+  - emptyDir:
+      medium: Memory
+      sizeLimit: 128Gi
+    name: shmem
+  - name: syslog-volume
+    hostPath:
+      path: /var/log/syslog
+      type: File
+  - name: kvp-pool-volume
+    hostPath:
+      path: /var/lib/hyperv/.kvp_pool_3
+      type: File
