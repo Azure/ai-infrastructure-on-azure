@@ -6,8 +6,8 @@ on:
       - main
       - aks-infrastructure
     paths:
-      - infrastructure-validations/aks/NHC/Dockerfile
-      - infrastructure-validations/aks/NHC/aznhc_entrypoint.sh
+      - infrastructure_validations/aks/NHC/Dockerfile
+      - infrastructure_validations/aks/NHC/aznhc_entrypoint.sh
       - .github/workflows/build_aznhc_image.yaml
 
   workflow_dispatch:
@@ -53,8 +53,8 @@ jobs:
     - name: Build and push
       uses: docker/build-push-action@v6
       with:
-        context: infrastructure-validations/aks/NHC
-        file: infrastructure-validations/aks/NHC/Dockerfile
+        context: infrastructure_validations/aks/NHC
+        file: infrastructure_validations/aks/NHC/Dockerfile
         push: true
         tags: ${{ steps.tag.outputs.tags }}
         labels: ${{ steps.tag.outputs.labels }}
