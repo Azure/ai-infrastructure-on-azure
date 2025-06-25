@@ -3,6 +3,7 @@ kind: Pod
 metadata:
   name: aznhc
 spec:
+  restartPolicy: Never
   containers:
   - name: aznhc
     image: ghcr.io/azure/ai-infrastructure-on-azure/aznhc:latest
@@ -16,7 +17,6 @@ spec:
       limits:
         nvidia.com/gpu: 8
         rdma/ib: 8
-    restartPolicy: Never
     volumeMounts:
     - mountPath: /dev/shm
       name: shmem
