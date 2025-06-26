@@ -1,0 +1,109 @@
+apiVersion: kubeflow.org/v2beta1
+kind: MPIJob
+metadata:
+  name: nccl-tests
+  labels:
+    app: nccl-tests
+spec:
+  slotsPerWorker: 8
+  runPolicy:
+    cleanPodPolicy: Running
+  mpiReplicaSpecs:
+    Launcher:
+      replicas: 1
+      template:
+        metadata:
+          labels:
+            app: nccl-tests
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - image: ghcr.io/azure/ai-infrastructure-on-azure/nccl-test:latest
+            name: nccl
+            env:
+            - name: OMPI_ALLOW_RUN_AS_ROOT
+              value: "1"
+            - name: OMPI_ALLOW_RUN_AS_ROOT_CONFIRM
+              value: "1"
+            command:
+            - /bin/bash
+            - -c
+            args:
+            - |
+              set -xe
+              NUM_NODES=1
+              DEVICES_PER_NODE=8
+              NP=$(($NUM_NODES * $DEVICES_PER_NODE))
+              until mpirun -np ${NP} -x LD_LIBRARY_PATH -bind-to none /usr/bin/nvidia-smi -L 2>/dev/null; do sleep 5; done
+              mpirun \
+                --allow-run-as-root \
+                -np $NP \
+                --map-by ppr:$DEVICES_PER_NODE:node \
+                -hostfile /etc/mpi/hostfile \
+                -mca plm_rsh_no_tree_spawn 1 \
+                -mca plm_rsh_num_concurrent 800 \
+                -mca coll_hcoll_enable 0 \
+                -x LD_LIBRARY_PATH \
+                -x CUDA_DEVICE_ORDER=PCI_BUS_ID \
+                -x NCCL_SOCKET_IFNAME=eth0 \
+                -x UCX_TLS=rc \
+                -x UCX_NET_DEVICES=mlx5_ib0:1 \
+                -x NCCL_DEBUG=WARN \
+                -x NCCL_TOPO_FILE=/etc/topology/ndv5-topo.xml \
+                -x NCCL_IB_PCI_RELAXED_ORDERING=1 \
+                -x NCCL_IB_QPS_PER_CONNECTION=4 \
+                -x NCCL_IGNORE_CPU_AFFINITY=1 \
+                -x NCCL_P2P_NET_CHUNKSIZE=$((512 * 1024)) \
+                -x NCCL_PXN_DISABLE=1 \
+                -x NCCL_MIN_NCHANNELS=32 \
+                -x SHARP_SMX_UCX_INTERFACE=mlx5_ib0:1 \
+                -x SHARP_COLL_ENABLE_SAT=1 \
+                -x SHARP_COLL_LOG_LEVEL=3 \
+                -x SHARP_COLL_ENABLE_PCI_RELAXED_ORDERING=1 \
+                -x NCCL_COLLNET_ENABLE=1 \
+                /opt/nccl-tests/build/all_reduce_perf -b 1K -e 16G -f 2 -g 1 -c 0
+            resources:
+              requests:
+                cpu: 50m
+                memory: 128Mi
+          enableServiceLinks: false
+          automountServiceAccountToken: false
+    Worker:
+      replicas: 2
+      template:
+        metadata:
+          labels:
+            task: test
+        spec:
+          containers:
+          - image: ghcr.io/azure/ai-infrastructure-on-azure/nccl-test:latest
+            name: nccl
+            resources:
+              requests:
+                nvidia.com/gpu: 8
+                rdma/ib: 8
+              limits:
+                nvidia.com/gpu: 8
+                rdma/ib: 8
+            securityContext:
+              capabilities:
+                add: ["IPC_LOCK"]
+            volumeMounts:
+            - name: shm
+              mountPath: /dev/shm
+          volumes:
+          - name: shm
+            emptyDir:
+              medium: Memory
+          affinity:
+            podAntiAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchExpressions:
+                  - key: task
+                    operator: In
+                    values:
+                    - test
+                topologyKey: kubernetes.io/hostname
+          enableServiceLinks: false
+          automountServiceAccountToken: false
