@@ -240,3 +240,14 @@ helm upgrade --install \
   --set driver.rdma.enabled=true \
   --version v25.3.1
 ```
+
+## K8s packages
+
+### MPI Operator
+
+Install mpi-operator:
+
+```
+MPI_OPERATOR_VERSION=v0.6.0
+kubectl apply --server-side -f "https://raw.githubusercontent.com/kubeflow/mpi-operator/${MPI_OPERATOR_VERSION}/deploy/v2beta1/mpi-operator.yaml"
+```
