@@ -64,6 +64,6 @@ RUN sed -i 's/[ #]\(.*StrictHostKeyChecking \).*/ \1no/g' /etc/ssh/ssh_config &&
 
 # Copy binaries from builder
 COPY --from=builder /tmp/nccl-tests/build/ /usr/bin/
-COPY --from=builder /tmp/azhpc-images/topofiles /etc/
+COPY --from=builder /tmp/azhpc-images/topology /etc/
 
 ENTRYPOINT ["/usr/sbin/ssh", "-D"]
