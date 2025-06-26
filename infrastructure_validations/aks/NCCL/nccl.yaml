@@ -31,10 +31,10 @@ spec:
             args:
             - |
               set -xe
-              NUM_NODES=1
+              NUM_NODES=2
               DEVICES_PER_NODE=8
               NP=$(($NUM_NODES * $DEVICES_PER_NODE))
-              until mpirun -np ${NP} -x LD_LIBRARY_PATH -bind-to none /usr/bin/nvidia-smi -L 2>/dev/null; do sleep 5; done
+              until mpirun -np ${NP} -hostfile /etc/mpi/hostfile -x LD_LIBRARY_PATH -bind-to none /usr/bin/nvidia-smi -L 2>/dev/null; do sleep 5; done
               mpirun \
                 --allow-run-as-root \
                 -np $NP \

@@ -50,6 +50,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libibumad3 \
     libhwloc15 \
     libboost-program-options1.83.0 \
+    openmpi-bin \
     pciutils \
     net-tools \
     && rm -rf /var/lib/apt/lists/*
@@ -64,6 +65,6 @@ RUN sed -i 's/[ #]\(.*StrictHostKeyChecking \).*/ \1no/g' /etc/ssh/ssh_config &&
 
 # Copy binaries from builder
 COPY --from=builder /tmp/nccl-tests/build/ /usr/bin/
-COPY --from=builder /tmp/azhpc-images/topology /etc/
+COPY --from=builder /tmp/azhpc-images/topology /etc/topology
 
 ENTRYPOINT ["/usr/sbin/ssh", "-D"]
