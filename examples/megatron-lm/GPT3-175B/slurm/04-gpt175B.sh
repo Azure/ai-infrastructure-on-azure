@@ -7,6 +7,7 @@
 #SBATCH --mem=0
 #SBATCH --output=gpt175b_%j.out
 #SBATCH --error=gpt175b_%j.err
+#SBATCH --network=sharp
 # Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
 # This script has been modified from https://github.com/NVIDIA/Megatron-LM/blob/main/examples/gpt3/train_gpt3_175b_distributed.sh
 # It contains the procedure to run the training of GPT-3 175B model using Megatron-LM.
@@ -31,6 +32,24 @@ NUM_ATTENTION_HEADS=${NUM_ATTENTION_HEADS:-96}
 SEQ_LENGTH=${SEQ_LENGTH:-2048}
 TENSOR_MODEL_PARALLEL_SIZE=${TENSOR_MODEL_PARALLEL_SIZE:-8}
 PIPELINE_MODEL_PARALLEL_SIZE=${PIPELINE_MODEL_PARALLEL_SIZE:-16}
+
+export OMPI_MCA_coll_hcoll_enable=0 \
+        CUDA_DEVICE_ORDER=PCI_BUS_ID \
+        NCCL_SOCKET_IFNAME=eth0 \
+        UCX_TLS=rc \
+        UCX_NET_DEVICES=mlx5_ib0:1 \
+        NCCL_DEBUG=INFO \
+        NCCL_IB_PCI_RELAXED_ORDERING=1 \
+        NCCL_IB_QPS_PER_CONNECTION=4 \
+        NCCL_IGNORE_CPU_AFFINITY=1 \
+        NCCL_P2P_NET_CHUNKSIZE=$((512 * 1024)) \
+        NCCL_PXN_DISABLE=1 \
+        NCCL_MIN_NCHANNELS=32 \
+        SHARP_SMX_UCX_INTERFACE=mlx5_ib0:1 \
+        SHARP_COLL_ENABLE_SAT=1 \
+        SHARP_COLL_LOG_LEVEL=3 \
+        SHARP_COLL_ENABLE_PCI_RELAXED_ORDERING=1 \
+        NCCL_COLLNET_ENABLE=1
 
 export NCCL_TOPO_FILE=$TOPO_FILE
 export CUDA_DEVICE_MAX_CONNECTIONS=1
@@ -90,6 +109,7 @@ TRAINING_ARGS=(
 	--min-lr 6.0e-6
 	--lr-warmup-fraction .001
 	--lr-decay-iters 430000
+	--use-sharp
 )
 
 MODEL_PARALLEL_ARGS=(
