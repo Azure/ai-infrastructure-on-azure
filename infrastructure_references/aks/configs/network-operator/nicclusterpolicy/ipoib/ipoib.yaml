@@ -1,0 +1,30 @@
+# Versions are provided at: https://docs.nvidia.com/networking/display/kubernetes<driver-version>/platform-support.html
+apiVersion: mellanox.com/v1alpha1
+kind: NicClusterPolicy
+metadata:
+  name: nic-cluster-policy
+spec:
+  secondaryNetwork:
+    cniPlugins:
+      repository: ghcr.io/k8snetworkplumbingwg
+      image: plugins
+      # Latest tag: https://github.com/k8snetworkplumbingwg/plugins/pkgs/container/plugins
+      version: v1.6.2-update.1
+
+    multus:
+      repository: ghcr.io/k8snetworkplumbingwg
+      image: multus-cni
+      # Latest tag: https://github.com/k8snetworkplumbingwg/plugins/pkgs/container/multus-cni
+      version: v4.1.0
+
+    ipoib:
+      repository: ghcr.io/mellanox
+      image: ipoib-cni
+      # Latest tag: https://github.com/mellanox/ipoib-cni/pkgs/container/ipoib-cni
+      version: v1.2.2
+
+    ipamPlugin:
+      repository: ghcr.io/k8snetworkplumbingwg
+      image: whereabouts
+      # Latest tag: https://github.com/k8snetworkplumbingwg/whereabouts/pkgs/container/whereabouts
+      version: v0.7.0
