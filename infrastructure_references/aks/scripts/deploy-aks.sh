@@ -56,7 +56,6 @@ function deploy_aks() {
     fi
 
     echo "⏳ Creating AKS cluster '${CLUSTER_NAME}' in resource group '${AZURE_RESOURCE_GROUP}'..."
-    # TODO: Remove the --node-vm-size
     az aks create \
         --resource-group "${AZURE_RESOURCE_GROUP}" \
         --name "${CLUSTER_NAME}" \
@@ -67,7 +66,6 @@ function deploy_aks() {
         --location "${AZURE_REGION}" \
         --generate-ssh-keys \
         --admin-username "${USER_NAME}" \
-        --node-vm-size standard_ds4_v2 \
         --os-sku Ubuntu
 
     echo "✅ AKS cluster '${CLUSTER_NAME}' created successfully in resource group '${AZURE_RESOURCE_GROUP}'!"
@@ -250,11 +248,47 @@ function install_mpi_operator() {
     echo "✅ MPI Operator installed successfully."
 }
 
+function print_usage() {
+    echo "Usage: $0 <command> [options]"
+    echo ""
+    echo "Commands:"
+    echo "  deploy-aks               Create a new AKS cluster. Supports additional 'az aks create' arguments"
+    echo "  add-nodepool             Add a GPU node pool to the existing AKS cluster. Supports additional 'az aks nodepool add' arguments"
+    echo "  install-network-operator Install NVIDIA Network Operator for InfiniBand/RDMA support"
+    echo "  install-gpu-operator     Install NVIDIA GPU Operator for GPU workload management"
+    echo "  install-kube-prometheus  Install Prometheus monitoring stack with Grafana dashboards"
+    echo "  install-mpi-operator     Install MPI Operator for distributed computing workloads"
+    echo "  uninstall-mpi-operator   Remove MPI Operator from the cluster"
+    echo "  all                      Deploy AKS cluster and install all operators (full setup)"
+    echo ""
+    echo "Examples:"
+    echo "  $0 all"
+    echo "  $0 deploy-aks --node-vm-size standard_ds4_v2"
+    echo "  $0 add-nodepool --gpu-driver=none --node-osdisk-size 1000"
+    echo ""
+    echo "Environment Variables (mandatory):"
+    echo "  AZURE_REGION             Azure region for deployment"
+    echo "  NODE_POOL_VM_SIZE        VM size for GPU nodes"
+    echo ""
+    echo "Environment Variables (optional):"
+    echo "  AZURE_RESOURCE_GROUP     Resource group name (default: ai-infra-aks)"
+    echo "  CLUSTER_NAME             AKS cluster name (default: ai-infra)"
+    echo "  USER_NAME                Admin username for AKS nodes (default: azureuser)"
+    echo "  NODE_POOL_NAME           Node pool name (default: gpu)"
+    echo "  NODE_POOL_NODE_COUNT     Number of nodes in pool (default: 2)"
+    echo "  GPU_OPERATOR_VERSION     Version of GPU Operator to install (default: v25.3.1)"
+    echo "  NETWORK_OPERATOR_VERSION Version of Network Operator to install (default: v25.4.0)"
+    echo "  MPI_OPERATOR_VERSION     Version of MPI Operator to install (default: v0.6.0)"
+    echo "  NETWORK_OPERATOR_NS      Namespace for Network Operator (default: network-operator)"
+    echo "  GPU_OPERATOR_NS          Namespace for GPU Operator (default: gpu-operator)"
+    echo ""
+}
+
 check_prereqs
 PARAM="${1:-}"
 case $PARAM in
 deploy-aks | deploy_aks)
-    deploy_aks
+    deploy_aks "${@:2}"
     download_aks_credentials --overwrite-existing
     ;;
 add-nodepool | add_nodepool)
@@ -285,7 +319,7 @@ all)
     install_gpu_operator
     ;;
 *)
-    echo "🛠️ Usage: $0 deploy-aks | add-nodepool | install-network-operator | install-gpu-operator | install-kube-prometheus | install-mpi-operator | uninstall-mpi-operator | all"
+    print_usage
     exit 1
     ;;
 esac
