@@ -58,7 +58,7 @@ spec:
       template:
         metadata:
           labels:
-            task: nccl-test
+            task: {{ include "nccl-test.fullname" . }}
         spec:
           containers:
           - image: {{ .Values.image.repository }}:{{ .Values.image.tag }}

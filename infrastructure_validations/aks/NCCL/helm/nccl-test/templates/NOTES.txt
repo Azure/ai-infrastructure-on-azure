@@ -13,7 +13,7 @@ Job Configuration:
    kubectl logs -f job/{{ include "nccl-test.fullname" . }}-launcher
 
 4. To view all pods related to this job:
-   kubectl get pods -l task=nccl-test
+   kubectl get pods -l task={{ include "nccl-test.fullname" . }}
 
 5. To clean up the job when finished:
    helm uninstall {{ .Release.Name }}
