@@ -30,7 +30,7 @@ fi
 
 if [ ! -f "$conf_file" ]; then
     echo "The vm SKU 'standard_$sku' is currently not supported by Azure health checks."
-    return 1
+    exit 1
 fi
 
 nhc -t 600 -c $conf_file
