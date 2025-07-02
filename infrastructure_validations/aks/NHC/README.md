@@ -99,7 +99,7 @@ helm uninstall aznhc-test
 
 The container image is automatically built and published to GitHub Container Registry via GitHub Actions whenever changes are made to the Dockerfile or workflow.
 
-Published image: `ghcr.io/azure/ai-infrastructure-on-azure/aznhc:latest`
+Published image: `ghcr.io/Azure/ai-infrastructure-on-azure/aznhc:latest`
 
 ### Manual Build (Optional)
 
