@@ -1,0 +1,85 @@
+apiVersion: kubeflow.org/v2beta1
+kind: MPIJob
+metadata:
+  name: {{ .Values.mpiJob.name }}
+  labels:
+    {{- range $key, $value := .Values.mpiJob.labels }}
+    {{ $key }}: {{ $value }}
+    {{- end }}
+spec:
+  slotsPerWorker: {{ .Values.slotsPerWorker }}
+  runPolicy:
+    cleanPodPolicy: {{ .Values.runPolicy.cleanPodPolicy }}
+  mpiReplicaSpecs:
+    Launcher:
+      replicas: 1
+      template:
+        metadata:
+          labels:
+            {{- range $key, $value := .Values.mpiJob.labels }}
+            {{ $key }}: {{ $value }}
+            {{- end }}
+        spec:
+          restartPolicy: {{ .Values.podConfig.restartPolicy }}
+          containers:
+          - image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+            name: nccl
+            imagePullPolicy: {{ .Values.image.pullPolicy }}
+            env:
+            {{- range $key, $value := .Values.ncclTest.env }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+            {{- end }}
+            command:
+            - /bin/bash
+            - -c
+            args:
+            - |
+              set -xe
+              NUM_NODES={{ .Values.replicaCount }}
+              DEVICES_PER_NODE={{ .Values.slotsPerWorker }}
+              NP=$(($NUM_NODES * $DEVICES_PER_NODE))
+              until mpirun -np ${NP} -hostfile /etc/mpi/hostfile -x LD_LIBRARY_PATH -bind-to none hostname 2>/dev/null; do sleep 5; done
+              mpirun \
+                --allow-run-as-root \
+                -np $NP \
+                --map-by ppr:$DEVICES_PER_NODE:node \
+                -hostfile /etc/mpi/hostfile \
+                -mca plm_rsh_no_tree_spawn 1 \
+                -mca plm_rsh_num_concurrent 800 \
+                -mca coll_hcoll_enable 0 \
+                -x LD_LIBRARY_PATH \
+                {{- range $key, $value := .Values.ncclTest.env }}
+                -x {{ $key }} \
+                {{- end }}
+                all_reduce_perf {{ .Values.ncclTest.testArgs }}
+            resources:
+              {{- toYaml .Values.resources.launcher | nindent 14 }}
+          enableServiceLinks: {{ .Values.podConfig.enableServiceLinks }}
+          automountServiceAccountToken: {{ .Values.podConfig.automountServiceAccountToken }}
+    Worker:
+      replicas: {{ .Values.replicaCount }}
+      template:
+        metadata:
+          labels:
+            task: test
+        spec:
+          containers:
+          - image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+            name: nccl
+            imagePullPolicy: {{ .Values.image.pullPolicy }}
+            resources:
+              {{- toYaml .Values.resources.worker | nindent 14 }}
+            securityContext:
+              {{- toYaml .Values.podConfig.securityContext | nindent 14 }}
+            volumeMounts:
+            - name: shm
+              mountPath: /dev/shm
+          volumes:
+          - name: shm
+            emptyDir:
+              medium: Memory
+          affinity:
+            {{- toYaml .Values.affinity | nindent 12 }}
+          enableServiceLinks: {{ .Values.podConfig.enableServiceLinks }}
+          automountServiceAccountToken: {{ .Values.podConfig.automountServiceAccountToken }}

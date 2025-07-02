@@ -1,0 +1,100 @@
+# Default values for nccl-test.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Number of worker nodes for the test
+replicaCount: 2
+
+# Slots per worker (GPUs per node)
+slotsPerWorker: 8
+
+# Container image configuration
+image:
+  repository: ghcr.io/azure/ai-infrastructure-on-azure/nccl-test
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# MPI Job configuration
+mpiJob:
+  name: nccl-tests
+  labels:
+    app: nccl-tests
+
+# NCCL test configuration
+ncclTest:
+  # Test parameters
+  testArgs: "-b 1K -e 16G -f 2 -g 1 -c 0"
+  
+  # NCCL environment variables
+  env:
+    # Basic MPI settings
+    OMPI_ALLOW_RUN_AS_ROOT: "1"
+    OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: "1"
+    
+    # CUDA settings
+    CUDA_DEVICE_ORDER: "PCI_BUS_ID"
+    
+    # NCCL networking settings
+    NCCL_SOCKET_IFNAME: "eth0"
+    NCCL_DEBUG: "WARN"
+    NCCL_TOPO_FILE: "/etc/topology/ndv5-topo.xml"
+    
+    # NCCL performance tuning
+    NCCL_IB_PCI_RELAXED_ORDERING: "1"
+    NCCL_IB_QPS_PER_CONNECTION: "4"
+    NCCL_IGNORE_CPU_AFFINITY: "1"
+    NCCL_P2P_NET_CHUNKSIZE: "524288"  # 512 * 1024
+    NCCL_PXN_DISABLE: "1"
+    NCCL_MIN_NCHANNELS: "32"
+    NCCL_COLLNET_ENABLE: "1"
+    
+    # UCX settings
+    UCX_TLS: "rc"
+    UCX_NET_DEVICES: "mlx5_ib0:1"
+    
+    # SHARP settings
+    SHARP_SMX_UCX_INTERFACE: "mlx5_ib0:1"
+    SHARP_COLL_ENABLE_SAT: "1"
+    SHARP_COLL_LOG_LEVEL: "3"
+    SHARP_COLL_ENABLE_PCI_RELAXED_ORDERING: "1"
+
+# Resource configuration
+resources:
+  launcher:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+  worker:
+    requests:
+      "nvidia.com/gpu": 8
+      "rdma/ib": 8
+    limits:
+      "nvidia.com/gpu": 8
+      "rdma/ib": 8
+
+# Pod configuration
+podConfig:
+  restartPolicy: OnFailure
+  enableServiceLinks: false
+  automountServiceAccountToken: false
+  
+  # Security context for workers
+  securityContext:
+    capabilities:
+      add: ["IPC_LOCK"]
+
+# Pod anti-affinity to ensure workers are on different nodes
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+    - labelSelector:
+        matchExpressions:
+        - key: task
+          operator: In
+          values:
+          - test
+      topologyKey: kubernetes.io/hostname
+
+# Clean pod policy
+runPolicy:
+  cleanPodPolicy: Running

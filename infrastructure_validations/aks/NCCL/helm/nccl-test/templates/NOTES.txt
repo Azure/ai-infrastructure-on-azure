@@ -1,0 +1,25 @@
+1. Your NCCL test job has been deployed!
+
+Job Configuration:
+- Number of worker nodes: {{ .Values.replicaCount }}
+- GPUs per node: {{ .Values.slotsPerWorker }}
+- Total processes: {{ mul .Values.replicaCount .Values.slotsPerWorker }}
+- Container image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+
+2. To check the status of your NCCL test job:
+   kubectl get mpijob {{ .Values.mpiJob.name }}
+
+3. To view the logs from the launcher pod:
+   kubectl logs -f job/{{ .Values.mpiJob.name }}-launcher
+
+4. To view all pods related to this job:
+   kubectl get pods -l app={{ index .Values.mpiJob.labels "app" }}
+
+5. To clean up the job when finished:
+   helm uninstall {{ .Release.Name }}
+
+Test Parameters:
+- NCCL test arguments: {{ .Values.ncclTest.testArgs }}
+- Debug level: {{ .Values.ncclTest.env.NCCL_DEBUG }}
+
+Note: The job will automatically clean up running pods when completed based on the cleanPodPolicy setting.

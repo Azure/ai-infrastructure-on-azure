@@ -1,0 +1,17 @@
+apiVersion: v2
+name: nccl-test
+description: A Helm chart for NCCL performance testing on Kubernetes with MPI
+type: application
+version: 0.1.0
+appVersion: "1.0"
+keywords:
+  - nccl
+  - mpi
+  - gpu
+  - performance
+  - testing
+home: https://github.com/Azure/ai-infrastructure-on-azure
+sources:
+  - https://github.com/Azure/ai-infrastructure-on-azure
+maintainers:
+  - name: Azure AI Infrastructure Team
