@@ -10,17 +10,6 @@ helm install aznhc-test ./helm/aznhc
 
 # Install with custom number of nodes
 helm install aznhc-test ./helm/aznhc --set nodes=4
-
-# Install with custom configuration
-helm install aznhc-test ./helm/aznhc \
-  --set nodes=4 \
-  --set gpuResource="nvidia.com/gpu" \
-  --set rdmaResource="rdma/ib"
-
-# Install with shared RDMA resources
-helm install aznhc-test ./helm/aznhc \
-  --set rdmaResource="rdma/shared_ib" \
-  --set nodes=4
 ```
 
 ### Configuration Options
@@ -55,7 +44,6 @@ For complex configurations, create a custom values file:
 ```yaml
 # custom-values.yaml
 nodes: 4
-rdmaResource: "rdma/shared_ib"
 
 nhcConfig: |
   # Custom NHC configuration
@@ -75,22 +63,22 @@ helm install aznhc-test ./helm/aznhc -f custom-values.yaml
 Check job status:
 ```bash
 kubectl get job
-kubectl describe job <release-name>
+kubectl describe job aznhc-test
 ```
 
 View all health check results:
 ```bash
-kubectl logs -l task=health-check
+kubectl logs -l task=aznhc-test
 ```
 
 **Check for failures across all nodes:**
 ```bash
-kubectl logs -l task=health-check | grep -i fail
+kubectl logs -l task=aznhc-test | grep -i fail
 ```
 
 Monitor job completion:
 ```bash
-kubectl wait --for=condition=complete --timeout=600s job/<release-name>
+kubectl wait --for=condition=complete --timeout=600s job/aznhc-test
 ```
 
 ### Understanding Results

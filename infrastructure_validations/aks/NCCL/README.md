@@ -76,13 +76,13 @@ helm install nccl-test ./helm/nccl-test -f custom-values.yaml
 Check job status:
 ```bash
 kubectl get mpijob
-kubectl describe mpijob <release-name>
+kubectl describe mpijob nccl-test
 ```
 
 View test results:
 ```bash
 # Check launcher logs for results
-kubectl logs job/<release-name>-launcher
+kubectl logs job/nccl-test-launcher
 
 # Check worker logs
 kubectl logs -l task=nccl-test
