@@ -56,13 +56,4 @@ spec:
         hostPath:
           path: /var/lib/hyperv/.kvp_pool_3
           type: File
-      affinity:
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: task
-                operator: In
-                values:
-                - health-check
-            topologyKey: kubernetes.io/hostname
+
