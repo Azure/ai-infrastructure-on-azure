@@ -1,0 +1,68 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "aznhc.fullname" . }}
+spec:
+  parallelism: {{ .Values.nodes }}
+  completions: {{ .Values.nodes }}
+  template:
+    metadata:
+      labels:
+        app: aznhc
+        task: {{ include "aznhc.fullname" . }}
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: aznhc
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        securityContext:
+          capabilities:
+            add: ["IPC_LOCK"]
+        resources:
+          requests:
+            {{ .Values.gpuResource }}: 8
+            {{ .Values.rdmaResource }}: 8
+          limits:
+            {{ .Values.gpuResource }}: 8
+            {{ .Values.rdmaResource }}: 8
+        volumeMounts:
+        - mountPath: /dev/shm
+          name: shmem
+        - mountPath: /azure-nhc/syslog
+          name: syslog-volume
+          readOnly: true
+        - mountPath: /var/lib/hyperv/.kvp_pool_3
+          name: kvp-pool-volume
+          readOnly: true
+        command:
+        - /bin/bash
+        - -c
+        - |
+          cat <<EOF > /azure-nhc/aznhc.conf
+{{ .Values.nhcConfig | indent 10 }}
+          EOF
+          /azure-nhc/aznhc_entrypoint.sh
+      volumes:
+      - name: shmem
+        emptyDir:
+          medium: Memory
+          sizeLimit: 128Gi
+      - name: syslog-volume
+        hostPath:
+          path: /var/log/syslog
+          type: File
+      - name: kvp-pool-volume
+        hostPath:
+          path: /var/lib/hyperv/.kvp_pool_3
+          type: File
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: task
+                operator: In
+                values:
+                - health-check
+            topologyKey: kubernetes.io/hostname

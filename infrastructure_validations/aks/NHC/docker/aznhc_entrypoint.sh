@@ -22,7 +22,11 @@ KERNEL: $kernel_version
 SKU: $sku
 EOF
 
-conf_file=${AZ_NHC_ROOT}/conf/${sku}.conf
+if [ -f "${AZ_NHC_ROOT}/aznhc.conf" ]; then
+    conf_file="${AZ_NHC_ROOT}/aznhc.conf"
+else
+    conf_file="${AZ_NHC_ROOT}/conf/${sku}.conf"
+fi
 
 if [ ! -f "$conf_file" ]; then
     echo "The vm SKU 'standard_$sku' is currently not supported by Azure health checks."

@@ -1,0 +1,15 @@
+apiVersion: v2
+name: aznhc
+description: Azure Node Health Check (AZNHC) for GPU cluster validation
+type: application
+version: 0.1.0
+appVersion: "latest"
+keywords:
+  - azure
+  - hpc
+  - gpu
+  - health-check
+  - validation
+home: https://github.com/Azure/ai-infrastructure-on-azure
+sources:
+  - https://github.com/Azure/ai-infrastructure-on-azure/tree/main/infrastructure_validations/aks/NHC
