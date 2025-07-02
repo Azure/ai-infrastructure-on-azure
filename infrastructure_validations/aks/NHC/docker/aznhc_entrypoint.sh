@@ -1,6 +1,6 @@
 #!/bin/bash
 
-aznhc_root=/azure-nhc
+# Line removed as the variable 'aznhc_root' is unused.
 
 vm_hostname=$(hostname)
 vm_id=$(curl -H Metadata:true --max-time 10 -s  "http://169.254.169.254/metadata/instance/compute/vmId?api-version=2021-03-01&format=text")
