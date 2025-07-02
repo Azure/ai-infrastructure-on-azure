@@ -6,7 +6,7 @@ on:
       - main
       - aks-infrastructure
     paths:
-      - infrastructure_validations/aks/NCCL/Dockerfile
+      - infrastructure_validations/aks/NCCL/docker/Dockerfile
       - .github/workflows/build_nccl_image.yaml
 
   workflow_dispatch:
@@ -52,8 +52,8 @@ jobs:
     - name: Build and push
       uses: docker/build-push-action@v6
       with:
-        context: infrastructure_validations/aks/NCCL
-        file: infrastructure_validations/aks/NCCL/Dockerfile
+        context: infrastructure_validations/aks/NCCL/docker
+        file: infrastructure_validations/aks/NCCL/docker/Dockerfile
         push: true
         tags: ${{ steps.tag.outputs.tags }}
         labels: ${{ steps.tag.outputs.labels }}
