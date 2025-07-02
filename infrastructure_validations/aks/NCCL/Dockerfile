@@ -39,7 +39,6 @@ RUN git clone --depth=1 https://github.com/Azure/azhpc-images.git /tmp/azhpc-ima
 FROM nvidia/cuda:${CUDA_VERSION_MINOR}-runtime-ubuntu24.04 AS final
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV AZ_NHC_ROOT=/azure-nhc
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     openssh-client \

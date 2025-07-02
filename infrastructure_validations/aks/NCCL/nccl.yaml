@@ -34,7 +34,7 @@ spec:
               NUM_NODES=2
               DEVICES_PER_NODE=8
               NP=$(($NUM_NODES * $DEVICES_PER_NODE))
-              until mpirun -np ${NP} -hostfile /etc/mpi/hostfile -x LD_LIBRARY_PATH -bind-to none /usr/bin/nvidia-smi -L 2>/dev/null; do sleep 5; done
+              until mpirun -np ${NP} -hostfile /etc/mpi/hostfile -x LD_LIBRARY_PATH -bind-to none hostname 2>/dev/null; do sleep 5; done
               mpirun \
                 --allow-run-as-root \
                 -np $NP \
@@ -61,7 +61,7 @@ spec:
                 -x SHARP_COLL_LOG_LEVEL=3 \
                 -x SHARP_COLL_ENABLE_PCI_RELAXED_ORDERING=1 \
                 -x NCCL_COLLNET_ENABLE=1 \
-                /opt/nccl-tests/build/all_reduce_perf -b 1K -e 16G -f 2 -g 1 -c 0
+                all_reduce_perf -b 1K -e 16G -f 2 -g 1 -c 0
             resources:
               requests:
                 cpu: 50m
