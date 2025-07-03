@@ -21,11 +21,11 @@ spec:
             add: ["IPC_LOCK"]
         resources:
           requests:
-            {{ .Values.gpuResource }}: 8
-            {{ .Values.rdmaResource }}: 8
+            {{ .Values.gpuResource }}: {{ .Values.gpusPerNode }}
+            {{ .Values.rdmaResource }}: {{ .Values.gpusPerNode }}
           limits:
-            {{ .Values.gpuResource }}: 8
-            {{ .Values.rdmaResource }}: 8
+            {{ .Values.gpuResource }}: {{ .Values.gpusPerNode }}
+            {{ .Values.rdmaResource }}: {{ .Values.gpusPerNode }}
         volumeMounts:
         - mountPath: /dev/shm
           name: shmem

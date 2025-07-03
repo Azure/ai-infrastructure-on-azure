@@ -5,6 +5,9 @@
 # Number of nodes to test
 nodes: 2
 
+# Number of GPUs per node (used for requesting resources)
+gpusPerNode: 8
+
 # Resource names for GPU and RDMA
 gpuResource: "nvidia.com/gpu"
 rdmaResource: "rdma/ib"
@@ -43,7 +46,6 @@ nhcConfig: |
   ####
   * || check_gpu_count 8
   * || check_nvsmi_healthmon
-  # unable to run check_gpu_xid without access to syslog
   * || check_gpu_xid
   * || check_gpu_bw 52 350
   * || check_gpu_ecc 20000000 10000
@@ -56,5 +58,4 @@ nhcConfig: |
   #### Additional IB checks
   ####
   * || check_ib_bw_gdr 380
-  # unable to run check_ib_link_flapping without access to syslog
   * || check_ib_link_flapping 6
