@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - aks-infrastructure
     paths:
       - infrastructure_validations/aks/NCCL/docker/Dockerfile
       - .github/workflows/build_nccl_image.yaml
