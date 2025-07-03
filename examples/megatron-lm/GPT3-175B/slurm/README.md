@@ -187,6 +187,7 @@ Some elements to take into considerations:
 - `SAVE_INTERVAL` number of iterations between checkpoint save. Default is `10000`, but it can be decreased to generate higher frequency checkpointing.
 - `EVAL_INTERVAL` number of iterations between evaluations. Default is `1000`.
 - `NUMBER_OF_ITERATIONS` number of iterations up to completion
+- `USE_SHARP` `1`/`0` to enable/disable SHARP. Default is `0`.
 
 This value above have been tuned to create a significant pressure on the storage with checkpointing. To look at the effective defaults refer to the official [Megatron-LM GPT175B example](https://github.com/NVIDIA/Megatron-LM/blob/main/examples/gpt3/train_gpt3_175b_distributed.sh)
 

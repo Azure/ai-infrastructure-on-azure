@@ -7,7 +7,6 @@
 #SBATCH --mem=0
 #SBATCH --output=gpt175b_%j.out
 #SBATCH --error=gpt175b_%j.err
-#SBATCH --network=sharp
 # Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
 # This script has been modified from https://github.com/NVIDIA/Megatron-LM/blob/main/examples/gpt3/train_gpt3_175b_distributed.sh
 # It contains the procedure to run the training of GPT-3 175B model using Megatron-LM.
@@ -32,6 +31,7 @@ NUM_ATTENTION_HEADS=${NUM_ATTENTION_HEADS:-96}
 SEQ_LENGTH=${SEQ_LENGTH:-2048}
 TENSOR_MODEL_PARALLEL_SIZE=${TENSOR_MODEL_PARALLEL_SIZE:-8}
 PIPELINE_MODEL_PARALLEL_SIZE=${PIPELINE_MODEL_PARALLEL_SIZE:-16}
+USE_SHARP=${USE_SHARP:-0} # Set to 1 to use SHARP, 0 to disable it
 
 export OMPI_MCA_coll_hcoll_enable=0 \
 	CUDA_DEVICE_ORDER=PCI_BUS_ID \
@@ -49,7 +49,7 @@ export OMPI_MCA_coll_hcoll_enable=0 \
 	SHARP_COLL_ENABLE_SAT=1 \
 	SHARP_COLL_LOG_LEVEL=3 \
 	SHARP_COLL_ENABLE_PCI_RELAXED_ORDERING=1 \
-	NCCL_COLLNET_ENABLE=1
+	NCCL_COLLNET_ENABLE=${USE_SHARP}
 
 export NCCL_TOPO_FILE=$TOPO_FILE
 export CUDA_DEVICE_MAX_CONNECTIONS=1
@@ -109,8 +109,12 @@ TRAINING_ARGS=(
 	--min-lr 6.0e-6
 	--lr-warmup-fraction .001
 	--lr-decay-iters 430000
-	--use-sharp
 )
+
+# Add --use-sharp flag only when SHARP is enabled
+if [ "$USE_SHARP" -eq 1 ]; then
+	TRAINING_ARGS+=(--use-sharp)
+fi
 
 MODEL_PARALLEL_ARGS=(
 	--tensor-model-parallel-size "$TENSOR_MODEL_PARALLEL_SIZE"
