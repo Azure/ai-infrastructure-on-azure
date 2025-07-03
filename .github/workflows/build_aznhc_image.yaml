@@ -44,7 +44,7 @@ jobs:
       id: tag
       uses: docker/metadata-action@v5
       with:
-        images: ghcr.io/Azure/ai-infrastructure-on-azure/aznhc
+        images: ghcr.io/azure/ai-infrastructure-on-azure/aznhc
         tags: |
           type=raw,value=latest
           type=schedule,pattern={{date 'YYYYMMDD-hhmmss' tz='Europe/London'}}
