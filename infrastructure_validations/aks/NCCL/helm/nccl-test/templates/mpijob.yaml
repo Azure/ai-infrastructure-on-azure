@@ -1,0 +1,85 @@
+apiVersion: kubeflow.org/v2beta1
+kind: MPIJob
+metadata:
+  name: {{ include "nccl-test.fullname" . }}
+spec:
+  slotsPerWorker: {{ .Values.gpusPerNode }}
+  runPolicy:
+    cleanPodPolicy: Running
+  mpiReplicaSpecs:
+    Launcher:
+      replicas: 1
+      template:
+        metadata:
+          labels:
+            app: nccl-test
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+            name: nccl
+            imagePullPolicy: {{ .Values.image.pullPolicy }}
+            env:
+            {{- range $key, $value := .Values.ncclTest.env }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+            {{- end }}
+            command:
+            - /bin/bash
+            - -c
+            args:
+            - |
+              set -xe
+              NUM_NODES={{ .Values.nodes }}
+              DEVICES_PER_NODE={{ .Values.gpusPerNode }}
+              NP=$(($NUM_NODES * $DEVICES_PER_NODE))
+              until mpirun -np ${NP} -hostfile /etc/mpi/hostfile -x LD_LIBRARY_PATH -bind-to none hostname 2>/dev/null; do sleep 5; done
+              mpirun \
+                --allow-run-as-root \
+                -np $NP \
+                --map-by ppr:$DEVICES_PER_NODE:node \
+                -hostfile /etc/mpi/hostfile \
+                -mca plm_rsh_no_tree_spawn 1 \
+                -mca plm_rsh_num_concurrent 800 \
+                -mca coll_hcoll_enable 0 \
+                -x LD_LIBRARY_PATH \
+                {{- range $key, $value := .Values.ncclTest.env }}
+                -x {{ $key }} \
+                {{- end }}
+                all_reduce_perf {{ .Values.ncclTest.testArgs }}
+            resources:
+              requests:
+                cpu: 50m
+                memory: 128Mi
+          enableServiceLinks: false
+          automountServiceAccountToken: false
+    Worker:
+      replicas: {{ .Values.nodes }}
+      template:
+        metadata:
+          labels:
+            task: {{ include "nccl-test.fullname" . }}
+        spec:
+          containers:
+          - image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+            name: nccl
+            imagePullPolicy: {{ .Values.image.pullPolicy }}
+            resources:
+              requests:
+                {{ .Values.gpuResource }}: {{ .Values.gpusPerNode }}
+                {{ .Values.rdmaResource }}: {{ .Values.gpusPerNode }}
+              limits:
+                {{ .Values.gpuResource }}: {{ .Values.gpusPerNode }}
+                {{ .Values.rdmaResource }}: {{ .Values.gpusPerNode }}
+            securityContext:
+              capabilities:
+                add: ["IPC_LOCK"]
+            volumeMounts:
+            - name: shm
+              mountPath: /dev/shm
+          volumes:
+          - name: shm
+            emptyDir:
+              medium: Memory
+          enableServiceLinks: false
+          automountServiceAccountToken: false

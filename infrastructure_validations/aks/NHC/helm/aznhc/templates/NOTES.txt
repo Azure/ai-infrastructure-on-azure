@@ -1,0 +1,26 @@
+1. Get the status of your Azure Node Health Check job:
+
+   kubectl get job {{ include "aznhc.fullname" . }}
+
+2. Check the health check results from all nodes:
+
+   kubectl logs -l task={{ include "aznhc.fullname" . }}
+
+3. Check for any failures across all nodes:
+
+   kubectl logs -l task={{ include "aznhc.fullname" . }} | grep -i fail
+
+4. Get detailed status of individual pods:
+
+   kubectl get pods -l task={{ include "aznhc.fullname" . }}
+
+5. Check logs from a specific pod:
+
+   kubectl logs <pod-name>
+
+6. Monitor job completion:
+
+   kubectl wait --for=condition=complete --timeout=600s job/{{ include "aznhc.fullname" . }}
+
+The health check will test GPU, InfiniBand, and system components on each node.
+Each pod should complete successfully if the node passes all health checks.

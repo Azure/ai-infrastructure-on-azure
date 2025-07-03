@@ -1,0 +1,61 @@
+# Default values for aznhc.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Number of nodes to test
+nodes: 2
+
+# Number of GPUs per node (used for requesting resources)
+gpusPerNode: 8
+
+# Resource names for GPU and RDMA
+gpuResource: "nvidia.com/gpu"
+rdmaResource: "rdma/ib"
+
+# Container image configuration
+image:
+  repository: ghcr.io/azure/ai-infrastructure-on-azure/aznhc
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# Node Health Check configuration file
+# This gets written to /azure-nhc/aznhc.conf
+nhcConfig: |
+  #######################################################################
+  ###
+  ### Hardware checks
+  ###
+  * || check_hw_cpuinfo 2 96 96
+  * || check_hw_physmem 1915071MB 1915071MB 5%
+  * || check_hw_swap 0kB 0kB 3%
+  * || check_hw_ib 400 mlx5_0:1
+  * || check_hw_ib 400 mlx5_1:1
+  * || check_hw_ib 400 mlx5_2:1
+  * || check_hw_ib 400 mlx5_3:1
+  * || check_hw_ib 400 mlx5_4:1
+  * || check_hw_ib 400 mlx5_5:1
+  * || check_hw_ib 400 mlx5_6:1
+  * || check_hw_ib 400 mlx5_7:1
+  * || check_hw_eth lo
+  * || check_hw_eth eth0
+  * || check_hw_topology
+
+  #######################################################################
+  ####
+  #### GPU checks
+  ####
+  * || check_gpu_count 8
+  * || check_nvsmi_healthmon
+  * || check_gpu_xid
+  * || check_gpu_bw 52 350
+  * || check_gpu_ecc 20000000 10000
+  * || check_gpu_clock_throttling
+  * || check_nccl_allreduce 460.0 1 16G /azure-nhc/topofiles/ndv5-topo.xml
+  * || check_nvlink_status
+
+  #######################################################################
+  ####
+  #### Additional IB checks
+  ####
+  * || check_ib_bw_gdr 380
+  * || check_ib_link_flapping 6

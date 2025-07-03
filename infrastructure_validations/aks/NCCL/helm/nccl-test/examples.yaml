@@ -1,0 +1,16 @@
+# Example values for different NCCL test configurations
+
+# Repeat test - 10 iterations all 16G
+repeat-16G-test:
+  nodes: 2
+  gpusPerNode: 8
+  ncclTest:
+    testArgs: "-b 16G -e 16G -f 2 -g 1 -c 0 -n 10"
+
+# Debug configuration - verbose NCCL logging
+debug-test:
+  nodes: 2
+  gpusPerNode: 8
+  ncclTest:
+    env:
+      NCCL_DEBUG: "INFO"
