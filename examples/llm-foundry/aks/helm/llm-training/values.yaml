@@ -1,0 +1,102 @@
+# Default values for llm-training
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Model configuration
+model:
+  config: "mpt-30b"
+
+# Training configuration
+training:
+  # Number of training nodes (workers)
+  nodes: 4
+  # Number of GPUs per node
+  gpusPerNode: 8
+
+# Additional YAML updates for the training configuration
+yamlUpdates: {}
+# Example:
+# yamlUpdates:
+#   variables.grad_accum: "auto"
+#   optimizer.lr: 1.0e-4
+
+# Container image configuration
+image:
+  repository: ghcr.io/azure/ai-infrastructure-on-azure/llm-foundry
+  tag: v0.18.0
+  pullPolicy: IfNotPresent
+
+# Storage configuration
+storage:
+  # Path where the converted dataset will be stored
+  dataPath: "/data/my-copy-c4"
+  # Azure Blob Storage configuration
+  azureBlob:
+    # Azure Storage Account name
+    storageAccountName: ""
+    # Container name for dataset storage
+    containerName: "data"
+    # Storage size
+    size: "1Ti"
+    # Storage class name for Azure Blob CSI driver
+    storageClassName: "azureblob-fuse-premium"
+    # Kubelet managed identity resource ID for blob storage access
+    kubeletIdentityResourceID: ""
+    # Volume handle prefix (will be combined with storage account)
+    volumeHandlePrefix: "dataset"
+
+# Resource configuration
+resources:
+  # GPU resource type
+  gpuResource: "nvidia.com/gpu"
+  # RDMA resource type
+  rdmaResource: "rdma/ib"
+  # Shared memory size for containers
+  shmSize: "16Gi"
+
+# NCCL environment configuration
+env:
+  nccl:
+    # Basic MPI settings
+    OMPI_ALLOW_RUN_AS_ROOT: "1"
+    OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: "1"
+    
+    # CUDA settings
+    CUDA_DEVICE_ORDER: "PCI_BUS_ID"
+    
+    # NCCL networking settings
+    NCCL_SOCKET_IFNAME: "eth0"
+    NCCL_DEBUG: "WARN"
+    NCCL_TOPO_FILE: "/etc/ndv5-topo.xml"
+    
+    # NCCL performance tuning
+    NCCL_IB_PCI_RELAXED_ORDERING: "1"
+    NCCL_IB_QPS_PER_CONNECTION: "4"
+    NCCL_IGNORE_CPU_AFFINITY: "1"
+    NCCL_P2P_NET_CHUNKSIZE: "524288"  # 512 * 1024
+    NCCL_PXN_DISABLE: "1"
+    NCCL_MIN_NCHANNELS: "32"
+    
+    # UCX settings
+    UCX_TLS: "rc"
+    UCX_NET_DEVICES: "mlx5_ib0:1"
+  
+  sharp:
+    # Enable/disable SHARP acceleration
+    enabled: true
+    # SHARP settings
+    NCCL_COLLNET_ENABLE: "1" # set to "0" to disable SHARP
+    SHARP_SMX_UCX_INTERFACE: "mlx5_ib0:1"
+    SHARP_COLL_ENABLE_SAT: "1"
+    SHARP_COLL_LOG_LEVEL: "3"
+    SHARP_COLL_ENABLE_PCI_RELAXED_ORDERING: "1"
+
+
+# Node selector for job placement
+nodeSelector: {}
+
+# Tolerations for node taints
+tolerations: []
+
+# Affinity rules
+affinity: {}

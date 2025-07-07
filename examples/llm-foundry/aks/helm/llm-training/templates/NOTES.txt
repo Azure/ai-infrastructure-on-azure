@@ -1,0 +1,52 @@
+1. Get the status of your LLM training job:
+
+  kubectl get pytorchjob {{ include "llm-training.fullname" . }}
+
+2. Check the training logs:
+
+  # For master pod logs
+  kubectl logs -l app.kubernetes.io/name={{ include "llm-training.name" . }},role=master -f
+
+  # For worker pod logs (if multi-node)
+  kubectl logs -l app.kubernetes.io/name={{ include "llm-training.name" . }},role=worker -f
+
+3. Monitor training progress:
+
+  # List all pods for this training job
+  kubectl get pods -l app.kubernetes.io/name={{ include "llm-training.name" . }}
+
+  # Check events
+  kubectl get events --sort-by=.metadata.creationTimestamp
+
+4. Access training checkpoints:
+
+  Checkpoints are saved to the persistent volume: {{ include "llm-training.fullname" . }}-data
+  Mount path: {{ .Values.storage.dataPath | dir }}
+
+5. Configure training parameters:
+
+  All training parameters are controlled via yamlUpdates in values.yaml.
+  Example configuration:
+  
+  yamlUpdates:
+    variables.global_train_batch_size: {{ .Values.training.globalBatchSize }}
+    variables.device_train_microbatch_size: {{ .Values.training.microBatchSize }}
+    max_duration: {{ .Values.training.maxDuration }}
+    save_interval: {{ .Values.training.saveInterval }}
+    save_num_checkpoints_to_keep: {{ .Values.training.saveNumCheckpoints }}
+
+6. Clean up the training job:
+
+  helm uninstall {{ .Release.Name }}
+
+Training Configuration:
+- Model: {{ .Values.model.config }}
+- Nodes: {{ .Values.training.nodes }}
+- GPUs per node: {{ .Values.training.gpusPerNode }}
+- Total GPUs: {{ mul .Values.training.nodes .Values.training.gpusPerNode }}
+- NCCL Environment: Configured via env.nccl settings
+- SHARP Acceleration: {{ if .Values.env.sharp.enabled }}Enabled{{ else }}Disabled{{ end }}
+- Custom Parameters: Controlled via yamlUpdates
+
+For more information, check the documentation at:
+https://github.com/Azure/ai-infrastructure-on-azure/tree/main/examples/llm-foundry/aks

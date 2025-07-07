@@ -1,0 +1,132 @@
+apiVersion: kubeflow.org/v1
+kind: PyTorchJob
+metadata:
+  name: {{ include "llm-training.fullname" . }}
+  labels:
+    {{- include "llm-training.labels" . | nindent 4 }}
+spec:
+  pytorchReplicaSpecs:
+    Master:
+      replicas: 1
+      restartPolicy: OnFailure
+      template:
+        metadata:
+          labels:
+            {{- include "llm-training.selectorLabels" . | nindent 12 }}
+            role: master
+        spec:
+          {{- with .Values.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.affinity }}
+          affinity:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.tolerations }}
+          tolerations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          containers:
+          - name: pytorch
+            image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+            imagePullPolicy: {{ .Values.image.pullPolicy }}
+            command:
+            - "composer"
+            args:
+            - "/llm-foundry/scripts/train/train.py"
+            - "/llm-foundry/scripts/train/yamls/pretrain/{{ .Values.model.config }}.yaml"
+            {{- range $key, $value := .Values.yamlUpdates }}
+            - "{{ $key }}={{ $value }}"
+            {{- end }}
+            env:
+            {{- include "llm-training.nccl-env" . | nindent 12 }}
+            {{- include "llm-training.sharp-env" . | nindent 12 }}
+
+            resources:
+              requests:
+                {{ .Values.resources.gpuResource }}: {{ .Values.training.gpusPerNode }}
+                {{ .Values.resources.rdmaResource }}: {{ .Values.training.gpusPerNode }}
+              limits:
+                {{ .Values.resources.gpuResource }}: {{ .Values.training.gpusPerNode }}
+                {{ .Values.resources.rdmaResource }}: {{ .Values.training.gpusPerNode }}
+            volumeMounts:
+            - name: data-storage
+              mountPath: {{ .Values.storage.dataPath | dir }}
+            - name: shm
+              mountPath: /dev/shm
+            securityContext:
+              capabilities:
+                add:
+                - IPC_LOCK
+          volumes:
+          - name: data-storage
+            persistentVolumeClaim:
+              claimName: {{ include "llm-training.fullname" . }}-data
+          - name: shm
+            emptyDir:
+              medium: Memory
+              sizeLimit: {{ .Values.resources.shmSize }}
+    {{- if gt (.Values.training.nodes | int) 1 }}
+    Worker:
+      replicas: {{ sub (.Values.training.nodes | int) 1 }}
+      restartPolicy: OnFailure
+      template:
+        metadata:
+          labels:
+            {{- include "llm-training.selectorLabels" . | nindent 12 }}
+            role: worker
+        spec:
+          {{- with .Values.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.affinity }}
+          affinity:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.tolerations }}
+          tolerations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          containers:
+          - name: pytorch
+            image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+            imagePullPolicy: {{ .Values.image.pullPolicy }}
+            command:
+            - "composer"
+            args:
+            - "/llm-foundry/scripts/train/train.py"
+            - "/llm-foundry/scripts/train/yamls/pretrain/{{ .Values.model.config }}.yaml"
+            {{- range $key, $value := .Values.yamlUpdates }}
+            - "{{ $key }}={{ $value }}"
+            {{- end }}
+            env:
+            {{- include "llm-training.nccl-env" . | nindent 12 }}
+            {{- include "llm-training.sharp-env" . | nindent 12 }}
+            resources:
+              requests:
+                {{ .Values.resources.gpuResource }}: {{ .Values.training.gpusPerNode }}
+                {{ .Values.resources.rdmaResource }}: {{ .Values.training.gpusPerNode }}
+              limits:
+                {{ .Values.resources.gpuResource }}: {{ .Values.training.gpusPerNode }}
+                {{ .Values.resources.rdmaResource }}: {{ .Values.training.gpusPerNode }}
+            volumeMounts:
+            - name: data-storage
+              mountPath: {{ .Values.storage.dataPath | dir }}
+            - name: shm
+              mountPath: /dev/shm
+            securityContext:
+              capabilities:
+                add:
+                - IPC_LOCK
+          volumes:
+          - name: data-storage
+            persistentVolumeClaim:
+              claimName: {{ include "llm-training.fullname" . }}-data
+          - name: shm
+            emptyDir:
+              medium: Memory
+              sizeLimit: {{ .Values.resources.shmSize }}
+
+    {{- end }}
