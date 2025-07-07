@@ -1,0 +1,26 @@
+1. Get the status of your dataset download job:
+
+   kubectl get job {{ include "dataset-download.fullname" . }}
+
+2. Follow the download progress:
+
+   kubectl logs -f job/{{ include "dataset-download.fullname" . }}
+
+3. Check if the dataset was created successfully:
+
+   kubectl exec -it job/{{ include "dataset-download.fullname" . }} -- ls -la {{ .Values.storage.dataPath }}
+
+4. Once complete, you can use the dataset for training with:
+
+   Dataset path: {{ .Values.storage.dataPath }}
+   Azure Blob Storage: {{ .Values.storage.azureBlob.storageAccountName }}/{{ .Values.storage.azureBlob.containerName }}
+
+5. Storage configuration:
+   - Storage Account: {{ .Values.storage.azureBlob.storageAccountName }}
+   - Container: {{ .Values.storage.azureBlob.containerName }}
+   - Size: {{ .Values.storage.azureBlob.size }}
+   - Managed Identity: {{ .Values.storage.azureBlob.kubeletIdentityResourceID }}
+
+6. To clean up the download job:
+
+   helm uninstall {{ .Release.Name }}

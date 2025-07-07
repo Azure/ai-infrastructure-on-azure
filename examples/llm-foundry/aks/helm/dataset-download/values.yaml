@@ -1,0 +1,63 @@
+# Default values for dataset-download
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Dataset configuration
+dataset:
+  name: "allenai/c4"
+  subset: "en"
+  splits: ["train", "val"]
+  concatTokens: 2048
+  tokenizer: "EleutherAI/gpt-neox-20b"
+  eosText: "<|endoftext|>"
+
+# Container image configuration
+image:
+  repository: ghcr.io/azure/ai-infrastructure-on-azure/llm-foundry
+  tag: v0.18.0
+  pullPolicy: IfNotPresent
+
+# Storage configuration
+storage:
+  # Path where the converted dataset will be stored
+  dataPath: "/data/my-copy-c4"
+  # Azure Blob Storage configuration
+  azureBlob:
+    # Azure Storage Account name
+    storageAccountName: ""
+    # Container name for dataset storage
+    containerName: "data"
+    # Storage size
+    size: "1Ti"
+    # Storage class name for Azure Blob CSI driver
+    storageClassName: "azureblob-fuse-premium"
+    # Kubelet managed identity resource ID for blob storage access
+    kubeletIdentityResourceID: ""
+    # Volume handle prefix (will be combined with storage account)
+    volumeHandlePrefix: "dataset"
+
+# Resource configuration
+resources:
+  # Number of worker processes for dataset conversion
+  workers: 8
+  # CPU per worker (will be multiplied by workers in template)
+  cpuPerWorker: 2
+  cpuLimitMultiplier: 4
+
+# Job configuration
+job:
+  # Restart policy for the job
+  restartPolicy: Never
+  # Backoff limit for failed pods
+  backoffLimit: 3
+  # Time to live after job completion (in seconds)
+  ttlSecondsAfterFinished: 3600
+
+# Node selector for job placement
+nodeSelector: {}
+
+# Tolerations for node taints
+tolerations: []
+
+# Affinity rules
+affinity: {}
