@@ -9,7 +9,7 @@ model:
 # Training configuration
 training:
   # Number of training nodes (workers)
-  nodes: 4
+  nodes: 2
   # Number of GPUs per node
   gpusPerNode: 8
 
@@ -23,7 +23,7 @@ yamlUpdates: {}
 # Container image configuration
 image:
   repository: ghcr.io/azure/ai-infrastructure-on-azure/llm-foundry
-  tag: v0.18.0
+  tag: latest
   pullPolicy: IfNotPresent
 
 # Storage configuration
@@ -52,7 +52,7 @@ resources:
   # RDMA resource type
   rdmaResource: "rdma/ib"
   # Shared memory size for containers
-  shmSize: "16Gi"
+  shmSize: "64Gi"
 
 # NCCL environment configuration
 env:

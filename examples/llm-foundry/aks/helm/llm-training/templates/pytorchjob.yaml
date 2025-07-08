@@ -32,17 +32,29 @@ spec:
             image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
             imagePullPolicy: {{ .Values.image.pullPolicy }}
             command:
-            - "composer"
+            - "bash"
+            - "-c"
             args:
-            - "/llm-foundry/scripts/train/train.py"
-            - "/llm-foundry/scripts/train/yamls/pretrain/{{ .Values.model.config }}.yaml"
-            {{- range $key, $value := .Values.yamlUpdates }}
-            - "{{ $key }}={{ $value }}"
-            {{- end }}
+            - |
+              env && \
+              ulimit -s unlimited && \
+              ulimit -l unlimited && \
+              ulimit -a && \
+              composer \
+                --world_size {{ mul .Values.training.nodes .Values.training.gpusPerNode }} \
+                --node_rank $RANK \
+                --master_addr $MASTER_ADDR \
+                --master_port $MASTER_PORT \
+                --nproc {{ .Values.training.gpusPerNode }} \
+                --verbose \
+                /llm-foundry/scripts/train/train.py \
+                /llm-foundry/scripts/train/yamls/pretrain/{{ .Values.model.config }}.yaml \
+                {{- range $key, $value := .Values.yamlUpdates }}
+                {{ $key }}={{ $value }} \
+                {{- end }}
             env:
             {{- include "llm-training.nccl-env" . | nindent 12 }}
             {{- include "llm-training.sharp-env" . | nindent 12 }}
-
             resources:
               requests:
                 {{ .Values.resources.gpuResource }}: {{ .Values.training.gpusPerNode }}
@@ -56,6 +68,7 @@ spec:
             - name: shm
               mountPath: /dev/shm
             securityContext:
+              privileged: true
               capabilities:
                 add:
                 - IPC_LOCK
@@ -94,13 +107,26 @@ spec:
             image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
             imagePullPolicy: {{ .Values.image.pullPolicy }}
             command:
-            - "composer"
+            - "bash"
+            - "-c"
             args:
-            - "/llm-foundry/scripts/train/train.py"
-            - "/llm-foundry/scripts/train/yamls/pretrain/{{ .Values.model.config }}.yaml"
-            {{- range $key, $value := .Values.yamlUpdates }}
-            - "{{ $key }}={{ $value }}"
-            {{- end }}
+            - |
+              env && \
+              ulimit -s unlimited && \
+              ulimit -l unlimited && \
+              ulimit -a && \
+              composer \
+                --world_size {{ mul .Values.training.nodes .Values.training.gpusPerNode }} \
+                --node_rank $RANK \
+                --master_addr $MASTER_ADDR \
+                --master_port $MASTER_PORT \
+                --nproc {{ .Values.training.gpusPerNode }} \
+                --verbose \
+                /llm-foundry/scripts/train/train.py \
+                /llm-foundry/scripts/train/yamls/pretrain/{{ .Values.model.config }}.yaml \
+                {{- range $key, $value := .Values.yamlUpdates }}
+                {{ $key }}={{ $value }} \
+                {{- end }}
             env:
             {{- include "llm-training.nccl-env" . | nindent 12 }}
             {{- include "llm-training.sharp-env" . | nindent 12 }}
@@ -117,6 +143,7 @@ spec:
             - name: shm
               mountPath: /dev/shm
             securityContext:
+              privileged: true
               capabilities:
                 add:
                 - IPC_LOCK
@@ -130,3 +157,4 @@ spec:
               sizeLimit: {{ .Values.resources.shmSize }}
 
     {{- end }}
+
