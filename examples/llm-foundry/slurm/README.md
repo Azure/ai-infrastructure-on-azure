@@ -100,18 +100,26 @@ To create the Blob mount on the nodes, you must do the following on each of the 
 
 > Note: When using Blob storage, check the metrics to ensure you are not being throttled.
 
-## 3. Building the container
+## 3. Preparing the Container
 
-Copy the Dockerfile to your cluster and build the container as follows:
+For Slurm clusters, workloads are typically run using container images converted to squash files for better performance and distribution. The LLM Foundry container image is automatically built and published to GitHub Container Registry.
+
+Published image: `ghcr.io/azure/ai-infrastructure-on-azure/llm-foundry:latest`
+
+### Creating a Squash File from the Published Image
+
+To create a squash file from the published image:
 
 ```bash
-sudo docker build -t llm-foundry:v0.18.0 -f Dockerfile .
+sudo enroot import -o llm-foundry-latest.sqsh docker://ghcr.io/azure/ai-infrastructure-on-azure/llm-foundry:latest
 ```
 
-Convert the Docker image into a squash file:
+### Manual Build (Optional)
+
+If you need to build a custom version of the container, see the [docker directory](../docker/README.md) for build instructions. After building a custom image, convert it to a squash file:
 
 ```bash
-sudo enroot import -o llm-foundry-v0.18.0.sqsh dockerd://llm-foundry:v0.18.0
+sudo enroot import -o llm-foundry-dev.sqsh dockerd://llm-foundry:dev
 ```
 
 ## 4. Dataset preparation
@@ -120,7 +128,7 @@ LLM Foundry provides a script to download and convert datasets from huggingface.
 
 ```bash
 DATA_DIR=/data
-srun --cpu-bind no -N1 --exclusive -p gpu --container-image llm-foundry-v0.18.0.sqsh --gres=gpu:8 --container-mounts $DATA_DIR:/data --pty bash
+srun --cpu-bind no -N1 --exclusive -p gpu --container-image llm-foundry-latest.sqsh --gres=gpu:8 --container-mounts $DATA_DIR:/data --pty bash
 ```
 
 Now, download and convert the data:
@@ -141,7 +149,7 @@ Alternatively, an sbatch script, `download_c4_data.sh`, is provided to perform t
 
 ```bash
 DATA_DIR=/data
-CONTAINER_NAME=llm-foundry-v0.18.0.sqsh
+CONTAINER_NAME=llm-foundry-latest.sqsh
 NUM_WORKERS=8
 sbatch -N1 -p gpu download_c4_dataset.sb $CONTAINER_NAME $DATA_DIR $NUM_WORKERS
 ```
@@ -254,7 +262,7 @@ A key consideration with sharded is that reloading typically requires the same n
 This example sets the parameters for sharded checkpoints:
 
 ```bash
-SQUASH_FILE=/data/llm-foundry-v0.18.0.sqsh
+SQUASH_FILE=/data/llm-foundry-latest.sqsh
 AMLFS_MOUNT=/data
 
 YAML_UPDATES=(
@@ -275,7 +283,7 @@ sbatch -N 16 -p gpu ./launch.sb \
 This example streams data to the local disk:
 
 ```bash
-SQUASH_FILE=/data/llm-foundry-v0.18.0.sqsh
+SQUASH_FILE=/data/llm-foundry-latest.sqsh
 BLOB_MOUNT=/blob
 
 YAML_UPDATES=(
