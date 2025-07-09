@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: {{ .Values.pod.name }}
+  name: {{ include "fio.fullname" . }}
   labels:
     {{- include "fio.labels" . | nindent 4 }}
   {{- with .Values.annotations }}

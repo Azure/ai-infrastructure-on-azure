@@ -3,8 +3,6 @@
 
 # Storage configuration
 storage:
-  # Storage class name
-  className: "{{ .Release.Name }}-blob-storage"
   # Storage size for the test volume
   size: "10Gi"
   # Azure storage account SKU
@@ -23,8 +21,6 @@ storage:
 pod:
   # Container image
   image: "alpine:3.19"
-  # Pod name
-  name: "{{ .Release.Name }}-pod"
   # Container name
   containerName: "fio"
   # Mount path for blob storage
