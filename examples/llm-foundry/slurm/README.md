@@ -257,21 +257,19 @@ This example sets the parameters for sharded checkpoints:
 SQUASH_FILE=/data/llm-foundry-v0.18.0.sqsh
 AMLFS_MOUNT=/data
 
-YAML_UPDATES=$(cat <<EOF
-variables.data_local=/data/my-copy-c4
-save_folder=/data/checkpoints
-save_interval=1000ba
-save_num_checkpoints_to_keep=10
-fsdp_config.state_dict_type=sharded
-EOF
+YAML_UPDATES=(
+  "variables.data_local=/data/my-copy-c4"
+  "save_folder=/data/checkpoints"
+  "save_interval=1000ba"
+  "save_num_checkpoints_to_keep=10"
+  "fsdp_config.state_dict_type=sharded"
 )
-YAML_UPDATES="${YAML_UPDATES//$'\n'/ }"
 
 sbatch -N 16 -p gpu ./launch.sb \
   -c mpt-30b \
-  -i SQUASH_FILE \
+  -i $SQUASH_FILE \
   -m /$AMLFS_MOUNT:/$AMLFS_MOUNT \
-  -y "$YAML_UPDATES"
+  -y "${YAML_UPDATES[*]}"
 ```
 
 This example streams data to the local disk:
@@ -280,16 +278,14 @@ This example streams data to the local disk:
 SQUASH_FILE=/data/llm-foundry-v0.18.0.sqsh
 BLOB_MOUNT=/blob
 
-YAML_UPDATES=$(cat <<EOF
-variables.data_local=/tmp/local-storage
-variables.data_remote=/blob/my-copy-c4
-EOF
+YAML_UPDATES=(
+  "variables.data_local=/tmp/local-storage"
+  "variables.data_remote=/blob/my-copy-c4"
 )
-YAML_UPDATES="${YAML_UPDATES//$'\n'/ }"
 
 sbatch -N 16 -p gpu ./launch.sb \
   -c mpt-30b \
-  -i SQUASH_FILE \
+  -i $SQUASH_FILE \
   -m /$BLOB_MOUNT:/$BLOB_MOUNT \
-  -y "$YAML_UPDATES"
+  -y "${YAML_UPDATES[*]}"
 ```
