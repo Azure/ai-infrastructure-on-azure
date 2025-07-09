@@ -1,0 +1,39 @@
+# Sequential Write Test - Large block sequential writes
+# Simulates ML training checkpoint writes or large file transfers
+fio:
+  testName: "sequential-write-test"
+  filename: "/mnt/blob/testfile.img"
+  size: "10G"
+  blockSize: "4M"
+  readWrite: "write"
+  ioEngine: "libaio"
+  direct: 1
+  numJobs: 1
+  runtime: 0  # Size-based test, not time-based
+  timeBased: false
+  additionalOptions: "--group_reporting"
+
+storage:
+  size: "10Gi"
+  # Mount options are specified here to ensure we get all recommended options
+  # (when specified, these replace the default values.yaml mount options entirely)
+  mountOptions:
+    - "-o allow_other"
+    - "--use-attr-cache=true"
+    - "--cancel-list-on-mount-seconds=10"
+    - "-o attr_timeout=120"
+    - "-o entry_timeout=120"
+    - "-o negative_timeout=120"
+    - "--log-level=LOG_WARNING"
+    - "--file-cache"
+    - "--file-cache-timeout=600"
+    - "--tmp-path=/tmp/blobfuse"
+    - "--lazy-write"
+
+resources:
+  limits:
+    cpu: "2"
+    memory: "8Gi"
+  requests:
+    cpu: "1"
+    memory: "4Gi"
