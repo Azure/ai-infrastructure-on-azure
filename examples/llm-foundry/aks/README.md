@@ -1,6 +1,8 @@
 # blob driver
 
+```
 az aks update --enable-blob-driver --name myAKSCluster --resource-group myResourceGroup
+```
 
 # setup storage
 
@@ -73,11 +75,15 @@ echo "Setup complete!"
 
 # pytorchjob
 
+```
 kubectl apply --server-side -k "github.com/kubeflow/training-operator.git/manifests/overlays/standalone?ref=v1.8.1"
+```
 
 # dataset prep
 
+```
 helm install dataset-prep . --set storage.azureBlob.storageAccountName="$STORAGE_ACCOUNT" --set storage.azureBlob.kubeletIdentityResourceID="$KUBELET_IDENTITY_RESOURCE_ID" --set dataset.splits="{train_small,val_small}"
+```
 
 # run training
 
