@@ -5,17 +5,17 @@
 1. [Introduction](#1-introduction)
 2. [Creating Azure CycleCloud Workspace for Slurm Environment](#2-creating-azure-cyclecloud-workspace-for-slurm-environment)
 
-   2.1. [Blob storage for training data and checkpointing](#21-blob-storage-for-training-data-and-checkpointing)
+   2.1. [Blob Storage for Training Data and Checkpointing](#21-blob-storage-for-training-data-and-checkpointing)
 
-3. [Building the container](#3-building-the-container)
-4. [Dataset preparation](#4-dataset-preparation)
-5. [Training run](#5-training-run)
+3. [Preparing the Container](#3-preparing-the-container)
+4. [Dataset Preparation](#4-dataset-preparation)
+5. [Training Run](#5-training-run)
 
-   5.1. [Training data storage](#51-training-data-storage)
+   5.1. [Training Data Storage](#51-training-data-storage)
 
    5.2. [Checkpointing](#52-checkpointing)
 
-   5.3. [Example Slurm job submissions](#53-example-slurm-job-submissions)
+   5.3. [Example Slurm Job Submissions](#53-example-slurm-job-submissions)
 
 ## 1. Introduction
 
@@ -45,7 +45,7 @@ The Azure Managed Lustre File System should be sized with the following consider
   The Lustre file system should be sized to accommodate reading and writing of these files in parallel to improved the operation times. If a single file is used there will be a limit of 10GBps.
 - Squash files are used to store the container image. The size of the squash file generated in this example is 21 GiB. All nodes will read this file at the start of the job - but this can be staged to the NVME to reduce bandwidth requirement for Lustre. More details can be found [here](../../../../storage_references/squashed_images/README.md).
 
-### 2.1. Blob storage for training data and checkpointing
+### 2.1. Blob Storage for Training Data and Checkpointing
 
 As an alternative to Azure Managed Lustre, Blob storage can be used for the training data and checkpointing. This is a cost effective solution but will require more tuning to get the performance required.  
 The Blob storage can be mounted using [blobfuse](https://github.com/Azure/azure-storage-fuse). The default limits for a standard Blob storage account are shown [here](https://learn.microsoft.com/en-us/azure/storage/common/scalability-targets-standard-account) but you can contact [Azure support](https://azure.microsoft.com/support/faq/) to request an increase in account limits if required.
@@ -122,7 +122,7 @@ If you need to build a custom version of the container, see the [docker director
 sudo enroot import -o llm-foundry-dev.sqsh dockerd://llm-foundry:dev
 ```
 
-## 4. Dataset preparation
+## 4. Dataset Preparation
 
 LLM Foundry provides a script to download and convert datasets from huggingface. The script is located in the `scripts/data_prep` directory of the LLM Foundry repository. The script can be run as follows to download and convert the full [C4](https://huggingface.co/datasets/allenai/c4) dataset. First, start a container to use:
 
@@ -156,7 +156,7 @@ sbatch -N1 -p gpu download_c4_dataset.sb $CONTAINER_NAME $DATA_DIR $NUM_WORKERS
 
 > The `NUM_WORKERS` variable is used to specify the number of workers to use for downloading and converting the dataset. A higher value will increase the speed of the download and conversion process. However, this may need to be lowered if throttling is observed.
 
-## 5. Training run
+## 5. Training Run
 
 The example training configuration files are located in the `/llm-foundry/scripts/train/yamls/pretrain/` directory. An example launch script, `launch.sb`, is included:
 
@@ -235,7 +235,7 @@ The script arguments are:
 
 The following sections describe some of the YAML options that can be used.
 
-### 5.1. Training data storage
+### 5.1. Training Data Storage
 
 LLM Foundry has two paths for data storage: `data_local` and `data_remote`. The minimum requirement is to set `data_local` to a local directory/mount on the nodes. However, using _both_ `data_local` and `data_remote` can provide efficient data streaming, which is particularly beneficial with Blob Storage.
 
@@ -257,7 +257,7 @@ The parameters to control the checkpointing are:
 The `fdsp_config.state_dict_type` setting determines how model checkpoints are saved. The default is `full` and aggregates all the data to a single process and writes a single file for the whole model. However, `sharded` saves the model in parallel across multiple processes, offering faster read and write times and requiring high-bandwidth storage like Azure Managed Lustre or Azure Blob Storage.
 A key consideration with sharded is that reloading typically requires the same number of processes used for saving. The choice depends on balancing I/O performance, storage capabilities, and the flexibility needed for restarting or loading checkpoints.
 
-### 5.3. Example Slurm job submissions
+### 5.3. Example Slurm Job Submissions
 
 This example sets the parameters for sharded checkpoints:
 
