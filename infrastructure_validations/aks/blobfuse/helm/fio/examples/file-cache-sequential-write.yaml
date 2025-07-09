@@ -25,7 +25,6 @@ storage:
     - "-o entry_timeout=120"
     - "-o negative_timeout=120"
     - "--log-level=LOG_WARNING"
-    - "--file-cache"
     - "--file-cache-timeout=600"
     - "--tmp-path=/tmp/blobfuse"
     - "--lazy-write"
