@@ -81,6 +81,7 @@ helm install dataset-prep . --set storage.azureBlob.storageAccountName="$STORAGE
 
 # run training
 
+```
 helm install llm-training . -n training \
   --set image.tag=latest \
   --set model.config="mpt-125m" \
@@ -90,7 +91,7 @@ helm install llm-training . -n training \
   --set "yamlUpdates.train_loader\.dataset\.split=train_small" \
   --set "yamlUpdates.eval_loader\.dataset\.split=val_small" \
   --set "yamlUpdates.variables\.data_local=/data/my-copy-c4"
-
+```
 
 # todo
 
