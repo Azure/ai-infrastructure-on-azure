@@ -4,10 +4,9 @@ on:
   push:
     branches:
       - main
-      - build-llm-foundry-image
     paths:
       - examples/llm-foundry/slurm/Dockerfile
-      - .github/workflows/build-llm-foundry-image.yaml
+      - .github/workflows/build_llm_foundry_image.yaml
 
   workflow_dispatch:
 
