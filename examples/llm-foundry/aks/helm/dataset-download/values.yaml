@@ -14,7 +14,7 @@ dataset:
 # Container image configuration
 image:
   repository: ghcr.io/azure/ai-infrastructure-on-azure/llm-foundry
-  tag: v0.18.0
+  tag: latest
   pullPolicy: IfNotPresent
 
 # Storage configuration
