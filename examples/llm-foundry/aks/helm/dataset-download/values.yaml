@@ -10,6 +10,7 @@ dataset:
   concatTokens: 2048
   tokenizer: "EleutherAI/gpt-neox-20b"
   eosText: "<|endoftext|>"
+  outputPath: "my-copy-c4"
 
 # Container image configuration
 image:
@@ -19,8 +20,8 @@ image:
 
 # Storage configuration
 storage:
-  # Path where the converted dataset will be stored
-  dataPath: "/data/my-copy-c4"
+  # Mount path where the shared storage will be mounted
+  mount: "/data"
   # Name of the existing PVC to use for shared storage
   # This should be created by the shared-storage helm chart
   pvcName: "shared-blob-storage"

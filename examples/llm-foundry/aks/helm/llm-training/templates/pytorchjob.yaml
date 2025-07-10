@@ -64,7 +64,7 @@ spec:
                 {{ .Values.resources.rdmaResource }}: {{ .Values.training.gpusPerNode }}
             volumeMounts:
             - name: data-storage
-              mountPath: {{ .Values.storage.dataPath | dir }}
+              mountPath: {{ .Values.storage.mount }}
             - name: shm
               mountPath: /dev/shm
             securityContext:
@@ -139,7 +139,7 @@ spec:
                 {{ .Values.resources.rdmaResource }}: {{ .Values.training.gpusPerNode }}
             volumeMounts:
             - name: data-storage
-              mountPath: {{ .Values.storage.dataPath | dir }}
+              mountPath: {{ .Values.storage.mount }}
             - name: shm
               mountPath: /dev/shm
             securityContext:

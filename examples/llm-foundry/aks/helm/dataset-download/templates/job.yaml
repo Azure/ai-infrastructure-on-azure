@@ -26,17 +26,17 @@ spec:
           echo "Starting dataset download and conversion..."
           echo "Dataset: {{ .Values.dataset.name }}"
           echo "Subset: {{ .Values.dataset.subset }}"
-          echo "Output path: {{ .Values.storage.dataPath }}"
+          echo "Output path: {{ .Values.storage.mount }}/{{ .Values.dataset.outputPath }}"
           echo "Workers: {{ .Values.resources.workers }}"
           
           # Create output directory
-          mkdir -p {{ .Values.storage.dataPath }}
+          mkdir -p {{ .Values.storage.mount }}/{{ .Values.dataset.outputPath }}
           
           # Run the dataset conversion
           python /llm-foundry/scripts/data_prep/convert_dataset_hf.py \
             --dataset {{ .Values.dataset.name }} \
             --data_subset {{ .Values.dataset.subset }} \
-            --out_root {{ .Values.storage.dataPath }} \
+            --out_root {{ .Values.storage.mount }}/{{ .Values.dataset.outputPath }} \
             --splits {{ join " " .Values.dataset.splits }} \
             --concat_tokens {{ .Values.dataset.concatTokens }} \
             --tokenizer {{ .Values.dataset.tokenizer }} \
@@ -45,7 +45,7 @@ spec:
           
           echo "Dataset conversion completed successfully!"
           echo "Output directory contents:"
-          ls -la {{ .Values.storage.dataPath }}
+          ls -la {{ .Values.storage.mount }}/{{ .Values.dataset.outputPath }}
         resources:
           requests:
             cpu: {{ mul .Values.resources.workers .Values.resources.cpuPerWorker | quote }}
@@ -55,7 +55,7 @@ spec:
             memory: {{ mul .Values.resources.workers .Values.resources.memoryPerWorkerGi }}Gi
         volumeMounts:
         - name: data-storage
-          mountPath: {{ .Values.storage.dataPath | dir }}
+          mountPath: {{ .Values.storage.mount }}
         - name: shm
           mountPath: /dev/shm
         env:
