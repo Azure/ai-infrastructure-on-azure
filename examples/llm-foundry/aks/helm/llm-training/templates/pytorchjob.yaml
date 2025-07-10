@@ -75,7 +75,7 @@ spec:
           volumes:
           - name: data-storage
             persistentVolumeClaim:
-              claimName: {{ include "llm-training.fullname" . }}-data
+              claimName: {{ .Values.storage.pvcName }}
           - name: shm
             emptyDir:
               medium: Memory
@@ -150,7 +150,7 @@ spec:
           volumes:
           - name: data-storage
             persistentVolumeClaim:
-              claimName: {{ include "llm-training.fullname" . }}-data
+              claimName: {{ .Values.storage.pvcName }}
           - name: shm
             emptyDir:
               medium: Memory

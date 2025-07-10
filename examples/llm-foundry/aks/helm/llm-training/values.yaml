@@ -30,20 +30,9 @@ image:
 storage:
   # Path where the converted dataset will be stored
   dataPath: "/data/my-copy-c4"
-  # Azure Blob Storage configuration
-  azureBlob:
-    # Azure Storage Account name
-    storageAccountName: ""
-    # Container name for dataset storage
-    containerName: "data"
-    # Storage size
-    size: "1Ti"
-    # Storage class name for Azure Blob CSI driver
-    storageClassName: "azureblob-fuse-premium"
-    # Kubelet managed identity resource ID for blob storage access
-    kubeletIdentityResourceID: ""
-    # Volume handle prefix (will be combined with storage account)
-    volumeHandlePrefix: "dataset"
+  # Name of the existing PVC to use for shared storage
+  # This should be created by the shared-storage helm chart
+  pvcName: "shared-blob-storage"
 
 # Resource configuration
 resources:

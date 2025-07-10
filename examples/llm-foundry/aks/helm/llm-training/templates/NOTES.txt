@@ -20,7 +20,7 @@
 
 4. Access training checkpoints:
 
-  Checkpoints are saved to the persistent volume: {{ include "llm-training.fullname" . }}-data
+  Checkpoints are saved to the shared persistent volume: {{ .Values.storage.pvcName }}
   Mount path: {{ .Values.storage.dataPath | dir }}
 
 5. Configure training parameters:

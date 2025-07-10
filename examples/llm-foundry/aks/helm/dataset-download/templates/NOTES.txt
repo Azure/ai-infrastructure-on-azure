@@ -13,14 +13,15 @@
 4. Once complete, you can use the dataset for training with:
 
    Dataset path: {{ .Values.storage.dataPath }}
-   Azure Blob Storage: {{ .Values.storage.azureBlob.storageAccountName }}/{{ .Values.storage.azureBlob.containerName }}
+   Shared storage PVC: {{ .Values.storage.pvcName }}
 
 5. Storage configuration:
-   - Storage Account: {{ .Values.storage.azureBlob.storageAccountName }}
-   - Container: {{ .Values.storage.azureBlob.containerName }}
-   - Size: {{ .Values.storage.azureBlob.size }}
-   - Managed Identity: {{ .Values.storage.azureBlob.kubeletIdentityResourceID }}
+   - Shared PVC: {{ .Values.storage.pvcName }}
+   - Mount path: {{ .Values.storage.dataPath }}
 
 6. To clean up the download job:
 
    helm uninstall {{ .Release.Name }}
+
+Note: This chart uses shared storage created by the shared-storage helm chart.
+Make sure the shared-storage chart is installed first with the same PVC name.
