@@ -21,7 +21,7 @@
 4. Access training checkpoints:
 
   Checkpoints are saved to the shared persistent volume: {{ .Values.storage.pvcName }}
-  Mount path: {{ .Values.storage.dataPath | dir }}
+  Mount path: {{ .Values.storage.mount }}
 
 5. Configure training parameters:
 

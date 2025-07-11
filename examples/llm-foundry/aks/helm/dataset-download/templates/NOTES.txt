@@ -8,16 +8,17 @@
 
 3. Check if the dataset was created successfully:
 
-   kubectl exec -it job/{{ include "dataset-download.fullname" . }} -- ls -la {{ .Values.storage.dataPath }}
+   kubectl exec -it job/{{ include "dataset-download.fullname" . }} -- ls -la {{ .Values.storage.mount }}/{{ .Values.dataset.outputPath }}
 
 4. Once complete, you can use the dataset for training with:
 
-   Dataset path: {{ .Values.storage.dataPath }}
+   Dataset path: {{ .Values.storage.mount }}/{{ .Values.dataset.outputPath }}
    Shared storage PVC: {{ .Values.storage.pvcName }}
 
 5. Storage configuration:
    - Shared PVC: {{ .Values.storage.pvcName }}
-   - Mount path: {{ .Values.storage.dataPath }}
+   - Mount path: {{ .Values.storage.mount }}
+   - Dataset output path: {{ .Values.dataset.outputPath }}
 
 6. To clean up the download job:
 
