@@ -1,0 +1,6 @@
+apiVersion: v2
+name: fio
+description: FIO performance testing with blobfuse on AKS
+type: application
+version: 0.1.0
+appVersion: "3.19"

@@ -1,0 +1,70 @@
+# Default values for fio
+# This is a YAML-formatted file.
+
+# Storage configuration
+storage:
+  # Storage size for the test volume
+  size: "10Gi"
+  # Azure storage account SKU
+  skuName: "Standard_LRS"
+  # Mount options for blobfuse
+  mountOptions:
+    - "-o allow_other"
+    - "--use-attr-cache=true"
+    - "--cancel-list-on-mount-seconds=10"
+    - "-o attr_timeout=120"
+    - "-o entry_timeout=120"
+    - "-o negative_timeout=120"
+    - "--log-level=LOG_WARNING"
+
+# Pod configuration
+pod:
+  # Container image
+  image: "alpine:3.19"
+  # Container name
+  containerName: "fio"
+  # Mount path for blob storage
+  mountPath: "/mnt/blob"
+  # Restart policy
+  restartPolicy: "Never"
+
+# FIO test configuration
+fio:
+  # Test name
+  testName: "blob-fio-test"
+  # Test file name
+  filename: "/mnt/blob/datafile"
+  # File size for the test
+  size: "1G"
+  # Block size
+  blockSize: "4k"
+  # I/O pattern (read, write, randread, randwrite, readwrite, randrw)
+  readWrite: "randwrite"
+  # I/O engine
+  ioEngine: "libaio"
+  # Direct I/O
+  direct: 1
+  # Number of jobs
+  numJobs: 1
+  # Runtime in seconds (0 for size-based test)
+  runtime: 60
+  # Time-based test
+  timeBased: true
+  # Additional FIO options
+  additionalOptions: ""
+
+# Resource limits
+resources:
+  limits:
+    cpu: "2"
+    memory: "4Gi"
+  requests:
+    cpu: "1"
+    memory: "2Gi"
+
+# Labels and annotations
+labels: {}
+annotations: {}
+
+# Sleep duration after test for debugging (seconds)
+sleepDuration: 0

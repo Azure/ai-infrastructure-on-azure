@@ -1,0 +1,15 @@
+apiVersion: v2
+name: llm-training
+description: Distributed LLM training using LLM Foundry on Kubernetes
+type: application
+version: 0.1.0
+appVersion: "v0.18.0"
+keywords:
+  - llm
+  - training
+  - mpi
+  - distributed
+  - pytorch
+home: https://github.com/Azure/ai-infrastructure-on-azure
+sources:
+  - https://github.com/mosaicml/llm-foundry

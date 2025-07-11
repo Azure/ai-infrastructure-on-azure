@@ -1,0 +1,28 @@
+1. Get the status of your dataset download job:
+
+   kubectl get job {{ include "dataset-download.fullname" . }}
+
+2. Follow the download progress:
+
+   kubectl logs -f job/{{ include "dataset-download.fullname" . }}
+
+3. Check if the dataset was created successfully:
+
+   kubectl exec -it job/{{ include "dataset-download.fullname" . }} -- ls -la {{ .Values.storage.mount }}/{{ .Values.dataset.outputPath }}
+
+4. Once complete, you can use the dataset for training with:
+
+   Dataset path: {{ .Values.storage.mount }}/{{ .Values.dataset.outputPath }}
+   Shared storage PVC: {{ .Values.storage.pvcName }}
+
+5. Storage configuration:
+   - Shared PVC: {{ .Values.storage.pvcName }}
+   - Mount path: {{ .Values.storage.mount }}
+   - Dataset output path: {{ .Values.dataset.outputPath }}
+
+6. To clean up the download job:
+
+   helm uninstall {{ .Release.Name }}
+
+Note: This chart uses shared storage created by the shared-storage helm chart.
+Make sure the shared-storage chart is installed first with the same PVC name.

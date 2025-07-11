@@ -108,7 +108,8 @@ The instructions below show how to build and push to an Azure Container Registry
 ```bash
 cd docker/
 az acr login -n $ACR_NAME
-docker build -t $ACR_NAME.azurecr.io/aznhc-test:v1.0 .
+docker build -t $ACR_NAME.azurecr.io/aznhc-test:dev .
+docker push $ACR_NAME.azurecr.io/aznhc-test:dev
 ```
 
 Set the `image` values to use a custom image with the Helm chart:
@@ -116,6 +117,6 @@ Set the `image` values to use a custom image with the Helm chart:
 ```bash
 helm install aznhc-test ./helm/aznhc-test \
   --set image.repository=$ACR_NAME.azurecr.io/aznhc-test \
-  --set image.tag=v1.0 \
+  --set image.tag=dev \
   --set image.pullPolicy=Never
 ```

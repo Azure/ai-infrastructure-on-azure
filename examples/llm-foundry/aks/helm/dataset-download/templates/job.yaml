@@ -1,0 +1,85 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "dataset-download.fullname" . }}
+  labels:
+    {{- include "dataset-download.labels" . | nindent 4 }}
+spec:
+  backoffLimit: {{ .Values.job.backoffLimit }}
+  {{- if .Values.job.ttlSecondsAfterFinished }}
+  ttlSecondsAfterFinished: {{ .Values.job.ttlSecondsAfterFinished }}
+  {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "dataset-download.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: {{ .Values.job.restartPolicy }}
+      containers:
+      - name: dataset-converter
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command: ["/bin/bash", "-c"]
+        args:
+        - |
+          set -euo pipefail
+          echo "Starting dataset download and conversion..."
+          echo "Dataset: {{ .Values.dataset.name }}"
+          echo "Subset: {{ .Values.dataset.subset }}"
+          echo "Output path: {{ .Values.storage.mount }}/{{ .Values.dataset.outputPath }}"
+          echo "Workers: {{ .Values.resources.workers }}"
+          
+          # Create output directory
+          mkdir -p {{ .Values.storage.mount }}/{{ .Values.dataset.outputPath }}
+          
+          # Run the dataset conversion
+          python /llm-foundry/scripts/data_prep/convert_dataset_hf.py \
+            --dataset {{ .Values.dataset.name }} \
+            --data_subset {{ .Values.dataset.subset }} \
+            --out_root {{ .Values.storage.mount }}/{{ .Values.dataset.outputPath }} \
+            --splits {{ join " " .Values.dataset.splits }} \
+            --concat_tokens {{ .Values.dataset.concatTokens }} \
+            --tokenizer {{ .Values.dataset.tokenizer }} \
+            --eos_text '{{ .Values.dataset.eosText }}' \
+            --num_workers {{ .Values.resources.workers }}
+          
+          echo "Dataset conversion completed successfully!"
+          echo "Output directory contents:"
+          ls -la {{ .Values.storage.mount }}/{{ .Values.dataset.outputPath }}
+        resources:
+          requests:
+            cpu: {{ mul .Values.resources.workers .Values.resources.cpuPerWorker | quote }}
+            memory: {{ mul .Values.resources.workers .Values.resources.memoryPerWorkerGi }}Gi
+          limits:
+            cpu: {{ mul .Values.resources.workers .Values.resources.cpuPerWorker | quote }}
+            memory: {{ mul .Values.resources.workers .Values.resources.memoryPerWorkerGi }}Gi
+        volumeMounts:
+        - name: data-storage
+          mountPath: {{ .Values.storage.mount }}
+        - name: shm
+          mountPath: /dev/shm
+        env:
+        - name: HF_HOME
+          value: "/tmp/huggingface"
+        - name: TRANSFORMERS_CACHE
+          value: "/tmp/transformers"
+      volumes:
+      - name: data-storage
+        persistentVolumeClaim:
+          claimName: {{ .Values.storage.pvcName }}
+      - name: shm
+        emptyDir:
+          medium: Memory
+          sizeLimit: {{ .Values.resources.shmSize }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
