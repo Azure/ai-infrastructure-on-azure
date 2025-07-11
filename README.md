@@ -14,17 +14,28 @@ For each scenario and architecture, the repository will include storage recommen
 ## Infrastructure references catalog
 
 1. [Azure CycleCloud Slurm Workspace AI Cluster](./infrastructure_references/azure_cyclecloud_workspace_for_slurm/README.md) - Prototypes for the creation of Azure CycleCloud Slurm Workspace AI Clusters using CLI deployment
+2. [Azure Kubernetes Service Cluster](./infrastructure_references/aks/README.md) - Deployment script for AKS cluster 
 
 ## AI training example catalog
 
-1. [MegatronLM GPT3-175B with Slimpajama 627B dataset on Slurm](./examples/megatron-lm/GPT3-175B/slurm/README.md) - Example of an end-to-end training workflow based on MegatronLM, including data pre-processing from Slimpajama 627B dataset
-2. [LLM Foundry MPT Training](./examples/llm-foundry/slurm/README.md) - Example of an end-to-end training workflow of Mosaic Pretrained Transformer (MPT) model on [C4](https://huggingface.co/datasets/allenai/c4) dataset, based on LLM Foundry
+1. MegatronLM GPT3-175B with Slimpajama 627B dataset - Example of an end-to-end training workflow based on MegatronLM, including data pre-processing from Slimpajama 627B dataset
+   - [Slurm version](./examples/megatron-lm/GPT3-175B/slurm/README.md)
+2. LLM Foundry MPT Training - Example of an end-to-end training workflow of Mosaic Pretrained Transformer (MPT) model on [C4](https://huggingface.co/datasets/allenai/c4) dataset, based on LLM Foundry
+   - [Slurm version](./examples/llm-foundry/slurm/README.md)
+   - [AKS version](./examples/llm-foundry/aks/README.md)
 
 ## Infrastructure validation catalog
 
-1. [NCCL All-reduce](./infrastructure_validations/slurm/NCCL/README.md)
-2. [Node Health Checks](./infrastructure_validations/slurm/NHC/README.md)
-3. [Thermal Test](./infrastructure_validations/slurm/thermal_test/README.md)
+1. NCCL All-reduce - Testing distributed communication performance for multi-GPU training
+   - [Slurm version](./infrastructure_validations/slurm/NCCL/README.md)
+   - [AKS version](./infrastructure_validations/aks/NCCL/README.md)
+2. Node Health Checks - Automated system validation and monitoring for compute nodes
+   - [Slurm version](./infrastructure_validations/slurm/NHC/README.md)
+   - [AKS version](./infrastructure_validations/aks/NHC/README.md)
+3. Thermal Test - GPU thermal stress testing and monitoring
+   - [Slurm version](./infrastructure_validations/slurm/thermal_test/README.md)
+4. FIO Storage Performance Testing - I/O performance testing with Azure Blob Storage and blobfuse
+   - [AKS version](./infrastructure_validations/aks/blobfuse/README.md)
 
 ## Contributing
 
