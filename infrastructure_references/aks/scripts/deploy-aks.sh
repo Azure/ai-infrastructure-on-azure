@@ -21,6 +21,8 @@ fi
 : "${GPU_OPERATOR_VERSION:=v25.3.1}"
 : "${NETWORK_OPERATOR_VERSION:=v25.4.0}"
 : "${MPI_OPERATOR_VERSION:=v0.6.0}" # Latest version: https://github.com/kubeflow/mpi-operator/releases
+: "${CERT_MANAGER_VERSION:=v1.18.2}" # Latest version: https://github.com/cert-manager/cert-manager/releases
+: "${PYTORCH_OPERATOR_VERSION:=v1.8.1}" # Latest version: https://github.com/kubeflow/training-operator/releases
 
 # Network Operator Device Plugin Configuration
 : "${RDMA_DEVICE_PLUGIN:=sriov-device-plugin}" # Options: sriov-device-plugin, rdma-shared-device-plugin
@@ -265,6 +267,39 @@ function install_mpi_operator() {
     echo "✅ MPI Operator installed successfully."
 }
 
+function install_pytorch_operator() {
+    echo "⏳ Installing cert-manager (required for PyTorch Operator)..."
+    
+    # Add cert-manager helm repo
+    helm repo add jetstack https://charts.jetstack.io --force-update
+    helm repo update
+    
+    # Install cert-manager
+    helm install \
+        cert-manager jetstack/cert-manager \
+        --namespace cert-manager \
+        --create-namespace \
+        --version "${CERT_MANAGER_VERSION}" \
+        --set crds.enabled=true
+    
+    echo "✅ cert-manager installed successfully."
+    
+    echo "⏳ Installing PyTorch Operator..."
+    kubectl apply --server-side -k "github.com/kubeflow/training-operator.git/manifests/overlays/standalone?ref=${PYTORCH_OPERATOR_VERSION}"
+    echo "✅ PyTorch Operator installed successfully."
+}
+
+function uninstall_pytorch_operator() {
+    echo "⏳ Uninstalling PyTorch Operator..."
+    kubectl delete --server-side -k "github.com/kubeflow/training-operator.git/manifests/overlays/standalone?ref=${PYTORCH_OPERATOR_VERSION}" || true
+    
+    echo "⏳ Uninstalling cert-manager..."
+    helm uninstall cert-manager --namespace cert-manager || true
+    kubectl delete namespace cert-manager || true
+    
+    echo "✅ PyTorch Operator and cert-manager uninstalled successfully."
+}
+
 function print_usage() {
     echo "Usage: $0 <command> [options]"
     echo ""
@@ -276,6 +311,8 @@ function print_usage() {
     echo "  install-kube-prometheus  Install Prometheus monitoring stack with Grafana dashboards"
     echo "  install-mpi-operator     Install MPI Operator for distributed computing workloads"
     echo "  uninstall-mpi-operator   Remove MPI Operator from the cluster"
+    echo "  install-pytorch-operator Install PyTorch Operator (includes cert-manager) for PyTorch distributed training"
+    echo "  uninstall-pytorch-operator Remove PyTorch Operator and cert-manager from the cluster"
     echo "  all                      Deploy AKS cluster and install all operators (full setup)"
     echo ""
     echo "Examples:"
@@ -283,6 +320,7 @@ function print_usage() {
     echo "  $0 deploy-aks --node-vm-size standard_ds4_v2"
     echo "  $0 add-nodepool --gpu-driver=none --node-osdisk-size 1000"
     echo "  RDMA_DEVICE_PLUGIN=rdma-shared-device-plugin $0 install-network-operator"
+    echo "  $0 install-pytorch-operator"
     echo ""
     echo "Environment Variables (mandatory):"
     echo "  AZURE_REGION             Azure region for deployment"
@@ -297,6 +335,8 @@ function print_usage() {
     echo "  GPU_OPERATOR_VERSION     Version of GPU Operator to install (default: v25.3.1)"
     echo "  NETWORK_OPERATOR_VERSION Version of Network Operator to install (default: v25.4.0)"
     echo "  MPI_OPERATOR_VERSION     Version of MPI Operator to install (default: v0.6.0)"
+    echo "  CERT_MANAGER_VERSION     Version of cert-manager to install (default: v1.18.2)"
+    echo "  PYTORCH_OPERATOR_VERSION Version of PyTorch Operator to install (default: v1.8.1)"
     echo "  NETWORK_OPERATOR_NS      Namespace for Network Operator (default: network-operator)"
     echo "  GPU_OPERATOR_NS          Namespace for GPU Operator (default: gpu-operator)"
     echo "  RDMA_DEVICE_PLUGIN       RDMA device plugin type (default: sriov-device-plugin)"
@@ -333,11 +373,18 @@ install-mpi-operator | install_mpi_operator)
 uninstall-mpi-operator | uninstall_mpi_operator)
     kubectl delete --server-side -f "https://raw.githubusercontent.com/kubeflow/mpi-operator/${MPI_OPERATOR_VERSION}/deploy/v2beta1/mpi-operator.yaml"
     ;;
+install-pytorch-operator | install_pytorch_operator)
+    install_pytorch_operator
+    ;;
+uninstall-pytorch-operator | uninstall_pytorch_operator)
+    uninstall_pytorch_operator
+    ;;
 all)
     deploy_aks
     download_aks_credentials --overwrite-existing
     install_kube_prometheus
     install_mpi_operator
+    install_pytorch_operator
     add_nodepool --gpu-driver=none
     install_network_operator
     install_gpu_operator
