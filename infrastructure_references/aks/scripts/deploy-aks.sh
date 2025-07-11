@@ -65,6 +65,7 @@ function deploy_aks() {
         --enable-oidc-issuer \
         --enable-workload-identity \
         --enable-managed-identity \
+        --enable-blob-driver \
         --node-count 1 \
         --location "${AZURE_REGION}" \
         --generate-ssh-keys \
