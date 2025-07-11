@@ -27,12 +27,48 @@ export NODE_POOL_VM_SIZE=""
 # export GPU_OPERATOR_VERSION=""
 # export NETWORK_OPERATOR_VERSION=""
 # export MPI_OPERATOR_VERSION=""
+# export RDMA_DEVICE_PLUGIN=""
 ```
 
 Run the following command to deploy the AKS cluster and additional necessary components:
 
 ```bash
 ./scripts/deploy-aks.sh all
+```
+
+## RDMA Device Plugin Configuration
+
+The script supports two types of RDMA device plugins for InfiniBand networking:
+
+### SR-IOV Device Plugin (Default)
+- **Environment Variable**: `RDMA_DEVICE_PLUGIN=sriov-device-plugin`
+- **Resource Name**: `rdma/ib`
+- **Use Case**: Standard SR-IOV networking with dedicated virtual functions per pod
+- **Benefits**: Better isolation and performance per pod
+
+### RDMA Shared Device Plugin
+- **Environment Variable**: `RDMA_DEVICE_PLUGIN=rdma-shared-device-plugin`
+- **Resource Name**: `rdma/shared_ib`
+- **Use Case**: Shared RDMA resources across multiple pods
+- **Benefits**: Higher resource utilization when multiple pods need RDMA access
+
+### Usage Examples
+
+Deploy with SR-IOV device plugin (default):
+```bash
+./scripts/deploy-aks.sh all
+```
+
+Deploy with RDMA shared device plugin:
+```bash
+export RDMA_DEVICE_PLUGIN=rdma-shared-device-plugin
+./scripts/deploy-aks.sh all
+```
+
+Install only the network operator with specific plugin:
+```bash
+export RDMA_DEVICE_PLUGIN=rdma-shared-device-plugin
+./scripts/deploy-aks.sh install-network-operator
 ```
 
 ## Monitoring

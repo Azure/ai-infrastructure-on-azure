@@ -22,6 +22,9 @@ fi
 : "${NETWORK_OPERATOR_VERSION:=v25.4.0}"
 : "${MPI_OPERATOR_VERSION:=v0.6.0}" # Latest version: https://github.com/kubeflow/mpi-operator/releases
 
+# Network Operator Device Plugin Configuration
+: "${RDMA_DEVICE_PLUGIN:=sriov-device-plugin}" # Options: sriov-device-plugin, rdma-shared-device-plugin
+
 : "${NETWORK_OPERATOR_NS:=network-operator}"
 : "${GPU_OPERATOR_NS:=gpu-operator}"
 
@@ -114,7 +117,13 @@ function download_aks_credentials() {
 # install_network_operator installs the NVIDIA network operator on the AKS
 # cluster.
 function install_network_operator() {
-    echo "⏳ Installing Nvidia Network Operator..."
+    echo "⏳ Installing Nvidia Network Operator with ${RDMA_DEVICE_PLUGIN}..."
+
+    # Validate RDMA_DEVICE_PLUGIN value
+    if [[ "${RDMA_DEVICE_PLUGIN}" != "sriov-device-plugin" && "${RDMA_DEVICE_PLUGIN}" != "rdma-shared-device-plugin" ]]; then
+        echo "❌ Invalid RDMA_DEVICE_PLUGIN value: ${RDMA_DEVICE_PLUGIN}. Must be either 'sriov-device-plugin' or 'rdma-shared-device-plugin'"
+        exit 1
+    fi
 
     kubectl create ns "${NETWORK_OPERATOR_NS}" || true
     kubectl label --overwrite ns "${NETWORK_OPERATOR_NS}" pod-security.kubernetes.io/enforce=privileged
@@ -132,7 +141,7 @@ function install_network_operator() {
         --version "${NETWORK_OPERATOR_VERSION}"
 
     kubectl apply -f "${CONFIGS_DIR}"/network-operator/node-feature-rule.yaml
-    kubectl apply -k "${CONFIGS_DIR}"/network-operator/nicclusterpolicy/rdma-shared-device-plugin/
+    kubectl apply -k "${CONFIGS_DIR}"/network-operator/nicclusterpolicy/"${RDMA_DEVICE_PLUGIN}"/
 
     echo -e "⏳ Waiting for Nvidia Network Operator to be ready, to see behind the scenes run:\n"
     echo "kubectl get NicClusterPolicy nic-cluster-policy"
@@ -149,10 +158,17 @@ function install_network_operator() {
         sleep 5
     done
 
-    echo -e '\nRDMA Shared IB devices on nodes:\n'
-    rdma_ib_on_nodes_cmd="kubectl get nodes -l accelerator=nvidia -o json | jq -r '.items[] | {name: .metadata.name, \"rdma/shared_ib\": .status.allocatable[\"rdma/shared_ib\"]}'"
-    echo "$ ${rdma_ib_on_nodes_cmd}"
-    eval "${rdma_ib_on_nodes_cmd}"
+    # Set the correct resource name based on the device plugin type
+    if [[ "${RDMA_DEVICE_PLUGIN}" == "sriov-device-plugin" ]]; then
+        RDMA_RESOURCE_NAME="rdma/ib"
+    else
+        RDMA_RESOURCE_NAME="rdma/shared_ib"
+    fi
+
+    echo -e "\n${RDMA_DEVICE_PLUGIN} RDMA devices on nodes:\n"
+    rdma_devices_on_nodes_cmd="kubectl get nodes -l accelerator=nvidia -o json | jq -r '.items[] | {name: .metadata.name, \"${RDMA_RESOURCE_NAME}\": .status.allocatable[\"${RDMA_RESOURCE_NAME}\"]}'"
+    echo "$ ${rdma_devices_on_nodes_cmd}"
+    eval "${rdma_devices_on_nodes_cmd}"
 }
 
 function install_gpu_operator() {
@@ -265,6 +281,7 @@ function print_usage() {
     echo "  $0 all"
     echo "  $0 deploy-aks --node-vm-size standard_ds4_v2"
     echo "  $0 add-nodepool --gpu-driver=none --node-osdisk-size 1000"
+    echo "  RDMA_DEVICE_PLUGIN=rdma-shared-device-plugin $0 install-network-operator"
     echo ""
     echo "Environment Variables (mandatory):"
     echo "  AZURE_REGION             Azure region for deployment"
@@ -281,6 +298,12 @@ function print_usage() {
     echo "  MPI_OPERATOR_VERSION     Version of MPI Operator to install (default: v0.6.0)"
     echo "  NETWORK_OPERATOR_NS      Namespace for Network Operator (default: network-operator)"
     echo "  GPU_OPERATOR_NS          Namespace for GPU Operator (default: gpu-operator)"
+    echo "  RDMA_DEVICE_PLUGIN       RDMA device plugin type (default: sriov-device-plugin)"
+    echo "                           Options: sriov-device-plugin, rdma-shared-device-plugin"
+    echo ""
+    echo "RDMA Device Plugin Options:"
+    echo "  sriov-device-plugin      Uses SR-IOV device plugin (resource: rdma/ib)"
+    echo "  rdma-shared-device-plugin Uses RDMA shared device plugin (resource: rdma/shared_ib)"
     echo ""
 }
 
