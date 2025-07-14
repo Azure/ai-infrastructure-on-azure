@@ -24,6 +24,7 @@ export NODE_POOL_VM_SIZE=""
 # export NODE_POOL_NAME=""
 # export CLUSTER_NAME=""
 # export USER_NAME=""
+# export SYSTEM_POOL_VM_SIZE=""
 # export GPU_OPERATOR_VERSION=""
 # export NETWORK_OPERATOR_VERSION=""
 # export MPI_OPERATOR_VERSION=""
@@ -84,6 +85,7 @@ The `deploy-aks.sh` script supports the following commands:
 - **`AZURE_RESOURCE_GROUP`** - Resource group name (default: "ai-infra-aks")
 - **`CLUSTER_NAME`** - AKS cluster name (default: "ai-infra")
 - **`USER_NAME`** - Admin username for AKS nodes (default: "azureuser")
+- **`SYSTEM_POOL_VM_SIZE`** - VM size for system node pool (default: "", AKS selects appropriate size)
 - **`NODE_POOL_NAME`** - Node pool name (default: "gpu")
 - **`NODE_POOL_NODE_COUNT`** - Number of nodes in pool (default: 2)
 

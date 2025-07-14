@@ -16,6 +16,7 @@ fi
 # AKS specific variables
 : "${CLUSTER_NAME:=ai-infra}"
 : "${USER_NAME:=azureuser}"
+: "${SYSTEM_POOL_VM_SIZE:=}"
 
 # Versions
 : "${GPU_OPERATOR_VERSION:=v25.3.1}"
@@ -61,18 +62,30 @@ function deploy_aks() {
     fi
 
     echo "⏳ Creating AKS cluster '${CLUSTER_NAME}' in resource group '${AZURE_RESOURCE_GROUP}'..."
-    az aks create \
-        --resource-group "${AZURE_RESOURCE_GROUP}" \
-        --name "${CLUSTER_NAME}" \
-        --enable-oidc-issuer \
-        --enable-workload-identity \
-        --enable-managed-identity \
-        --enable-blob-driver \
-        --node-count 1 \
-        --location "${AZURE_REGION}" \
-        --generate-ssh-keys \
-        --admin-username "${USER_NAME}" \
+    
+    # Build the az aks create command
+    local aks_create_cmd=(
+        az aks create
+        --resource-group "${AZURE_RESOURCE_GROUP}"
+        --name "${CLUSTER_NAME}"
+        --enable-oidc-issuer
+        --enable-workload-identity
+        --enable-managed-identity
+        --enable-blob-driver
+        --node-count 1
+        --location "${AZURE_REGION}"
+        --generate-ssh-keys
+        --admin-username "${USER_NAME}"
         --os-sku Ubuntu
+    )
+    
+    # Add node-vm-size if SYSTEM_POOL_VM_SIZE is set
+    if [[ -n "${SYSTEM_POOL_VM_SIZE}" ]]; then
+        aks_create_cmd+=(--node-vm-size "${SYSTEM_POOL_VM_SIZE}")
+    fi
+    
+    # Execute the command
+    "${aks_create_cmd[@]}"
 
     echo "✅ AKS cluster '${CLUSTER_NAME}' created successfully in resource group '${AZURE_RESOURCE_GROUP}'!"
 }
@@ -330,6 +343,7 @@ function print_usage() {
     echo "  AZURE_RESOURCE_GROUP     Resource group name (default: ai-infra-aks)"
     echo "  CLUSTER_NAME             AKS cluster name (default: ai-infra)"
     echo "  USER_NAME                Admin username for AKS nodes (default: azureuser)"
+    echo "  SYSTEM_POOL_VM_SIZE      VM size for system node pool (default: AKS default)"
     echo "  NODE_POOL_NAME           Node pool name (default: gpu)"
     echo "  NODE_POOL_NODE_COUNT     Number of nodes in pool (default: 2)"
     echo "  GPU_OPERATOR_VERSION     Version of GPU Operator to install (default: v25.3.1)"
