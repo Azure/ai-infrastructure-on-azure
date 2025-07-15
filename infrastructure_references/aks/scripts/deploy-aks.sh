@@ -303,7 +303,7 @@ function install_pytorch_operator() {
     mkdir -p "${CONFIGS_DIR}/pytorch-operator"
     
     # Create/update the kustomization file with the correct version
-    cat > "${CONFIGS_DIR}/pytorch-operator/kustomization.yaml" <<'EOF'
+    cat > "${CONFIGS_DIR}/pytorch-operator/kustomization.yaml" <<EOF
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
@@ -329,14 +329,14 @@ patches:
       namespace: kubeflow
 
 EOF
-    cat > "${CONFIGS_DIR}/pytorch-operator/remove-mpijob-crd.yaml" <<'EOF'
-$patch: delete
+    cat > "${CONFIGS_DIR}/pytorch-operator/remove-mpijob-crd.yaml" <<EOF
+\$patch: delete
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: mpijobs.kubeflow.org
 EOF
-    cat > "${CONFIGS_DIR}/pytorch-operator/patch-disable-mpi.yaml" <<'EOF'
+    cat > "${CONFIGS_DIR}/pytorch-operator/patch-disable-mpi.yaml" <<EOF
 - op: replace
   path: /spec/template/spec/containers/0/command
   value:
