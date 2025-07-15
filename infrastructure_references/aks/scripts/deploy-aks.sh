@@ -297,14 +297,85 @@ function install_pytorch_operator() {
     
     echo "✅ cert-manager installed successfully."
     
-    echo "⏳ Installing PyTorch Operator..."
-    kubectl apply --server-side -k "github.com/kubeflow/training-operator.git/manifests/overlays/standalone?ref=${PYTORCH_OPERATOR_VERSION}"
-    echo "✅ PyTorch Operator installed successfully."
+    echo "⏳ Installing PyTorch Operator (with MPI support disabled)..."
+    
+    # Create the pytorch-operator config directory if it doesn't exist
+    mkdir -p "${CONFIGS_DIR}/pytorch-operator"
+    
+    # Create/update the kustomization file with the correct version
+    cat > "${CONFIGS_DIR}/pytorch-operator/kustomization.yaml" <<EOF
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - github.com/kubeflow/training-operator.git/manifests/overlays/standalone?ref=v1.8.1
+
+patches:
+  # Remove the MPIJob CRD to avoid conflict with MPI Operator
+  - path: remove-mpijob-crd.yaml
+    target:
+      group: apiextensions.k8s.io
+      version: v1
+      kind: CustomResourceDefinition
+      name: mpijobs.kubeflow.org
+
+  # Patch to disable MPI in the training-operator deployment
+  - path: patch-disable-mpi.yaml
+    target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: training-operator
+      namespace: kubeflow
+
+EOF
+    cat > "${CONFIGS_DIR}/pytorch-operator/remove-mpijob-crd.yaml" <<EOF
+$patch: delete
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: mpijobs.kubeflow.org
+EOF
+    cat > "${CONFIGS_DIR}/pytorch-operator/patch-disable-mpi.yaml" <<EOF
+- op: replace
+  path: /spec/template/spec/containers/0/command
+  value:
+    - /manager
+    - --enable-scheme=pytorchjob
+EOF
+
+    # Apply the PyTorch Operator with our custom configuration
+    # The MPI CRD error is expected if MPI Operator is already installed
+    if kubectl apply --server-side -k "${CONFIGS_DIR}/pytorch-operator/" 2>&1 | tee /tmp/pytorch-operator-install.log | grep -v "mpijobs.kubeflow.org"; then
+        echo "PyTorch Operator resources applied."
+    else
+        # Check if the only error was the MPI CRD conflict
+        if grep -q "mpijobs.kubeflow.org" /tmp/pytorch-operator-install.log && ! grep -v "mpijobs.kubeflow.org" /tmp/pytorch-operator-install.log | grep -q "Error"; then
+            echo "PyTorch Operator resources applied (MPI CRD conflict ignored)."
+        else
+            echo "❌ Failed to apply PyTorch Operator resources. Check the logs above."
+            rm -f /tmp/pytorch-operator-install.log
+            return 1
+        fi
+    fi
+    rm -f /tmp/pytorch-operator-install.log
+    
+    echo "Checking if PyTorch Operator deployment is running..."
+    kubectl wait --for=condition=available --timeout=300s deployment/training-operator -n kubeflow
+    
+    # Verify the deployment has the correct args
+    echo "Verifying PyTorch Operator configuration..."
+    if kubectl get deployment training-operator -n kubeflow -o jsonpath='{.spec.template.spec.containers[0].command}' | grep -q "enable-mpi=false"; then
+        echo "✅ PyTorch Operator installed successfully with MPI support disabled."
+    else
+        echo "⚠️  PyTorch Operator is running but MPI support may not be disabled. Checking container args..."
+        kubectl get deployment training-operator -n kubeflow -o jsonpath='{.spec.template.spec.containers[0]}'
+    fi
 }
 
 function uninstall_pytorch_operator() {
     echo "⏳ Uninstalling PyTorch Operator..."
-    kubectl delete --server-side -k "github.com/kubeflow/training-operator.git/manifests/overlays/standalone?ref=${PYTORCH_OPERATOR_VERSION}" || true
+    kubectl delete -k "${CONFIGS_DIR}/pytorch-operator/" || true
     
     echo "⏳ Uninstalling cert-manager..."
     helm uninstall cert-manager --namespace cert-manager || true
@@ -385,7 +456,7 @@ install-mpi-operator | install_mpi_operator)
     install_mpi_operator
     ;;
 uninstall-mpi-operator | uninstall_mpi_operator)
-    kubectl delete --server-side -f "https://raw.githubusercontent.com/kubeflow/mpi-operator/${MPI_OPERATOR_VERSION}/deploy/v2beta1/mpi-operator.yaml"
+    kubectl delete -f "https://raw.githubusercontent.com/kubeflow/mpi-operator/${MPI_OPERATOR_VERSION}/deploy/v2beta1/mpi-operator.yaml"
     ;;
 install-pytorch-operator | install_pytorch_operator)
     install_pytorch_operator
