@@ -345,32 +345,22 @@ EOF
 EOF
 
     # Apply the PyTorch Operator with our custom configuration
-    # The MPI CRD error is expected if MPI Operator is already installed
-    if kubectl apply --server-side -k "${CONFIGS_DIR}/pytorch-operator/" 2>&1 | tee /tmp/pytorch-operator-install.log | grep -v "mpijobs.kubeflow.org"; then
-        echo "PyTorch Operator resources applied."
-    else
-        # Check if the only error was the MPI CRD conflict
-        if grep -q "mpijobs.kubeflow.org" /tmp/pytorch-operator-install.log && ! grep -v "mpijobs.kubeflow.org" /tmp/pytorch-operator-install.log | grep -q "Error"; then
-            echo "PyTorch Operator resources applied (MPI CRD conflict ignored)."
-        else
-            echo "❌ Failed to apply PyTorch Operator resources. Check the logs above."
-            rm -f /tmp/pytorch-operator-install.log
-            return 1
+    kubectl apply --server-side -k "${CONFIGS_DIR}/pytorch-operator/"
+
+    # Wait for the PyTorch Operator deployment to be available
+    while true; do
+        if kubectl get deployment training-operator -n kubeflow 2>/dev/null | grep -q training-operator; then
+            if kubectl wait --for=condition=available --timeout=5s deployment/training-operator -n kubeflow 2>/dev/null; then
+                echo "✅ PyTorch Operator deployment is available."
+                break
+            fi
         fi
-    fi
-    rm -f /tmp/pytorch-operator-install.log
-    
-    echo "Checking if PyTorch Operator deployment is running..."
-    kubectl wait --for=condition=available --timeout=300s deployment/training-operator -n kubeflow
-    
-    # Verify the deployment has the correct args
-    echo "Verifying PyTorch Operator configuration..."
-    if kubectl get deployment training-operator -n kubeflow -o jsonpath='{.spec.template.spec.containers[0].command}' | grep -q "enable-mpi=false"; then
-        echo "✅ PyTorch Operator installed successfully with MPI support disabled."
-    else
-        echo "⚠️  PyTorch Operator is running but MPI support may not be disabled. Checking container args..."
-        kubectl get deployment training-operator -n kubeflow -o jsonpath='{.spec.template.spec.containers[0]}'
-    fi
+        echo "⏳ Waiting for PyTorch Operator deployment to be available..."
+        sleep 5
+    done
+
+    # Optionally verify the deployment
+    echo "✅ PyTorch Operator installed."
 }
 
 function uninstall_pytorch_operator() {
