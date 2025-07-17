@@ -44,11 +44,13 @@ Run the following command to deploy the AKS cluster and additional necessary com
 The `deploy-aks.sh` script supports the following commands:
 
 ### Infrastructure Commands
+
 - **`deploy-aks`** - Create a new AKS cluster with basic configuration
 - **`add-nodepool`** - Add a GPU node pool to an existing AKS cluster
 - **`all`** - Deploy AKS cluster and install all operators (complete setup)
 
 ### Operator Installation Commands
+
 - **`install-network-operator`** - Install NVIDIA Network Operator for InfiniBand/RDMA support
 - **`install-gpu-operator`** - Install NVIDIA GPU Operator for GPU workload management
 - **`install-kube-prometheus`** - Install Prometheus monitoring stack with Grafana dashboards
@@ -56,6 +58,7 @@ The `deploy-aks.sh` script supports the following commands:
 - **`install-pytorch-operator`** - Install PyTorch Operator (includes cert-manager) for PyTorch distributed training
 
 ### Operator Removal Commands
+
 - **`uninstall-mpi-operator`** - Remove MPI Operator from the cluster
 - **`uninstall-pytorch-operator`** - Remove PyTorch Operator and cert-manager from the cluster
 
@@ -78,10 +81,12 @@ The `deploy-aks.sh` script supports the following commands:
 ## Environment Variables
 
 ### Mandatory Variables
+
 - **`AZURE_REGION`** - Azure region for deployment (e.g., "eastus", "westus2")
 - **`NODE_POOL_VM_SIZE`** - VM size for GPU nodes (e.g., "Standard_NC24ads_A100_v4")
 
 ### Optional Configuration Variables
+
 - **`AZURE_RESOURCE_GROUP`** - Resource group name (default: "ai-infra-aks")
 - **`CLUSTER_NAME`** - AKS cluster name (default: "ai-infra")
 - **`USER_NAME`** - Admin username for AKS nodes (default: "azureuser")
@@ -90,6 +95,7 @@ The `deploy-aks.sh` script supports the following commands:
 - **`NODE_POOL_NODE_COUNT`** - Number of nodes in pool (default: 2)
 
 ### Operator Version Variables
+
 - **`GPU_OPERATOR_VERSION`** - Version of GPU Operator to install (default: "v25.3.1")
 - **`NETWORK_OPERATOR_VERSION`** - Version of Network Operator to install (default: "v25.4.0")
 - **`MPI_OPERATOR_VERSION`** - Version of MPI Operator to install (default: "v0.6.0")
@@ -97,10 +103,12 @@ The `deploy-aks.sh` script supports the following commands:
 - **`PYTORCH_OPERATOR_VERSION`** - Version of PyTorch Operator to install (default: "v1.8.1")
 
 ### Namespace Configuration
+
 - **`NETWORK_OPERATOR_NS`** - Namespace for Network Operator (default: "network-operator")
 - **`GPU_OPERATOR_NS`** - Namespace for GPU Operator (default: "gpu-operator")
 
 ### RDMA Configuration
+
 - **`RDMA_DEVICE_PLUGIN`** - RDMA device plugin type (default: "sriov-device-plugin")
   - Options: "sriov-device-plugin", "rdma-shared-device-plugin"
 
@@ -109,12 +117,14 @@ The `deploy-aks.sh` script supports the following commands:
 The script supports two types of RDMA device plugins for InfiniBand networking:
 
 ### SR-IOV Device Plugin (Default)
+
 - **Environment Variable**: `RDMA_DEVICE_PLUGIN=sriov-device-plugin`
 - **Resource Name**: `rdma/ib`
 - **Use Case**: Standard SR-IOV networking with dedicated virtual functions per pod
 - **Benefits**: Better isolation and performance per pod
 
 ### RDMA Shared Device Plugin
+
 - **Environment Variable**: `RDMA_DEVICE_PLUGIN=rdma-shared-device-plugin`
 - **Resource Name**: `rdma/shared_ib`
 - **Use Case**: Shared RDMA resources across multiple pods
@@ -123,23 +133,37 @@ The script supports two types of RDMA device plugins for InfiniBand networking:
 ### Usage Examples
 
 Deploy with SR-IOV device plugin (default):
+
 ```bash
 ./scripts/deploy-aks.sh all
 ```
 
 Deploy with RDMA shared device plugin:
+
 ```bash
 export RDMA_DEVICE_PLUGIN=rdma-shared-device-plugin
 ./scripts/deploy-aks.sh all
 ```
 
 Install only the network operator with specific plugin:
+
 ```bash
 export RDMA_DEVICE_PLUGIN=rdma-shared-device-plugin
 ./scripts/deploy-aks.sh install-network-operator
 ```
 
 ## Monitoring
+
+### Installation
+
+To install the Kube Prometheus stack for monitoring, run the following command:
+
+```bash
+./scripts/deploy-aks.sh install-kube-prometheus
+```
+
+> [!NOTE]
+> You can also set the Grafana admin password by exporting the environment variable `GRAFANA_PASSWORD` before running the deployment script. If not set, a random password will be generated.
 
 ### Prometheus
 
@@ -159,4 +183,8 @@ To access the Grafana dashboard, run the following command:
 kubectl -n monitoring port-forward svc/kube-prometheus-grafana 3000:80
 ```
 
-Go to <http://127.0.0.1:3000/dashboards> and enter username as `admin` and password as `prom-operator`.
+Go to <http://127.0.0.1:3000/dashboards> and enter username as `admin`. You can find the Grafana admin password by running the following command:
+
+```bash
+kubectl -n monitoring get secret kube-prometheus-grafana -o jsonpath='{.data.admin-password}' | base64 --decode
+```

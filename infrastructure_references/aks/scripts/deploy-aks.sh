@@ -17,12 +17,13 @@ fi
 : "${CLUSTER_NAME:=ai-infra}"
 : "${USER_NAME:=azureuser}"
 : "${SYSTEM_POOL_VM_SIZE:=}"
+: "${GRAFANA_PASSWORD:=$(tr </dev/urandom -dc 'A-Za-z0-9!@#$%&*_-' | head -c 30)}"
 
 # Versions
 : "${GPU_OPERATOR_VERSION:=v25.3.1}"
 : "${NETWORK_OPERATOR_VERSION:=v25.4.0}"
-: "${MPI_OPERATOR_VERSION:=v0.6.0}" # Latest version: https://github.com/kubeflow/mpi-operator/releases
-: "${CERT_MANAGER_VERSION:=v1.18.2}" # Latest version: https://github.com/cert-manager/cert-manager/releases
+: "${MPI_OPERATOR_VERSION:=v0.6.0}"     # Latest version: https://github.com/kubeflow/mpi-operator/releases
+: "${CERT_MANAGER_VERSION:=v1.18.2}"    # Latest version: https://github.com/cert-manager/cert-manager/releases
 : "${PYTORCH_OPERATOR_VERSION:=v1.8.1}" # Latest version: https://github.com/kubeflow/training-operator/releases
 
 # Network Operator Device Plugin Configuration
@@ -62,7 +63,7 @@ function deploy_aks() {
     fi
 
     echo "⏳ Creating AKS cluster '${CLUSTER_NAME}' in resource group '${AZURE_RESOURCE_GROUP}'..."
-    
+
     # Build the az aks create command
     local aks_create_cmd=(
         az aks create
@@ -78,12 +79,12 @@ function deploy_aks() {
         --admin-username "${USER_NAME}"
         --os-sku Ubuntu
     )
-    
+
     # Add node-vm-size if SYSTEM_POOL_VM_SIZE is set
     if [[ -n "${SYSTEM_POOL_VM_SIZE}" ]]; then
         aks_create_cmd+=(--node-vm-size "${SYSTEM_POOL_VM_SIZE}")
     fi
-    
+
     # Execute the command
     "${aks_create_cmd[@]}"
 
@@ -254,14 +255,15 @@ function install_grafana_dashboards() {
 function install_kube_prometheus() {
     echo "⏳ Installing Kube Prometheus..."
 
-    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-    helm repo update
+    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts >/dev/null
+    helm repo update >/dev/null
     kube_prometheus_install="helm upgrade -i \
         --wait \
         -n monitoring \
         --create-namespace \
         kube-prometheus \
-        prometheus-community/kube-prometheus-stack"
+        prometheus-community/kube-prometheus-stack \
+        --set grafana.adminPassword=${GRAFANA_PASSWORD}"
 
     # If you don't retry then it could fail with errors like:
     # Error: create: failed to create: Post "https://foobar.eastus.azmk8s.io:443/api/v1/namespaces/monitoring/secrets": remote error: tls: bad record MAC
@@ -282,11 +284,11 @@ function install_mpi_operator() {
 
 function install_pytorch_operator() {
     echo "⏳ Installing cert-manager (required for PyTorch Operator)..."
-    
+
     # Add cert-manager helm repo
     helm repo add jetstack https://charts.jetstack.io --force-update
     helm repo update
-    
+
     # Install cert-manager
     helm install \
         cert-manager jetstack/cert-manager \
@@ -294,16 +296,16 @@ function install_pytorch_operator() {
         --create-namespace \
         --version "${CERT_MANAGER_VERSION}" \
         --set crds.enabled=true
-    
+
     echo "✅ cert-manager installed successfully."
-    
+
     echo "⏳ Installing PyTorch Operator (with MPI support disabled)..."
-    
+
     # Create the pytorch-operator config directory if it doesn't exist
     mkdir -p "${CONFIGS_DIR}/pytorch-operator"
-    
+
     # Create/update the kustomization file with the correct version
-    cat > "${CONFIGS_DIR}/pytorch-operator/kustomization.yaml" <<EOF
+    cat >"${CONFIGS_DIR}/pytorch-operator/kustomization.yaml" <<EOF
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
@@ -329,14 +331,14 @@ patches:
       namespace: kubeflow
 
 EOF
-    cat > "${CONFIGS_DIR}/pytorch-operator/remove-mpijob-crd.yaml" <<EOF
+    cat >"${CONFIGS_DIR}/pytorch-operator/remove-mpijob-crd.yaml" <<EOF
 \$patch: delete
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: mpijobs.kubeflow.org
 EOF
-    cat > "${CONFIGS_DIR}/pytorch-operator/patch-disable-mpi.yaml" <<EOF
+    cat >"${CONFIGS_DIR}/pytorch-operator/patch-disable-mpi.yaml" <<EOF
 - op: replace
   path: /spec/template/spec/containers/0/command
   value:
@@ -366,11 +368,11 @@ EOF
 function uninstall_pytorch_operator() {
     echo "⏳ Uninstalling PyTorch Operator..."
     kubectl delete -k "${CONFIGS_DIR}/pytorch-operator/" || true
-    
+
     echo "⏳ Uninstalling cert-manager..."
     helm uninstall cert-manager --namespace cert-manager || true
     kubectl delete namespace cert-manager || true
-    
+
     echo "✅ PyTorch Operator and cert-manager uninstalled successfully."
 }
 
