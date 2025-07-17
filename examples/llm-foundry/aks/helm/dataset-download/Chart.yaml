@@ -1,0 +1,14 @@
+apiVersion: v2
+name: dataset-download
+description: Download and convert datasets for LLM training
+type: application
+version: 0.1.0
+appVersion: "v0.18.0"
+keywords:
+  - llm
+  - dataset
+  - huggingface
+  - c4
+home: https://github.com/Azure/ai-infrastructure-on-azure
+sources:
+  - https://github.com/mosaicml/llm-foundry

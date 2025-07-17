@@ -16,11 +16,17 @@ fi
 # AKS specific variables
 : "${CLUSTER_NAME:=ai-infra}"
 : "${USER_NAME:=azureuser}"
+: "${SYSTEM_POOL_VM_SIZE:=}"
 
 # Versions
 : "${GPU_OPERATOR_VERSION:=v25.3.1}"
 : "${NETWORK_OPERATOR_VERSION:=v25.4.0}"
 : "${MPI_OPERATOR_VERSION:=v0.6.0}" # Latest version: https://github.com/kubeflow/mpi-operator/releases
+: "${CERT_MANAGER_VERSION:=v1.18.2}" # Latest version: https://github.com/cert-manager/cert-manager/releases
+: "${PYTORCH_OPERATOR_VERSION:=v1.8.1}" # Latest version: https://github.com/kubeflow/training-operator/releases
+
+# Network Operator Device Plugin Configuration
+: "${RDMA_DEVICE_PLUGIN:=sriov-device-plugin}" # Options: sriov-device-plugin, rdma-shared-device-plugin
 
 : "${NETWORK_OPERATOR_NS:=network-operator}"
 : "${GPU_OPERATOR_NS:=gpu-operator}"
@@ -56,17 +62,30 @@ function deploy_aks() {
     fi
 
     echo "⏳ Creating AKS cluster '${CLUSTER_NAME}' in resource group '${AZURE_RESOURCE_GROUP}'..."
-    az aks create \
-        --resource-group "${AZURE_RESOURCE_GROUP}" \
-        --name "${CLUSTER_NAME}" \
-        --enable-oidc-issuer \
-        --enable-workload-identity \
-        --enable-managed-identity \
-        --node-count 1 \
-        --location "${AZURE_REGION}" \
-        --generate-ssh-keys \
-        --admin-username "${USER_NAME}" \
+    
+    # Build the az aks create command
+    local aks_create_cmd=(
+        az aks create
+        --resource-group "${AZURE_RESOURCE_GROUP}"
+        --name "${CLUSTER_NAME}"
+        --enable-oidc-issuer
+        --enable-workload-identity
+        --enable-managed-identity
+        --enable-blob-driver
+        --node-count 1
+        --location "${AZURE_REGION}"
+        --generate-ssh-keys
+        --admin-username "${USER_NAME}"
         --os-sku Ubuntu
+    )
+    
+    # Add node-vm-size if SYSTEM_POOL_VM_SIZE is set
+    if [[ -n "${SYSTEM_POOL_VM_SIZE}" ]]; then
+        aks_create_cmd+=(--node-vm-size "${SYSTEM_POOL_VM_SIZE}")
+    fi
+    
+    # Execute the command
+    "${aks_create_cmd[@]}"
 
     echo "✅ AKS cluster '${CLUSTER_NAME}' created successfully in resource group '${AZURE_RESOURCE_GROUP}'!"
 }
@@ -114,7 +133,13 @@ function download_aks_credentials() {
 # install_network_operator installs the NVIDIA network operator on the AKS
 # cluster.
 function install_network_operator() {
-    echo "⏳ Installing Nvidia Network Operator..."
+    echo "⏳ Installing Nvidia Network Operator with ${RDMA_DEVICE_PLUGIN}..."
+
+    # Validate RDMA_DEVICE_PLUGIN value
+    if [[ "${RDMA_DEVICE_PLUGIN}" != "sriov-device-plugin" && "${RDMA_DEVICE_PLUGIN}" != "rdma-shared-device-plugin" ]]; then
+        echo "❌ Invalid RDMA_DEVICE_PLUGIN value: ${RDMA_DEVICE_PLUGIN}. Must be either 'sriov-device-plugin' or 'rdma-shared-device-plugin'"
+        exit 1
+    fi
 
     kubectl create ns "${NETWORK_OPERATOR_NS}" || true
     kubectl label --overwrite ns "${NETWORK_OPERATOR_NS}" pod-security.kubernetes.io/enforce=privileged
@@ -132,7 +157,7 @@ function install_network_operator() {
         --version "${NETWORK_OPERATOR_VERSION}"
 
     kubectl apply -f "${CONFIGS_DIR}"/network-operator/node-feature-rule.yaml
-    kubectl apply -k "${CONFIGS_DIR}"/network-operator/nicclusterpolicy/rdma-shared-device-plugin/
+    kubectl apply -k "${CONFIGS_DIR}"/network-operator/nicclusterpolicy/"${RDMA_DEVICE_PLUGIN}"/
 
     echo -e "⏳ Waiting for Nvidia Network Operator to be ready, to see behind the scenes run:\n"
     echo "kubectl get NicClusterPolicy nic-cluster-policy"
@@ -149,10 +174,17 @@ function install_network_operator() {
         sleep 5
     done
 
-    echo -e '\nRDMA Shared IB devices on nodes:\n'
-    rdma_ib_on_nodes_cmd="kubectl get nodes -l accelerator=nvidia -o json | jq -r '.items[] | {name: .metadata.name, \"rdma/shared_ib\": .status.allocatable[\"rdma/shared_ib\"]}'"
-    echo "$ ${rdma_ib_on_nodes_cmd}"
-    eval "${rdma_ib_on_nodes_cmd}"
+    # Set the correct resource name based on the device plugin type
+    if [[ "${RDMA_DEVICE_PLUGIN}" == "sriov-device-plugin" ]]; then
+        RDMA_RESOURCE_NAME="rdma/ib"
+    else
+        RDMA_RESOURCE_NAME="rdma/shared_ib"
+    fi
+
+    echo -e "\n${RDMA_DEVICE_PLUGIN} RDMA devices on nodes:\n"
+    rdma_devices_on_nodes_cmd="kubectl get nodes -l accelerator=nvidia -o json | jq -r '.items[] | {name: .metadata.name, \"${RDMA_RESOURCE_NAME}\": .status.allocatable[\"${RDMA_RESOURCE_NAME}\"]}'"
+    echo "$ ${rdma_devices_on_nodes_cmd}"
+    eval "${rdma_devices_on_nodes_cmd}"
 }
 
 function install_gpu_operator() {
@@ -248,6 +280,100 @@ function install_mpi_operator() {
     echo "✅ MPI Operator installed successfully."
 }
 
+function install_pytorch_operator() {
+    echo "⏳ Installing cert-manager (required for PyTorch Operator)..."
+    
+    # Add cert-manager helm repo
+    helm repo add jetstack https://charts.jetstack.io --force-update
+    helm repo update
+    
+    # Install cert-manager
+    helm install \
+        cert-manager jetstack/cert-manager \
+        --namespace cert-manager \
+        --create-namespace \
+        --version "${CERT_MANAGER_VERSION}" \
+        --set crds.enabled=true
+    
+    echo "✅ cert-manager installed successfully."
+    
+    echo "⏳ Installing PyTorch Operator (with MPI support disabled)..."
+    
+    # Create the pytorch-operator config directory if it doesn't exist
+    mkdir -p "${CONFIGS_DIR}/pytorch-operator"
+    
+    # Create/update the kustomization file with the correct version
+    cat > "${CONFIGS_DIR}/pytorch-operator/kustomization.yaml" <<EOF
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - github.com/kubeflow/training-operator.git/manifests/overlays/standalone?ref=${PYTORCH_OPERATOR_VERSION}
+
+patches:
+  # Remove the MPIJob CRD to avoid conflict with MPI Operator
+  - path: remove-mpijob-crd.yaml
+    target:
+      group: apiextensions.k8s.io
+      version: v1
+      kind: CustomResourceDefinition
+      name: mpijobs.kubeflow.org
+
+  # Patch to disable MPI in the training-operator deployment
+  - path: patch-disable-mpi.yaml
+    target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: training-operator
+      namespace: kubeflow
+
+EOF
+    cat > "${CONFIGS_DIR}/pytorch-operator/remove-mpijob-crd.yaml" <<EOF
+\$patch: delete
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: mpijobs.kubeflow.org
+EOF
+    cat > "${CONFIGS_DIR}/pytorch-operator/patch-disable-mpi.yaml" <<EOF
+- op: replace
+  path: /spec/template/spec/containers/0/command
+  value:
+    - /manager
+    - --enable-scheme=pytorchjob
+EOF
+
+    # Apply the PyTorch Operator with our custom configuration
+    kubectl apply --server-side -k "${CONFIGS_DIR}/pytorch-operator/"
+
+    # Wait for the PyTorch Operator deployment to be available
+    while true; do
+        if kubectl get deployment training-operator -n kubeflow 2>/dev/null | grep -q training-operator; then
+            if kubectl wait --for=condition=available --timeout=5s deployment/training-operator -n kubeflow 2>/dev/null; then
+                echo "✅ PyTorch Operator deployment is available."
+                break
+            fi
+        fi
+        echo "⏳ Waiting for PyTorch Operator deployment to be available..."
+        sleep 5
+    done
+
+    # Optionally verify the deployment
+    echo "✅ PyTorch Operator installed."
+}
+
+function uninstall_pytorch_operator() {
+    echo "⏳ Uninstalling PyTorch Operator..."
+    kubectl delete -k "${CONFIGS_DIR}/pytorch-operator/" || true
+    
+    echo "⏳ Uninstalling cert-manager..."
+    helm uninstall cert-manager --namespace cert-manager || true
+    kubectl delete namespace cert-manager || true
+    
+    echo "✅ PyTorch Operator and cert-manager uninstalled successfully."
+}
+
 function print_usage() {
     echo "Usage: $0 <command> [options]"
     echo ""
@@ -259,12 +385,16 @@ function print_usage() {
     echo "  install-kube-prometheus  Install Prometheus monitoring stack with Grafana dashboards"
     echo "  install-mpi-operator     Install MPI Operator for distributed computing workloads"
     echo "  uninstall-mpi-operator   Remove MPI Operator from the cluster"
+    echo "  install-pytorch-operator Install PyTorch Operator (includes cert-manager) for PyTorch distributed training"
+    echo "  uninstall-pytorch-operator Remove PyTorch Operator and cert-manager from the cluster"
     echo "  all                      Deploy AKS cluster and install all operators (full setup)"
     echo ""
     echo "Examples:"
     echo "  $0 all"
     echo "  $0 deploy-aks --node-vm-size standard_ds4_v2"
     echo "  $0 add-nodepool --gpu-driver=none --node-osdisk-size 1000"
+    echo "  RDMA_DEVICE_PLUGIN=rdma-shared-device-plugin $0 install-network-operator"
+    echo "  $0 install-pytorch-operator"
     echo ""
     echo "Environment Variables (mandatory):"
     echo "  AZURE_REGION             Azure region for deployment"
@@ -274,13 +404,22 @@ function print_usage() {
     echo "  AZURE_RESOURCE_GROUP     Resource group name (default: ai-infra-aks)"
     echo "  CLUSTER_NAME             AKS cluster name (default: ai-infra)"
     echo "  USER_NAME                Admin username for AKS nodes (default: azureuser)"
+    echo "  SYSTEM_POOL_VM_SIZE      VM size for system node pool (default: AKS default)"
     echo "  NODE_POOL_NAME           Node pool name (default: gpu)"
     echo "  NODE_POOL_NODE_COUNT     Number of nodes in pool (default: 2)"
     echo "  GPU_OPERATOR_VERSION     Version of GPU Operator to install (default: v25.3.1)"
     echo "  NETWORK_OPERATOR_VERSION Version of Network Operator to install (default: v25.4.0)"
     echo "  MPI_OPERATOR_VERSION     Version of MPI Operator to install (default: v0.6.0)"
+    echo "  CERT_MANAGER_VERSION     Version of cert-manager to install (default: v1.18.2)"
+    echo "  PYTORCH_OPERATOR_VERSION Version of PyTorch Operator to install (default: v1.8.1)"
     echo "  NETWORK_OPERATOR_NS      Namespace for Network Operator (default: network-operator)"
     echo "  GPU_OPERATOR_NS          Namespace for GPU Operator (default: gpu-operator)"
+    echo "  RDMA_DEVICE_PLUGIN       RDMA device plugin type (default: sriov-device-plugin)"
+    echo "                           Options: sriov-device-plugin, rdma-shared-device-plugin"
+    echo ""
+    echo "RDMA Device Plugin Options:"
+    echo "  sriov-device-plugin      Uses SR-IOV device plugin (resource: rdma/ib)"
+    echo "  rdma-shared-device-plugin Uses RDMA shared device plugin (resource: rdma/shared_ib)"
     echo ""
 }
 
@@ -307,13 +446,20 @@ install-mpi-operator | install_mpi_operator)
     install_mpi_operator
     ;;
 uninstall-mpi-operator | uninstall_mpi_operator)
-    kubectl delete --server-side -f "https://raw.githubusercontent.com/kubeflow/mpi-operator/${MPI_OPERATOR_VERSION}/deploy/v2beta1/mpi-operator.yaml"
+    kubectl delete -f "https://raw.githubusercontent.com/kubeflow/mpi-operator/${MPI_OPERATOR_VERSION}/deploy/v2beta1/mpi-operator.yaml"
+    ;;
+install-pytorch-operator | install_pytorch_operator)
+    install_pytorch_operator
+    ;;
+uninstall-pytorch-operator | uninstall_pytorch_operator)
+    uninstall_pytorch_operator
     ;;
 all)
     deploy_aks
     download_aks_credentials --overwrite-existing
     install_kube_prometheus
     install_mpi_operator
+    install_pytorch_operator
     add_nodepool --gpu-driver=none
     install_network_operator
     install_gpu_operator

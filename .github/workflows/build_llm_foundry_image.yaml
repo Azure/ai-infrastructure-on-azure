@@ -1,13 +1,12 @@
-name: Build & Push AZNHC Container Image
+name: Build & Push LLM Foundry Container Image
 
 on:
   push:
     branches:
       - main
     paths:
-      - infrastructure_validations/aks/NHC/docker/Dockerfile
-      - infrastructure_validations/aks/NHC/docker/aznhc_entrypoint.sh
-      - .github/workflows/build_aznhc_image.yaml
+      - examples/llm-foundry/docker/Dockerfile
+      - .github/workflows/build_llm_foundry_image.yaml
 
   workflow_dispatch:
 
@@ -44,7 +43,7 @@ jobs:
       id: tag
       uses: docker/metadata-action@v5
       with:
-        images: ghcr.io/azure/ai-infrastructure-on-azure/aznhc
+        images: ghcr.io/azure/ai-infrastructure-on-azure/llm-foundry
         tags: |
           type=raw,value=latest
           type=schedule,pattern={{date 'YYYYMMDD-hhmmss' tz='Europe/London'}}
@@ -52,9 +51,8 @@ jobs:
     - name: Build and push
       uses: docker/build-push-action@v6
       with:
-        context: infrastructure_validations/aks/NHC/docker
-        file: infrastructure_validations/aks/NHC/docker/Dockerfile
+        context: examples/llm-foundry/docker
+        file: examples/llm-foundry/docker/Dockerfile
         push: true
         tags: ${{ steps.tag.outputs.tags }}
         labels: ${{ steps.tag.outputs.labels }}
-        
