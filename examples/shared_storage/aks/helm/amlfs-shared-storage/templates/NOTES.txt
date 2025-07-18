@@ -1,0 +1,36 @@
+1. The Azure Managed Lustre File System (AMLFS) has been configured with the following components:
+   - StorageClass: {{ include "amlfs-shared-storage.fullname" . }}-azurelustre
+   - PersistentVolumeClaim: {{ .Values.storage.pvcName }}
+
+2. **IMPORTANT**: Ensure that:
+   - The Azure Lustre CSI driver is installed in your AKS cluster
+   - Your AKS cluster has the required permissions to create AMLFS resources
+   - You have sufficient quota for AMLFS in your Azure subscription
+
+3. The AMLFS instance will be created automatically when the PVC is bound with the following configuration:
+   - SKU: {{ .Values.storage.amlfs.skuName }}
+   - Zones: {{ .Values.storage.amlfs.zones }}
+   - Maintenance Day: {{ .Values.storage.amlfs.maintenanceDayOfWeek }}
+   - Maintenance Time: {{ .Values.storage.amlfs.maintenanceTimeOfDayUtc }} UTC
+
+4. To use this shared storage in other applications:
+   
+   Reference the PVC name in your deployments:
+   ```yaml
+   volumes:
+     - name: lustre-data
+       persistentVolumeClaim:
+         claimName: {{ .Values.storage.pvcName }}
+   ```
+
+5. Storage Details:
+   - Size: {{ .Values.storage.size }}
+   - Access Modes: {{ join ", " .Values.storage.accessModes }}
+   - Reclaim Policy: {{ .Values.storage.reclaimPolicy }}
+
+6. Mount Options configured:
+   {{- range .Values.storage.mountOptions }}
+   - {{ . }}
+   {{- end }}
+
+The AMLFS storage with dynamic provisioning is now ready for use by multiple applications that need high-performance parallel file system access.
