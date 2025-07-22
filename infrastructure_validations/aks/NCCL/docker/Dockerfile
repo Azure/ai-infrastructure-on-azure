@@ -1,4 +1,4 @@
-ARG PYTORCH_IMAGE=nvcr.io/nvidia/pytorch:25.06-py3
+ARG PYTORCH_IMAGE=nvcr.io/nvidia/pytorch:25.03-py3
 FROM ${PYTORCH_IMAGE} AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -35,7 +35,7 @@ RUN git clone --branch ${NCCL_TESTS_VERSION} --depth 1 https://github.com/NVIDIA
 RUN git clone --depth=1 https://github.com/Azure/azhpc-images.git /tmp/azhpc-images
 
 # Final minimal image
-FROM nvcr.io/nvidia/pytorch:25.06-py3 AS final
+FROM nvcr.io/nvidia/pytorch:25.03-py3 AS final
 
 ENV DEBIAN_FRONTEND=noninteractive
 
