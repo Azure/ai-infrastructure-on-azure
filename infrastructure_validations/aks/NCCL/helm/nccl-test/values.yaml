@@ -47,11 +47,11 @@ ncclTest:
     
     # UCX settings
     UCX_TLS: "rc"
-    UCX_NET_DEVICES: "mlx5_ib0:1"
+    UCX_NET_DEVICES: "mlx5_0:1"
     
     # SHARP settings
     NCCL_COLLNET_ENABLE: "1" # set to "0" to disable SHARP
-    SHARP_SMX_UCX_INTERFACE: "mlx5_ib0:1"
+    SHARP_SMX_UCX_INTERFACE: "mlx5_0:1"
     SHARP_COLL_ENABLE_SAT: "1"
     SHARP_COLL_LOG_LEVEL: "3"
     SHARP_COLL_ENABLE_PCI_RELAXED_ORDERING: "1"
