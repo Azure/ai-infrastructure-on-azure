@@ -3,26 +3,6 @@ FROM ${PYTORCH_IMAGE} AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    cmake \
-    git \
-    wget \
-    curl \
-    ca-certificates \
-    libpci-dev \
-    libibverbs-dev \
-    librdmacm-dev \
-    libibumad-dev \
-    libboost-program-options-dev \
-    libnuma-dev \
-    libopenmpi-dev \
-    clang \
-    libomp-dev \
-    bc \
-    hwloc \
-    && rm -rf /var/lib/apt/lists/*
-
 WORKDIR /tmp
 
 # Build NCCL Tests
@@ -42,15 +22,6 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
     openssh-client \
     openssh-server \
-    libnuma1 \
-    libibverbs1 \
-    librdmacm1 \
-    libibumad3 \
-    libhwloc15 \
-    libboost-program-options1.83.0 \
-    openmpi-bin \
-    pciutils \
-    net-tools \
     && rm -rf /var/lib/apt/lists/*
 
 # SSH setup

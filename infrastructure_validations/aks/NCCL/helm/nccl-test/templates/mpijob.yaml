@@ -46,7 +46,7 @@ spec:
                 {{- range $key, $value := .Values.ncclTest.env }}
                 -x {{ $key }} \
                 {{- end }}
-                all_reduce_perf {{ .Values.ncclTest.testArgs }}
+                /usr/bin/all_reduce_perf {{ .Values.ncclTest.testArgs }}
             resources:
               requests:
                 cpu: 50m
