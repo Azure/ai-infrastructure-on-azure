@@ -1,21 +1,5 @@
 ARG PYTORCH_IMAGE=nvcr.io/nvidia/pytorch:25.03-py3
-FROM ${PYTORCH_IMAGE} AS builder
-
-ENV DEBIAN_FRONTEND=noninteractive
-
-WORKDIR /tmp
-
-# Build NCCL Tests
-ENV NCCL_TESTS_VERSION=v2.14.1
-RUN git clone --branch ${NCCL_TESTS_VERSION} --depth 1 https://github.com/NVIDIA/nccl-tests.git && \
-    cd nccl-tests && \
-    make MPI=1 MPI_HOME=/usr/lib/x86_64-linux-gnu/openmpi NVCC_GENCODE="-gencode=arch=compute_90,code=sm_90 -gencode=arch=compute_90,code=compute_90"
-
-# Get topology files
-RUN git clone --depth=1 https://github.com/Azure/azhpc-images.git /tmp/azhpc-images
-
-# Final minimal image
-FROM nvcr.io/nvidia/pytorch:25.03-py3 AS final
+FROM ${PYTORCH_IMAGE}
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -32,8 +16,9 @@ RUN sed -i 's/[ #]\(.*StrictHostKeyChecking \).*/ \1no/g' /etc/ssh/ssh_config &&
     sed -i "s/#\(Port \).*/\12222/g" /etc/ssh/sshd_config && \
     mkdir -p /var/run/sshd
 
-# Copy binaries from builder
-COPY --from=builder /tmp/nccl-tests/build/ /usr/bin/
-COPY --from=builder /tmp/azhpc-images/topology /etc/topology
+# Get topology files
+RUN git clone --depth=1 https://github.com/Azure/azhpc-images.git /tmp/azhpc-images && \
+    cp -r /tmp/azhpc-images/topology /etc/. && \
+    rm -rf /tmp/azhpc-images
 
 ENTRYPOINT ["/usr/sbin/ssh", "-D"]
