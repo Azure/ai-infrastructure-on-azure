@@ -1,0 +1,80 @@
+name: Build & Push nccl-test Container Image (Dev)
+
+on:
+  push:
+    branches:
+      - feature/nccl-with-sharp
+    paths:
+      - infrastructure_validations/aks/NCCL/docker/Dockerfile
+      - .github/workflows/build_nccl_image_dev.yaml
+
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  build_push_dev:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Maximize build space
+      uses: AdityaGarg8/remove-unwanted-software@v5
+      with:
+        remove-dotnet: 'true'
+        remove-android: 'true'
+        remove-haskell: 'true'
+        remove-codeql: 'true'
+        remove-docker-images: 'true'
+
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to GHCR
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor}}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Generate tags
+      id: tag
+      uses: docker/metadata-action@v5
+      with:
+        images: ghcr.io/azure/ai-infrastructure-on-azure/nccl-test
+        tags: |
+          type=raw,value=dev
+          type=raw,value=dev-{{sha}}
+          type=raw,value=dev-pytorch-{{date 'YYYYMMDD-hhmmss' tz='UTC'}}
+
+    - name: Build and push Dev Image
+      uses: docker/build-push-action@v6
+      with:
+        context: infrastructure_validations/aks/NCCL/docker
+        file: infrastructure_validations/aks/NCCL/docker/Dockerfile
+        push: true
+        tags: ${{ steps.tag.outputs.tags }}
+        labels: ${{ steps.tag.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Image Summary
+      run: |
+        echo "## Dev NCCL Test Image Built Successfully! 🚀" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Image Tags:**" >> $GITHUB_STEP_SUMMARY
+        echo "- \`ghcr.io/azure/ai-infrastructure-on-azure/nccl-test:dev\`" >> $GITHUB_STEP_SUMMARY
+        echo "- \`ghcr.io/azure/ai-infrastructure-on-azure/nccl-test:dev-${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Changes:**" >> $GITHUB_STEP_SUMMARY
+        echo "- Updated to use PyTorch base image: \`nvcr.io/nvidia/pytorch:25.06-py3\`" >> $GITHUB_STEP_SUMMARY
+        echo "- Includes NCCL tests for distributed training validation" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Usage:**" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+        echo "docker pull ghcr.io/azure/ai-infrastructure-on-azure/nccl-test:dev" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
