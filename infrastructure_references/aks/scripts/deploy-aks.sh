@@ -29,11 +29,15 @@ fi
 # Network Operator Device Plugin Configuration
 : "${RDMA_DEVICE_PLUGIN:=sriov-device-plugin}" # Options: sriov-device-plugin, rdma-shared-device-plugin
 
+# AMLFS Configuration
+: "${INSTALL_AMLFS:=true}" # Set to false to skip AMLFS installation
+: "${INSTALL_AMLFS_ROLES:=true}" # Set to false to skip AMLFS role assignment
+
 : "${NETWORK_OPERATOR_NS:=network-operator}"
 : "${GPU_OPERATOR_NS:=gpu-operator}"
 
 function check_prereqs() {
-    local prereqs=("kubectl" "helm" "az" "jq")
+    local prereqs=("kubectl" "helm" "az" "jq" "git")
     for cmd in "${prereqs[@]}"; do
         if ! command -v "$cmd" &>/dev/null; then
             echo "❌ $cmd is not installed. Please install it and try again."
@@ -376,6 +380,215 @@ function uninstall_pytorch_operator() {
     echo "✅ PyTorch Operator and cert-manager uninstalled successfully."
 }
 
+function install_amlfs() {
+    echo "⏳ Installing Azure Managed Lustre File System (AMLFS) CSI driver..."
+    
+    # Check if AMLFS CSI driver is already installed
+    echo "⏳ Checking if AMLFS CSI driver is already installed..."
+    if kubectl get -n kube-system deployment csi-azurelustre-controller >/dev/null 2>&1; then
+        echo "⚠️ AMLFS CSI driver is already installed, skipping installation!"
+    else
+        # Create temporary directory for AMLFS installation
+        TEMP_DIR=$(mktemp -d)
+        pushd "${TEMP_DIR}"
+        
+        # Clone the repository
+        echo "⏳ Cloning azurelustre-csi-driver repository..."
+        git clone https://github.com/kubernetes-sigs/azurelustre-csi-driver.git
+        cd azurelustre-csi-driver
+        
+        # Switch to the dynamic provisioning preview branch
+        git checkout dynamic-provisioning-preview
+        
+        # Install the CSI driver
+        echo "⏳ Installing AMLFS CSI driver..."
+        ./deploy/install-driver.sh dynamic-provisioning-preview
+        
+        # Clean up temporary directory
+        popd
+        rm -rf "${TEMP_DIR}"
+        
+        echo "✅ AMLFS CSI driver installed successfully."
+        
+        # Wait for AMLFS CSI driver to be ready
+        echo -e "⏳ Waiting for AMLFS CSI driver to be ready, to see behind the scenes run:\n"
+        echo "kubectl get -n kube-system pod -l app=csi-azurelustre-controller"
+        echo -e "kubectl get -n kube-system pod -l app=csi-azurelustre-node\n"
+        
+        # Wait for controller pods to be ready
+        while true; do
+            controller_ready=$(kubectl get -n kube-system deployment csi-azurelustre-controller -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+            controller_desired=$(kubectl get -n kube-system deployment csi-azurelustre-controller -o jsonpath='{.status.replicas}' 2>/dev/null || echo "0")
+            
+            if [[ "${controller_ready}" -gt 0 && "${controller_ready}" == "${controller_desired}" ]]; then
+                break
+            fi
+            
+            echo "⏳ Waiting for AMLFS controller pods to be ready (${controller_ready}/${controller_desired})..."
+            sleep 5
+        done
+        
+        # Wait for node pods to be ready
+        while true; do
+            node_ready=$(kubectl get -n kube-system daemonset csi-azurelustre-node -o jsonpath='{.status.numberReady}' 2>/dev/null || echo "0")
+            node_desired=$(kubectl get -n kube-system daemonset csi-azurelustre-node -o jsonpath='{.status.desiredNumberScheduled}' 2>/dev/null || echo "0")
+            
+            if [[ "${node_ready}" -gt 0 && "${node_ready}" == "${node_desired}" ]]; then
+                echo "✅ AMLFS CSI driver is ready."
+                break
+            fi
+            
+            echo "⏳ Waiting for AMLFS node pods to be ready (${node_ready}/${node_desired})..."
+            sleep 5
+        done
+        
+        # Display final status
+        echo -e "\n📊 AMLFS CSI driver status:\n"
+        echo "Controller pods:"
+        kubectl get -n kube-system pod -l app=csi-azurelustre-controller
+        echo -e "\nNode pods:"
+        kubectl get -n kube-system pod -l app=csi-azurelustre-node
+    fi
+    
+    # Set up AMLFS roles for kubelet identity if both flags are enabled
+    if [[ "${INSTALL_AMLFS}" == "true" && "${INSTALL_AMLFS_ROLES}" == "true" ]]; then
+        setup_amlfs_roles
+    elif [[ "${INSTALL_AMLFS_ROLES}" != "true" ]]; then
+        echo "⚠️ AMLFS role assignment is disabled (INSTALL_AMLFS_ROLES=${INSTALL_AMLFS_ROLES})"
+        echo "💡 You may need to manually assign the required roles to the kubelet identity for AMLFS to work properly."
+    fi
+}
+
+function setup_amlfs_roles() {
+    echo "⏳ Setting up AMLFS roles for kubelet identity..."
+    
+    # Get the subscription ID
+    SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+    
+    # Get the kubelet identity objectId and node resource group
+    echo "⏳ Fetching kubelet identity and node resource group..."
+    KUBELET_IDENTITY=$(az aks show \
+        --name "${CLUSTER_NAME}" \
+        --resource-group "${AZURE_RESOURCE_GROUP}" \
+        --query identityProfile.kubeletidentity \
+        -o json)
+    
+    OBJECT_ID=$(echo "${KUBELET_IDENTITY}" | jq -r '.objectId')
+    
+    # Get the AKS-generated node resource group
+    NODE_RESOURCE_GROUP=$(az aks show \
+        --name "${CLUSTER_NAME}" \
+        --resource-group "${AZURE_RESOURCE_GROUP}" \
+        --query nodeResourceGroup \
+        -o tsv)
+    
+    echo "Using node resource group for scope: ${NODE_RESOURCE_GROUP}"
+    
+    echo "Assigning built-in roles to kubelet identity..."
+    
+    # Assign Contributor role to the node resource group
+    echo "Assigning Contributor role to resource group: ${NODE_RESOURCE_GROUP}"
+    EXISTING_CONTRIBUTOR=$(az role assignment list \
+        --assignee "${OBJECT_ID}" \
+        --role "Contributor" \
+        --scope "/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${NODE_RESOURCE_GROUP}" \
+        --query "[].roleDefinitionName" -o tsv)
+    
+    if [ -n "${EXISTING_CONTRIBUTOR}" ]; then
+        echo "Contributor role is already assigned to kubelet identity in resource group '${NODE_RESOURCE_GROUP}'"
+    else
+        az role assignment create \
+            --assignee-object-id "${OBJECT_ID}" \
+            --assignee-principal-type ServicePrincipal \
+            --role "Contributor" \
+            --scope "/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${NODE_RESOURCE_GROUP}"
+        
+        if [ $? -eq 0 ]; then
+            echo "Successfully assigned Contributor role to resource group: ${NODE_RESOURCE_GROUP}"
+        else
+            echo "Failed to assign Contributor role to resource group: ${NODE_RESOURCE_GROUP}"
+            exit 1
+        fi
+    fi
+    
+    # Assign Reader role to the subscription
+    echo "Assigning Reader role to subscription: ${SUBSCRIPTION_ID}"
+    EXISTING_READER=$(az role assignment list \
+        --assignee "${OBJECT_ID}" \
+        --role "Reader" \
+        --scope "/subscriptions/${SUBSCRIPTION_ID}" \
+        --query "[].roleDefinitionName" -o tsv)
+    
+    if [ -n "${EXISTING_READER}" ]; then
+        echo "Reader role is already assigned to kubelet identity at subscription level"
+    else
+        az role assignment create \
+            --assignee-object-id "${OBJECT_ID}" \
+            --assignee-principal-type ServicePrincipal \
+            --role "Reader" \
+            --scope "/subscriptions/${SUBSCRIPTION_ID}"
+        
+        if [ $? -eq 0 ]; then
+            echo "Successfully assigned Reader role to subscription: ${SUBSCRIPTION_ID}"
+        else
+            echo "Failed to assign Reader role to subscription: ${SUBSCRIPTION_ID}"
+            exit 1
+        fi
+    fi
+    
+    # Assign Network Contributor role to the subscription
+    echo "Assigning Network Contributor role to subscription: ${SUBSCRIPTION_ID}"
+    EXISTING_NETWORK_CONTRIBUTOR=$(az role assignment list \
+        --assignee "${OBJECT_ID}" \
+        --role "Network Contributor" \
+        --scope "/subscriptions/${SUBSCRIPTION_ID}" \
+        --query "[].roleDefinitionName" -o tsv)
+    
+    if [ -n "${EXISTING_NETWORK_CONTRIBUTOR}" ]; then
+        echo "Network Contributor role is already assigned to kubelet identity at subscription level"
+    else
+        az role assignment create \
+            --assignee-object-id "${OBJECT_ID}" \
+            --assignee-principal-type ServicePrincipal \
+            --role "Network Contributor" \
+            --scope "/subscriptions/${SUBSCRIPTION_ID}"
+        
+        if [ $? -eq 0 ]; then
+            echo "Successfully assigned Network Contributor role to subscription: ${SUBSCRIPTION_ID}"
+        else
+            echo "Failed to assign Network Contributor role to subscription: ${SUBSCRIPTION_ID}"
+            exit 1
+        fi
+    fi
+    
+    # Assign Contributor role to the subscription
+    echo "Assigning Contributor role to subscription: ${SUBSCRIPTION_ID}"
+    EXISTING_SUB_CONTRIBUTOR=$(az role assignment list \
+        --assignee "${OBJECT_ID}" \
+        --role "Contributor" \
+        --scope "/subscriptions/${SUBSCRIPTION_ID}" \
+        --query "[].roleDefinitionName" -o tsv)
+    
+    if [ -n "${EXISTING_SUB_CONTRIBUTOR}" ]; then
+        echo "Contributor role is already assigned to kubelet identity at subscription level"
+    else
+        az role assignment create \
+            --assignee-object-id "${OBJECT_ID}" \
+            --assignee-principal-type ServicePrincipal \
+            --role "Contributor" \
+            --scope "/subscriptions/${SUBSCRIPTION_ID}"
+        
+        if [ $? -eq 0 ]; then
+            echo "Successfully assigned Contributor role to subscription: ${SUBSCRIPTION_ID}"
+        else
+            echo "Failed to assign Contributor role to subscription: ${SUBSCRIPTION_ID}"
+            exit 1
+        fi
+    fi
+    
+    echo "✅ AMLFS role assignment completed successfully."
+}
+
 function print_usage() {
     echo "Usage: $0 <command> [options]"
     echo ""
@@ -389,6 +602,8 @@ function print_usage() {
     echo "  uninstall-mpi-operator   Remove MPI Operator from the cluster"
     echo "  install-pytorch-operator Install PyTorch Operator (includes cert-manager) for PyTorch distributed training"
     echo "  uninstall-pytorch-operator Remove PyTorch Operator and cert-manager from the cluster"
+    echo "  install-amlfs            Install Azure Managed Lustre File System (AMLFS) CSI driver and setup roles"
+    echo "  setup-amlfs-roles        Setup AMLFS roles for kubelet identity (without installing CSI driver)"
     echo "  all                      Deploy AKS cluster and install all operators (full setup)"
     echo ""
     echo "Examples:"
@@ -418,6 +633,9 @@ function print_usage() {
     echo "  GPU_OPERATOR_NS          Namespace for GPU Operator (default: gpu-operator)"
     echo "  RDMA_DEVICE_PLUGIN       RDMA device plugin type (default: sriov-device-plugin)"
     echo "                           Options: sriov-device-plugin, rdma-shared-device-plugin"
+    echo "  INSTALL_AMLFS            Install AMLFS CSI driver (default: true)"
+    echo "  INSTALL_AMLFS_ROLES      Install AMLFS roles for kubelet identity (default: true)"
+    echo "                           Note: Both INSTALL_AMLFS and INSTALL_AMLFS_ROLES must be true for role assignment"
     echo ""
     echo "RDMA Device Plugin Options:"
     echo "  sriov-device-plugin      Uses SR-IOV device plugin (resource: rdma/ib)"
@@ -456,6 +674,12 @@ install-pytorch-operator | install_pytorch_operator)
 uninstall-pytorch-operator | uninstall_pytorch_operator)
     uninstall_pytorch_operator
     ;;
+install-amlfs | install_amlfs)
+    install_amlfs
+    ;;
+setup-amlfs-roles | setup_amlfs_roles)
+    setup_amlfs_roles
+    ;;
 all)
     deploy_aks
     download_aks_credentials --overwrite-existing
@@ -465,6 +689,9 @@ all)
     add_nodepool --gpu-driver=none
     install_network_operator
     install_gpu_operator
+    if [[ "${INSTALL_AMLFS}" == "true" ]]; then
+        install_amlfs
+    fi
     ;;
 *)
     print_usage

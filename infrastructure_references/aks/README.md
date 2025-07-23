@@ -9,6 +9,7 @@ This document provides a guide to set up an Azure Kubernetes Service (AKS) clust
 - Kubectl [installed](https://kubernetes.io/docs/tasks/tools/#kubectl) in your environment.
 - Helm [installed](https://helm.sh/docs/intro/install/) for managing Kubernetes applications.
 - jq [installed](https://jqlang.github.io/jq/download) for processing JSON.
+- Git [installed](https://git-scm.com/downloads) for cloning repositories (required for AMLFS installation).
 
 ## Setup
 
@@ -56,6 +57,7 @@ The `deploy-aks.sh` script supports the following commands:
 - **`install-kube-prometheus`** - Install Prometheus monitoring stack with Grafana dashboards
 - **`install-mpi-operator`** - Install MPI Operator for distributed computing workloads
 - **`install-pytorch-operator`** - Install PyTorch Operator (includes cert-manager) for PyTorch distributed training
+- **`install-amlfs`** - Install Azure Managed Lustre File System (AMLFS) CSI driver and configure required roles
 
 ### Operator Removal Commands
 
@@ -72,10 +74,14 @@ The `deploy-aks.sh` script supports the following commands:
 ./scripts/deploy-aks.sh deploy-aks
 ./scripts/deploy-aks.sh add-nodepool
 ./scripts/deploy-aks.sh install-pytorch-operator
+./scripts/deploy-aks.sh install-amlfs
 
 # Install with custom parameters
 ./scripts/deploy-aks.sh deploy-aks --node-vm-size standard_ds4_v2
 ./scripts/deploy-aks.sh add-nodepool --gpu-driver=none --node-osdisk-size 1000
+
+# Skip AMLFS installation in complete setup
+INSTALL_AMLFS=false ./scripts/deploy-aks.sh all
 ```
 
 ## Environment Variables
@@ -111,6 +117,11 @@ The `deploy-aks.sh` script supports the following commands:
 
 - **`RDMA_DEVICE_PLUGIN`** - RDMA device plugin type (default: "sriov-device-plugin")
   - Options: "sriov-device-plugin", "rdma-shared-device-plugin"
+
+### AMLFS Configuration
+
+- **`INSTALL_AMLFS`** - Install Azure Managed Lustre File System CSI driver (default: "true")
+  - Set to "false" to skip AMLFS installation in the 'all' command
 
 ## RDMA Device Plugin Configuration
 
@@ -151,6 +162,46 @@ Install only the network operator with specific plugin:
 export RDMA_DEVICE_PLUGIN=rdma-shared-device-plugin
 ./scripts/deploy-aks.sh install-network-operator
 ```
+
+## Azure Managed Lustre File System (AMLFS) Support
+
+The deployment script includes support for Azure Managed Lustre File System (AMLFS), which provides high-performance storage for AI/ML workloads.
+
+### AMLFS Installation
+
+AMLFS is installed by default when running the `all` command. The installation process:
+
+1. **Clones the Azure Lustre CSI driver repository** from the dynamic provisioning preview branch
+2. **Installs the CSI driver** using the official installation script
+3. **Configures Azure roles** for the AKS kubelet identity to manage AMLFS resources
+
+### Required Azure Roles
+
+The script automatically assigns the following roles to the kubelet identity:
+
+- **Contributor** (Resource Group scope) - For managing resources within the AKS node resource group
+- **Reader** (Subscription scope) - For reading subscription resources
+
+### AMLFS Usage Examples
+
+```bash
+# Install AMLFS separately
+./scripts/deploy-aks.sh install-amlfs
+
+# Deploy everything including AMLFS (default behavior)
+./scripts/deploy-aks.sh all
+
+# Deploy everything but skip AMLFS installation
+INSTALL_AMLFS=false ./scripts/deploy-aks.sh all
+```
+
+### AMLFS Configuration
+
+- **Environment Variable**: `INSTALL_AMLFS` (default: `true`)
+- **CSI Driver**: Azure Lustre CSI Driver (dynamic provisioning preview)
+- **Branch**: `dynamic-provisioning-preview`
+- **Repository**: `https://github.com/kubernetes-sigs/azurelustre-csi-driver.git`
+
 
 ## Monitoring
 
