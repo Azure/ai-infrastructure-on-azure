@@ -290,68 +290,24 @@ function install_pytorch_operator() {
     echo "⏳ Installing cert-manager (required for PyTorch Operator)..."
 
     # Add cert-manager helm repo
-    helm repo add jetstack https://charts.jetstack.io --force-update
-    helm repo update
+    helm repo add jetstack https://charts.jetstack.io --force-update >/dev/null
+    helm repo update >/dev/null
 
     # Install cert-manager
-    helm install \
+    helm upgrade -i \
         cert-manager jetstack/cert-manager \
         --namespace cert-manager \
         --create-namespace \
         --version "${CERT_MANAGER_VERSION}" \
         --set crds.enabled=true
-
     echo "✅ cert-manager installed successfully."
 
     echo "⏳ Installing PyTorch Operator (with MPI support disabled)..."
-
-    # Create the pytorch-operator config directory if it doesn't exist
-    mkdir -p "${CONFIGS_DIR}/pytorch-operator"
-
-    # Create/update the kustomization file with the correct version
-    cat >"${CONFIGS_DIR}/pytorch-operator/kustomization.yaml" <<EOF
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-resources:
-  - github.com/kubeflow/training-operator.git/manifests/overlays/standalone?ref=${PYTORCH_OPERATOR_VERSION}
-
-patches:
-  # Remove the MPIJob CRD to avoid conflict with MPI Operator
-  - path: remove-mpijob-crd.yaml
-    target:
-      group: apiextensions.k8s.io
-      version: v1
-      kind: CustomResourceDefinition
-      name: mpijobs.kubeflow.org
-
-  # Patch to disable MPI in the training-operator deployment
-  - path: patch-disable-mpi.yaml
-    target:
-      group: apps
-      version: v1
-      kind: Deployment
-      name: training-operator
-      namespace: kubeflow
-
-EOF
-    cat >"${CONFIGS_DIR}/pytorch-operator/remove-mpijob-crd.yaml" <<EOF
-\$patch: delete
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
-metadata:
-  name: mpijobs.kubeflow.org
-EOF
-    cat >"${CONFIGS_DIR}/pytorch-operator/patch-disable-mpi.yaml" <<EOF
-- op: replace
-  path: /spec/template/spec/containers/0/command
-  value:
-    - /manager
-    - --enable-scheme=pytorchjob
-EOF
-
-    # Apply the PyTorch Operator with our custom configuration
-    kubectl apply --server-side -k "${CONFIGS_DIR}/pytorch-operator/"
+    pushd "${CONFIGS_DIR}/pytorch-operator"
+    kustomize edit add resource "github.com/kubeflow/training-operator.git/manifests/overlays/standalone?ref=${PYTORCH_OPERATOR_VERSION}"
+    kubectl apply --server-side -k .
+    kustomize edit remove resource "github.com/kubeflow/training-operator.git/manifests/overlays/standalone?ref=${PYTORCH_OPERATOR_VERSION}"
+    popd
 
     # Wait for the PyTorch Operator deployment to be available
     while true; do
