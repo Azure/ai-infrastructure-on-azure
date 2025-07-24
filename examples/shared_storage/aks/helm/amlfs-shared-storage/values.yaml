@@ -4,7 +4,7 @@
 # Storage configuration
 storage:
   # PVC name that will be created
-  pvcName: "my-lustre-pvc"
+  pvcName: "shared-amlfs-storage"
   # Storage size for the shared volume
   size: "16Ti"
   # Access modes for the PVC

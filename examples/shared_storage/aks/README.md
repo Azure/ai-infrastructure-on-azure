@@ -1,77 +1,58 @@
 # Shared Storage Helm Charts for AKS
 
-This directory contains Helm charts for different ReadWriteMany storage options for Azure Kubernetes Service (AKS).
+This directory contains Helm charts for deploying ReadWriteMany storage options on Azure Kubernetes Service (AKS).
 
 ## Available Storage Options
 
-* Blob Shared Storage (`blob-shared-storage`)
-* AMLFS Shared Storage (`amlfs-shared-storage`)
+* **Blob Shared Storage** (`blob-shared-storage`) - Cost-effective storage using Azure Blob with BlobFuse
+* **AMLFS Shared Storage** (`amlfs-shared-storage`) - High-performance storage using Azure Managed Lustre File System
 
+## Blob Shared Storage
 
-# Setting the AMLFS roles
+Provides shared storage using Azure Blob Storage mounted with BlobFuse. This option offers cost-effective storage with good performance for most workloads.
 
+For detailed configuration options, see the [Azure Storage Fuse documentation](https://github.com/Azure/azure-storage-fuse). For optimal performance tuning, refer to the [configuration guide](https://github.com/Azure/azure-storage-fuse?tab=readme-ov-file#config-guide).
+
+### Deployment Example
+
+```bash
+helm install shared-storage ./blob-shared-storage \
+  --set pvc.name="shared-storage-pvc"
 ```
-#!/bin/bash
 
-set -euo pipefail
+With optimized mount options for multiple clients writing large, independent files:
 
-# Required variables
-AKS_CLUSTER=$1
-AZURE_RESOURCE_GROUP=$2
-ROLE_NAME="amlfs-dynamic-csi-roles"
-CUSTOM_ROLE_FILE="custom-role.json"
+```bash
+helm install shared-storage ./blob-shared-storage \
+  --set pvc.name="shared-storage-pvc" \
+  --set-json 'storage.mountOptions=["-o allow_other","--use-attr-cache=true","--cancel-list-on-mount-seconds=10","-o attr_timeout=120","-o entry_timeout=120","-o negative_timeout=120","--log-level=LOG_WARNING","--file-cache-timeout-in-seconds=120","--block-cache","--block-cache-block-size=32","--block-cache-parallelism=80"]'
+```
 
-# Get the subscription ID
-SUBSCRIPTION_ID=$(az account show --query id -o tsv)
 
-# Get the kubelet identity objectId
-echo "Fetching kubelet identity..."
-KUBELET_IDENTITY=$(az aks show \
-  --name "$AKS_CLUSTER" \
-  --resource-group "$AZURE_RESOURCE_GROUP" \
-  --query identityProfile.kubeletidentity \
-  -o json)
+## AMLFS Shared Storage
 
-OBJECT_ID=$(echo "$KUBELET_IDENTITY" | jq -r '.objectId')
+Provides high-throughput, low-latency shared storage using Azure Managed Lustre File System. AMLFS is optimized for large-scale, performance-critical workloads that require fast I/O operations.
 
-# Define the custom role if not exists
-echo "Checking for existing custom role..."
-ROLE_ID=$(az role definition list --name "$ROLE_NAME" --query "[].name" -o tsv)
+### Available SKUs
 
-if [ -z "$ROLE_ID" ]; then
-  echo "Creating custom role: $ROLE_NAME"
+AMLFS offers different performance tiers with varying throughput and storage requirements:
 
-  cat > $CUSTOM_ROLE_FILE <<EOF
-{
-  "Name": "$ROLE_NAME",
-  "IsCustom": true,
-  "Description": "Custom role for Kubelet access to AML FS and subnet operations",
-  "Actions": [
-    "Microsoft.Network/virtualNetworks/subnets/read",
-    "Microsoft.Network/virtualNetworks/subnets/join/action",
-    "Microsoft.StorageCache/getRequiredAmlFSSubnetsSize/action",
-    "Microsoft.StorageCache/checkAmlFSSubnets/action",
-    "Microsoft.StorageCache/amlFilesystems/read",
-    "Microsoft.StorageCache/amlFilesystems/write",
-    "Microsoft.StorageCache/amlFilesystems/delete"
-  ],
-  "NotActions": [],
-  "AssignableScopes": ["/subscriptions/$SUBSCRIPTION_ID"]
-}
-EOF
+| SKU | Throughput per TiB | Storage Minimum | Storage Maximum | Increment |
+|-----|-------------------|-----------------|-----------------|-----------|
+| `AMLFS-Durable-Premium-40` | 40 MBps | 48 TiB | 1536 TiB | 48 TiB |
+| `AMLFS-Durable-Premium-125` | 125 MBps | 16 TiB | 512 TiB | 16 TiB |
+| `AMLFS-Durable-Premium-250` | 250 MBps | 8 TiB | 256 TiB | 8 TiB |
+| `AMLFS-Durable-Premium-500` | 500 MBps | 4 TiB | 128 TiB | 4 TiB |
 
-  az role definition create --role-definition $CUSTOM_ROLE_FILE
-else
-  echo "Custom role already exists: $ROLE_NAME"
-fi
+For detailed information about throughput configurations, see the [Azure Managed Lustre documentation](https://learn.microsoft.com/en-us/azure/azure-managed-lustre/create-file-system-portal#throughput-configurations).
 
-# Assign the custom role to the kubelet identity
-echo "Assigning role to kubelet identity..."
-az role assignment create \
-  --assignee-object-id "$OBJECT_ID" \
-  --assignee-principal-type ServicePrincipal \
-  --role "$ROLE_NAME" \
-  --scope "/subscriptions/$SUBSCRIPTION_ID"
+### Deployment Example
 
-echo "Role assignment completed."
+This is an example of 16TiB filesystem with 2GBps total throughput:
+
+```bash
+helm install shared-storage ./amlfs-shared-storage \
+  --set amlfs.skuName="AMLFS-Durable-Premium-125" \
+  --set amlfs.storageCapacityTiB=16 \
+  --set pvc.name="shared-storage-pvc"
 ```
