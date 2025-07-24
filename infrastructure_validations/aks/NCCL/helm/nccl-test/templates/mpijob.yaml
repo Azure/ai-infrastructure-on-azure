@@ -37,7 +37,9 @@ spec:
               mpirun \
                 --allow-run-as-root \
                 -np $NP \
-                --map-by ppr:$DEVICES_PER_NODE:node \
+                --map-by ppr:$DEVICES_PER_NODE:node:pe=12 \
+                --bind-to core \
+                --report-bindings \
                 -hostfile /etc/mpi/hostfile \
                 -mca plm_rsh_no_tree_spawn 1 \
                 -mca plm_rsh_num_concurrent 800 \
@@ -46,7 +48,7 @@ spec:
                 {{- range $key, $value := .Values.ncclTest.env }}
                 -x {{ $key }} \
                 {{- end }}
-                all_reduce_perf {{ .Values.ncclTest.testArgs }}
+                all_reduce_perf_mpi {{ .Values.ncclTest.testArgs }}
             resources:
               requests:
                 cpu: 50m

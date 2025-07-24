@@ -15,7 +15,7 @@ helm install nccl-test ./helm/nccl-test --set nodes=4
 helm install nccl-test ./helm/nccl-test \
   --set nodes=2 \
   --set gpusPerNode=8 \
-  --set ncclTest.testArgs="-b 16G -e 16G -f 2 -g 1 -c 0 -n 10"
+  --set ncclTest.testArgs="-b 16G -e 16G -f 2 -g 1 -c 0 -N 10"
 
 # Install with shared RDMA resources
 helm install nccl-test ./helm/nccl-test \
