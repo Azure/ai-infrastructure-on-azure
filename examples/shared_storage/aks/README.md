@@ -52,7 +52,7 @@ This is an example of 16TiB filesystem with 2GBps total throughput:
 
 ```bash
 helm install shared-storage ./amlfs-shared-storage \
-  --set amlfs.skuName="AMLFS-Durable-Premium-125" \
-  --set amlfs.storageCapacityTiB=16 \
+  --set storage.amlfs.skuName="AMLFS-Durable-Premium-125" \
+  --set storage.size=16 \
   --set pvc.name="shared-storage-pvc"
 ```
