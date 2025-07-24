@@ -48,7 +48,7 @@ spec:
                 {{- range $key, $value := .Values.ncclTest.env }}
                 -x {{ $key }} \
                 {{- end }}
-                /usr/bin/all_reduce_perf_mpi {{ .Values.ncclTest.testArgs }}
+                all_reduce_perf_mpi {{ .Values.ncclTest.testArgs }}
             resources:
               requests:
                 cpu: 50m
