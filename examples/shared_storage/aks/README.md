@@ -37,12 +37,12 @@ Provides high-throughput, low-latency shared storage using Azure Managed Lustre 
 
 AMLFS offers different performance tiers with varying throughput and storage requirements:
 
-| SKU | Throughput per TiB | Storage Minimum | Storage Maximum | Increment |
-|-----|-------------------|-----------------|-----------------|-----------|
-| `AMLFS-Durable-Premium-40` | 40 MBps | 48 TiB | 1536 TiB | 48 TiB |
-| `AMLFS-Durable-Premium-125` | 125 MBps | 16 TiB | 512 TiB | 16 TiB |
-| `AMLFS-Durable-Premium-250` | 250 MBps | 8 TiB | 256 TiB | 8 TiB |
-| `AMLFS-Durable-Premium-500` | 500 MBps | 4 TiB | 128 TiB | 4 TiB |
+| SKU                         | Throughput per TiB | Storage Minimum | Storage Maximum | Increment |
+|-----------------------------|--------------------|-----------------|-----------------|-----------|
+| `AMLFS-Durable-Premium-40`  |            40 MBps |          48 TiB |        12.5 PiB |    48 TiB |
+| `AMLFS-Durable-Premium-125` |           125 MBps |          16 TiB |           4 PiB |    16 TiB |
+| `AMLFS-Durable-Premium-250` |           250 MBps |           8 TiB |           2 PiB |     8 TiB |
+| `AMLFS-Durable-Premium-500` |           500 MBps |           4 TiB |           1 PiB |     4 TiB |
 
 For detailed information about throughput configurations, see the [Azure Managed Lustre documentation](https://learn.microsoft.com/en-us/azure/azure-managed-lustre/create-file-system-portal#throughput-configurations).
 

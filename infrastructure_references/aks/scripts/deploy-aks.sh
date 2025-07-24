@@ -501,14 +501,11 @@ function setup_amlfs_roles() {
             --assignee-object-id "${OBJECT_ID}" \
             --assignee-principal-type ServicePrincipal \
             --role "Contributor" \
-            --scope "/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${NODE_RESOURCE_GROUP}"
-        
-        if [ $? -eq 0 ]; then
-            echo "Successfully assigned Contributor role to resource group: ${NODE_RESOURCE_GROUP}"
-        else
-            echo "Failed to assign Contributor role to resource group: ${NODE_RESOURCE_GROUP}"
-            exit 1
-        fi
+            --scope "/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${NODE_RESOURCE_GROUP}" || {
+                echo "Failed to assign Contributor role to resource group: ${NODE_RESOURCE_GROUP}"
+                exit 1
+            }
+        echo "Successfully assigned Contributor role to resource group: ${NODE_RESOURCE_GROUP}"
     fi
     
     # Assign Reader role to the subscription
@@ -526,66 +523,13 @@ function setup_amlfs_roles() {
             --assignee-object-id "${OBJECT_ID}" \
             --assignee-principal-type ServicePrincipal \
             --role "Reader" \
-            --scope "/subscriptions/${SUBSCRIPTION_ID}"
-        
-        if [ $? -eq 0 ]; then
-            echo "Successfully assigned Reader role to subscription: ${SUBSCRIPTION_ID}"
-        else
-            echo "Failed to assign Reader role to subscription: ${SUBSCRIPTION_ID}"
-            exit 1
-        fi
+            --scope "/subscriptions/${SUBSCRIPTION_ID}" || {
+                echo "Failed to assign Reader role to subscription: ${SUBSCRIPTION_ID}"
+                exit 1
+            }
+        echo "Successfully assigned Reader role to subscription: ${SUBSCRIPTION_ID}"
     fi
-    
-    # Assign Network Contributor role to the subscription
-    echo "Assigning Network Contributor role to subscription: ${SUBSCRIPTION_ID}"
-    EXISTING_NETWORK_CONTRIBUTOR=$(az role assignment list \
-        --assignee "${OBJECT_ID}" \
-        --role "Network Contributor" \
-        --scope "/subscriptions/${SUBSCRIPTION_ID}" \
-        --query "[].roleDefinitionName" -o tsv)
-    
-    if [ -n "${EXISTING_NETWORK_CONTRIBUTOR}" ]; then
-        echo "Network Contributor role is already assigned to kubelet identity at subscription level"
-    else
-        az role assignment create \
-            --assignee-object-id "${OBJECT_ID}" \
-            --assignee-principal-type ServicePrincipal \
-            --role "Network Contributor" \
-            --scope "/subscriptions/${SUBSCRIPTION_ID}"
         
-        if [ $? -eq 0 ]; then
-            echo "Successfully assigned Network Contributor role to subscription: ${SUBSCRIPTION_ID}"
-        else
-            echo "Failed to assign Network Contributor role to subscription: ${SUBSCRIPTION_ID}"
-            exit 1
-        fi
-    fi
-    
-    # Assign Contributor role to the subscription
-    echo "Assigning Contributor role to subscription: ${SUBSCRIPTION_ID}"
-    EXISTING_SUB_CONTRIBUTOR=$(az role assignment list \
-        --assignee "${OBJECT_ID}" \
-        --role "Contributor" \
-        --scope "/subscriptions/${SUBSCRIPTION_ID}" \
-        --query "[].roleDefinitionName" -o tsv)
-    
-    if [ -n "${EXISTING_SUB_CONTRIBUTOR}" ]; then
-        echo "Contributor role is already assigned to kubelet identity at subscription level"
-    else
-        az role assignment create \
-            --assignee-object-id "${OBJECT_ID}" \
-            --assignee-principal-type ServicePrincipal \
-            --role "Contributor" \
-            --scope "/subscriptions/${SUBSCRIPTION_ID}"
-        
-        if [ $? -eq 0 ]; then
-            echo "Successfully assigned Contributor role to subscription: ${SUBSCRIPTION_ID}"
-        else
-            echo "Failed to assign Contributor role to subscription: ${SUBSCRIPTION_ID}"
-            exit 1
-        fi
-    fi
-    
     echo "✅ AMLFS role assignment completed successfully."
 }
 
