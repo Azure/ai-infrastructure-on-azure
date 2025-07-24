@@ -589,6 +589,40 @@ function setup_amlfs_roles() {
     echo "✅ AMLFS role assignment completed successfully."
 }
 
+function uninstall_amlfs() {
+    echo "⏳ Uninstalling Azure Managed Lustre File System (AMLFS) CSI driver..."
+    
+    # Check if AMLFS CSI driver is installed
+    echo "⏳ Checking if AMLFS CSI driver is installed..."
+    if ! kubectl get -n kube-system deployment csi-azurelustre-controller >/dev/null 2>&1; then
+        echo "⚠️ AMLFS CSI driver is not installed, nothing to uninstall!"
+        return 0
+    fi
+    
+    # Create temporary directory for AMLFS uninstallation
+    TEMP_DIR=$(mktemp -d)
+    pushd "${TEMP_DIR}"
+    
+    # Clone the repository
+    echo "⏳ Cloning azurelustre-csi-driver repository..."
+    git clone https://github.com/kubernetes-sigs/azurelustre-csi-driver.git
+    cd azurelustre-csi-driver
+    
+    # Switch to the dynamic provisioning preview branch
+    git checkout dynamic-provisioning-preview
+    
+    # Uninstall the CSI driver
+    echo "⏳ Uninstalling AMLFS CSI driver..."
+    ./deploy/uninstall-driver.sh
+    
+    # Clean up temporary directory
+    popd
+    rm -rf "${TEMP_DIR}"
+    
+    echo "✅ AMLFS CSI driver uninstalled successfully."
+    echo "💡 AMLFS roles have been left intact and can be removed separately if needed using Azure CLI."
+}
+
 function print_usage() {
     echo "Usage: $0 <command> [options]"
     echo ""
@@ -603,6 +637,7 @@ function print_usage() {
     echo "  install-pytorch-operator Install PyTorch Operator (includes cert-manager) for PyTorch distributed training"
     echo "  uninstall-pytorch-operator Remove PyTorch Operator and cert-manager from the cluster"
     echo "  install-amlfs            Install Azure Managed Lustre File System (AMLFS) CSI driver and setup roles"
+    echo "  uninstall-amlfs          Uninstall AMLFS CSI driver (leaves roles intact)"
     echo "  setup-amlfs-roles        Setup AMLFS roles for kubelet identity (without installing CSI driver)"
     echo "  all                      Deploy AKS cluster and install all operators (full setup)"
     echo ""
@@ -676,6 +711,9 @@ uninstall-pytorch-operator | uninstall_pytorch_operator)
     ;;
 install-amlfs | install_amlfs)
     install_amlfs
+    ;;
+uninstall-amlfs | uninstall_amlfs)
+    uninstall_amlfs
     ;;
 setup-amlfs-roles | setup_amlfs_roles)
     setup_amlfs_roles
