@@ -1,5 +1,5 @@
 1. The shared storage has been created with the following components:
-   - StorageClass: {{ include "shared-storage.fullname" . }}-blob-storage
+   - StorageClass: {{ include "blob-shared-storage.fullname" . }}-blob-storage
    - PersistentVolumeClaim: {{ .Values.storage.pvcName }}
 
 2. To use this shared storage in other applications:
@@ -15,7 +15,6 @@
 3. Storage Details:
    - Size: {{ .Values.storage.size }}
    - Access Modes: {{ join ", " .Values.storage.accessModes }}
-   - Container: {{ .Values.storage.containerName }}
    - SKU: {{ .Values.storage.skuName }}
 
 4. Mount Options configured:

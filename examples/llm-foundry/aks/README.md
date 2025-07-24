@@ -38,23 +38,44 @@ Follow the [infrastructure reference documentation](../../../infrastructure_refe
 
 ### 3.1. Shared Storage Configuration
 
-Deploy the shared storage infrastructure that provides persistent, scalable storage accessible across all training pods. This uses Azure Blob Storage with blobfuse for optimal performance and cost-effectiveness.
+Deploy shared storage infrastructure to provide persistent, scalable storage accessible across all training pods. The shared storage Helm charts are located in `examples/shared_storage/aks/helm/` and offer two storage options. For detailed configuration options and setup instructions, see the [shared storage README](../../../shared_storage/aks/README.md).
+
+#### Option 1: Azure Managed Lustre File System (AMLFS)
+
+AMLFS delivers high-throughput, low-latency storage optimized for large-scale training workloads. 
+
+AMLFS offers different performance tiers with bandwidth scaling per TB of storage. The tier and size can be tuned for your cluster requirements. This example uses the 125MBps/TB tier with 16TB total storage capacity.
 
 ```bash
-helm install shared-storage helm/shared-storage \
-  --set storage.pvcName="shared-blob-storage"
+helm install shared-storage ../../../shared_storage/aks/helm/amlfs-shared-storage \
+  --set amlfs.skuName="AMLFS-Durable-Premium-125" \
+  --set amlfs.storageCapacityTiB=16 \
+  --set pvc.name="shared-storage-pvc"
 ```
 
-#### Key Configuration Options:
+#### Option 2: Azure Blob Storage with BlobFuse
 
-- **`storage.pvcName`**: Name for the PersistentVolumeClaim (default: `shared-blob-storage`)
-- **`storage.size`**: Storage capacity allocation (default: `10Ti`)
-- **`storage.skuName`**: Azure Storage account performance tier (default: `Standard_LRS`)
-- **`storage.accessModes`**: Volume access patterns (default: `ReadWriteMany` for multi-pod access)
-- **`storage.reclaimPolicy`**: Data retention policy when PVC is deleted (default: `Delete`)
-- **`storage.mountOptions`**: Blobfuse optimization settings including block cache and timeout configurations
+Blob storage provides cost-effective storage with excellent performance for most training scenarios.
 
-The storage configuration creates a dynamically provisioned Azure Blob Storage volume with ReadWriteMany access, enabling multiple pods to simultaneously read and write data during distributed training operations.
+LLM Foundry can minimize data reading latencies through local/remote data sources, where data is staged locally from remote storage asynchronously. Sharded checkpoints enable each process to write its own file. Following the [BlobFuse configuration guide](https://github.com/Azure/azure-storage-fuse?tab=readme-ov-file#config-guide), block cache provides optimal performance.
+
+Example deployment:
+
+```bash
+helm install shared-storage ../../../shared_storage/aks/helm/blob-shared-storage \
+  --set pvc.name="shared-storage-pvc" \
+  --set-json 'storage.mountOptions=["-o allow_other","--use-attr-cache=true","--cancel-list-on-mount-seconds=10","-o attr_timeout=120","-o entry_timeout=120","-o negative_timeout=120","--log-level=LOG_WARNING","--file-cache-timeout-in-seconds=120","--block-cache","--block-cache-block-size=32","--block-cache-parallelism=80"]'
+```
+
+#### Verify Deployment
+
+```bash
+# Check PVC status
+kubectl get pvc shared-storage-pvc
+
+# Verify storage class and capacity
+kubectl describe pvc shared-storage-pvc
+``` 
 
 ### 3.2. Dataset Preparation
 
@@ -64,7 +85,7 @@ To download the full data:
 
 ```bash
 helm install dataset-prep helm/dataset-download \
-  --set storage.pvcName="shared-blob-storage" \
+  --set storage.pvcName="shared-storage-pvc" \
   --set dataset.outputPath="my-copy-c4"
 ```
 
@@ -72,7 +93,7 @@ Download the small data set for testing:
 
 ```bash
 helm install dataset-prep helm/dataset-download \
-  --set storage.pvcName="shared-blob-storage" \
+  --set storage.pvcName="shared-storage-pvc" \
   --set dataset.outputPath="my-copy-c4" \
   --set dataset.splits="{train_small,val_small}"
 ```
@@ -115,7 +136,7 @@ Execute a lightweight training run using the MPT-125M model and the small datase
 helm install llm-training helm/llm-training \
   --set image.tag=latest \
   --set model.config="mpt-125m" \
-  --set storage.pvcName="shared-blob-storage" \
+  --set storage.pvcName="shared-storage-pvc" \
   --set "yamlUpdates.train_loader\.dataset\.split=train_small" \
   --set "yamlUpdates.eval_loader\.dataset\.split=val_small" \
   --set "yamlUpdates.variables\.data_remote=/data/my-copy-c4" \
@@ -131,7 +152,7 @@ helm install llm-training helm/llm-training \
   --set image.tag=latest \
   --set model.config="mpt-30b" \
   --set training.nodes=16 \
-  --set storage.pvcName="shared-blob-storage" \
+  --set storage.pvcName="shared-storage-pvc" \
   --set "yamlUpdates.variables\.data_remote=/data/my-copy-c4" \
   --set "yamlUpdates.variables\.data_local=/tmp/my-copy-c4" \
   --set "yamlUpdates.save_folder=/data/checkpoints" \

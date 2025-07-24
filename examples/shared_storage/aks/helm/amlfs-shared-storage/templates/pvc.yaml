@@ -3,7 +3,7 @@ kind: PersistentVolumeClaim
 metadata:
   name: {{ .Values.storage.pvcName }}
   labels:
-    {{- include "shared-storage.labels" . | nindent 4 }}
+    {{- include "amlfs-shared-storage.labels" . | nindent 4 }}
   {{- with .Values.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -13,7 +13,7 @@ spec:
     {{- range .Values.storage.accessModes }}
     - {{ . }}
     {{- end }}
+  storageClassName: {{ include "amlfs-shared-storage.fullname" . }}-azurelustre
   resources:
     requests:
       storage: {{ .Values.storage.size }}
-  storageClassName: {{ include "shared-storage.fullname" . }}-blob-storage
