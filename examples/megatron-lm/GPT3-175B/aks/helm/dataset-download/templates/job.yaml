@@ -5,6 +5,10 @@ metadata:
   labels:
     {{- include "megatron-dataset-download.labels" . | nindent 4 }}
 spec:
+  # Indexed Job configuration for parallel downloads
+  completions: {{ .Values.resources.workers }}
+  parallelism: {{ .Values.resources.workers }}
+  completionMode: Indexed
   backoffLimit: {{ .Values.job.backoffLimit }}
   {{- if .Values.job.ttlSecondsAfterFinished }}
   ttlSecondsAfterFinished: {{ .Values.job.ttlSecondsAfterFinished }}
@@ -36,6 +40,8 @@ spec:
         - |
           set -euo pipefail
           echo "Starting SlimPajama dataset download..."
+          echo "Job Index: $JOB_COMPLETION_INDEX"
+          echo "Total Workers: {{ .Values.resources.workers }}"
           echo "Dataset: {{ .Values.dataset.name }}"
           echo "Output path: {{ .Values.storage.mount }}/{{ .Values.dataset.outputPath }}"
           echo "Full dataset: {{ .Values.dataset.fullDataset }}"
@@ -43,20 +49,23 @@ spec:
           # Create output directory
           mkdir -p {{ .Values.storage.mount }}/{{ .Values.dataset.outputPath }}
           
-          # Run the dataset download using the mounted script
+          # Run the dataset download using the mounted script with job index
           python /scripts/download_slimpajama.py \
             --directory {{ .Values.storage.mount }}/{{ .Values.dataset.outputPath }} \
+            --worker-index $JOB_COMPLETION_INDEX \
+            --total-workers {{ .Values.resources.workers }} \
             {{- if .Values.dataset.fullDataset }}
             --full-dataset \
             {{- else }}
             --sample-files {{ .Values.dataset.sampleFiles }} \
             {{- end }}
           
-          echo "Dataset download completed successfully!"
-          echo "Downloaded files:"
-          ls -la {{ .Values.storage.mount }}/{{ .Values.dataset.outputPath }}/*.zst | wc -l
-          echo "Total size:"
-          du -sh {{ .Values.storage.mount }}/{{ .Values.dataset.outputPath }}
+          echo "Worker $JOB_COMPLETION_INDEX download completed successfully!"
+        env:
+        - name: JOB_COMPLETION_INDEX
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['batch.kubernetes.io/job-completion-index']
         resources:
           requests:
             cpu: "{{ .Values.resources.cpuPerWorker }}"

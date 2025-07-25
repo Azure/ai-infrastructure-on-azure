@@ -46,24 +46,45 @@ def download_shard(url, filename, retry=RETRIES):
         fn.write(response.content)
     logging.info("Downloaded %s", filename)
 
-def download(directory, full_dataset=True, sample_files=100):
-    """Download SlimPajama dataset from Hugging Face."""
+def download(directory, full_dataset=True, sample_files=100, worker_index=0, total_workers=1):
+    """Download SlimPajama dataset from Hugging Face with parallel worker support."""
     files_downloaded = 0
+    files_to_process = []
+    
+    # First, calculate all files that need to be downloaded
     for chunk in range(1, CHUNKS + 1):
         shard_limit = SHARDS if full_dataset else min(sample_files // CHUNKS + 1, SHARDS)
         for shard in range(0, shard_limit):
-            if not full_dataset and files_downloaded >= sample_files:
-                return
+            if not full_dataset and len(files_to_process) >= sample_files:
+                break
             
             filename = f"example_train_chunk{chunk}_shard{shard}.jsonl.zst"
-            filename = os.path.join(directory, filename)
             url = f"{REPOSITORY_PATH}/chunk{chunk}/example_train_{shard}.jsonl.zst"
-            download_shard(url, filename)
-            files_downloaded += 1
+            files_to_process.append((filename, url))
+        
+        if not full_dataset and len(files_to_process) >= sample_files:
+            break
+    
+    # Limit to sample_files if not downloading full dataset
+    if not full_dataset:
+        files_to_process = files_to_process[:sample_files]
+    
+    # Distribute files across workers using modulo
+    worker_files = [file_info for i, file_info in enumerate(files_to_process) if i % total_workers == worker_index]
+    
+    logging.info(f"Worker {worker_index}/{total_workers}: Processing {len(worker_files)} files out of {len(files_to_process)} total files")
+    
+    # Download assigned files
+    for filename, url in worker_files:
+        full_filename = os.path.join(directory, filename)
+        download_shard(url, full_filename)
+        files_downloaded += 1
+    
+    logging.info(f"Worker {worker_index} completed: Downloaded {files_downloaded} files")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Download SlimPajama from Hugging Face."
+        description="Download SlimPajama from Hugging Face with parallel worker support."
     )
     parser.add_argument(
         "--directory",
@@ -82,7 +103,25 @@ if __name__ == "__main__":
         default=100,
         help="Number of files to download for sample.",
     )
+    parser.add_argument(
+        "--worker-index",
+        type=int,
+        default=0,
+        help="Index of this worker (0-based).",
+    )
+    parser.add_argument(
+        "--total-workers",
+        type=int,
+        default=1,
+        help="Total number of workers.",
+    )
     args = parser.parse_args()
 
     os.makedirs(args.directory, exist_ok=True)
-    download(args.directory, args.full_dataset, args.sample_files)
+    download(
+        args.directory, 
+        args.full_dataset, 
+        args.sample_files,
+        args.worker_index,
+        args.total_workers
+    )

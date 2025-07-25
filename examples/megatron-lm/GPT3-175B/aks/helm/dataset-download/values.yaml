@@ -27,22 +27,14 @@ storage:
 
 # Resource configuration
 resources:
-  # Number of parallel download workers
+  # Number of parallel download workers (indexed job completions)
   workers: 8
   # CPU per worker
   cpuPerWorker: 2
+  # Memory per worker in GiB
   memoryPerWorkerGi: 4
-  # Shared memory size for the job
-  shmSize: "8Gi"
-
-# Processing configuration
-processing:
-  # Number of parallel workers for extraction
-  extractionWorkers: 32
-  # Number of parallel workers for concatenation
-  concatenationWorkers: 16
-  # Target number of concatenated files
-  targetFiles: 72
+  # Shared memory size for each worker
+  shmSize: "2Gi"
 
 # Job configuration
 job:
