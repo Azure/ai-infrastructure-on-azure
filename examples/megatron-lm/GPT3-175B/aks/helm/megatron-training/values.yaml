@@ -56,8 +56,6 @@ resources:
   rdmaResource: "rdma/ib"
   # Shared memory size per pod
   shmSize: "64Gi"
-  # CPU requests per GPU
-  cpuPerGpu: 12
 
 # PyTorchJob configuration
 pytorchJob:

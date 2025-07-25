@@ -94,8 +94,6 @@ spec:
               requests:
                 nvidia.com/gpu: {{ .Values.training.gpusPerNode }}
                 {{ .Values.resources.rdmaResource }}: {{ .Values.training.gpusPerNode }}
-                cpu: {{ mul .Values.training.gpusPerNode .Values.resources.cpuPerGpu }}
-                memory: "{{ mul .Values.training.gpusPerNode .Values.resources.memoryPerGpu }}Gi"
               limits:
                 nvidia.com/gpu: {{ .Values.training.gpusPerNode }}
                 {{ .Values.resources.rdmaResource }}: {{ .Values.training.gpusPerNode }}
@@ -210,8 +208,6 @@ spec:
               requests:
                 nvidia.com/gpu: {{ .Values.training.gpusPerNode }}
                 {{ .Values.resources.rdmaResource }}: {{ .Values.training.gpusPerNode }}
-                cpu: {{ mul .Values.training.gpusPerNode .Values.resources.cpuPerGpu }}
-                memory: "{{ mul .Values.training.gpusPerNode .Values.resources.memoryPerGpu }}Gi"
               limits:
                 nvidia.com/gpu: {{ .Values.training.gpusPerNode }}
                 {{ .Values.resources.rdmaResource }}: {{ .Values.training.gpusPerNode }}
