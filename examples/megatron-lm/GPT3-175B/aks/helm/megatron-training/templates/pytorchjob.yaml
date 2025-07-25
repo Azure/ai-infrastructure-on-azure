@@ -30,8 +30,6 @@ spec:
           tolerations:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          hostNetwork: {{ .Values.networking.hostNetwork }}
-          dnsPolicy: {{ .Values.networking.dnsPolicy }}
           containers:
           - name: pytorch
             image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -144,10 +142,8 @@ spec:
           tolerations:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          hostNetwork: {{ .Values.networking.hostNetwork }}
-          dnsPolicy: {{ .Values.networking.dnsPolicy }}
           containers:
-          - name: megatron
+          - name: pytorch
             image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
             imagePullPolicy: {{ .Values.image.pullPolicy }}
             command:
