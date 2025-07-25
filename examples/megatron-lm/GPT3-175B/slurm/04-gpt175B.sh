@@ -137,8 +137,8 @@ DATA_ARGS=(
 
 EVAL_AND_LOGGING_ARGS=(
 	--log-interval 10
-	--save-interval 100
-	--eval-interval 100
+	--save-interval "$SAVE_INTERVAL"
+	--eval-interval "$EVAL_INTERVAL"
 	--save "$CHECKPOINT_PATH"
 	--load "$CHECKPOINT_PATH"
 	--eval-iters 10

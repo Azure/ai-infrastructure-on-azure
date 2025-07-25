@@ -4,16 +4,13 @@
 
 # Model configuration
 model:
-  # Model size: can be "175b", "30b", "13b", "1.3b", "857m", "375m", "125m"
-  size: "375m"
-  # Custom model parameters (will override size-based defaults)
-  custom:
-    numLayers: null
-    hiddenSize: null
-    numAttentionHeads: null
-    seqLength: null
-    tensorModelParallelSize: null
-    pipelineModelParallelSize: null
+  # Model parameters (defaults match GPT-3 175B configuration like SLURM version)
+  numLayers: 96
+  hiddenSize: 12288
+  numAttentionHeads: 96
+  seqLength: 2048
+  tensorModelParallelSize: 8
+  pipelineModelParallelSize: 16
 
 # Container image configuration
 image:
@@ -60,9 +57,7 @@ resources:
   # Shared memory size per pod
   shmSize: "64Gi"
   # CPU requests per GPU
-  cpuPerGpu: 8
-  # Memory requests per GPU (in Gi)
-  memoryPerGpu: 64
+  cpuPerGpu: 12
 
 # PyTorchJob configuration
 pytorchJob:

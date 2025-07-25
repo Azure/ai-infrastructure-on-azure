@@ -1,23 +1,7 @@
 apiVersion: kubeflow.org/v1
 kind: PyTorchJob
 metadata:
-  name: {{ include "megatron-tra            securityContext:
-              capabilities:
-                add:
-                - IPC_LOCK
-          volumes:
-          - name: data-storage
-            persistentVolumeClaim:
-              claimName: {{ .Values.storage.pvcName }}
-          - name: shm
-            emptyDir:
-              medium: Memory
-              sizeLimit: {{ .Values.resources.shmSize }}
-          - name: training-scripts
-            configMap:
-              name: {{ include "megatron-training.fullname" . }}-scripts
-              defaultMode: 0755
-    {{- if gt (.Values.training.nodes | int) 1 }}e" . }}
+  name: {{ include "megatron-training.fullname" . }}
   labels:
     {{- include "megatron-training.labels" . | nindent 4 }}
 spec:
@@ -59,30 +43,53 @@ spec:
             - |
               set -xe
               
-              # Environment setup
-              {{- include "megatron-training.modelConfig" . | nindent 14 }}
-              
               # Run training script
-              bash /scripts/train_megatron.sh 
-                "{{ .Values.storage.mount }}" 
-                "{{ .Values.storage.datasetPath }}" 
-                "{{ .Values.storage.logsPath }}" 
-                "{{ .Values.storage.checkpointPath }}" 
-                "{{ .Values.training.chunks }}" 
-                "{{ .Values.training.globalBatchSize }}" 
-                "{{ .Values.training.iterations }}" 
-                "{{ .Values.training.saveInterval }}" 
-                "{{ .Values.training.evalInterval }}" 
-                "{{ .Values.training.gpusPerNode }}" 
-                "{{ .Values.training.nodes }}" 
-                "{{ .Values.training.useSharp }}" 
-                "{{ .Values.env.logLevel }}" 
-                "{{ .Values.env.topoFile }}"
+              bash /scripts/train_megatron.sh
             env:
             - name: MASTER_ADDR
               value: "$(PYTORCHJOB_NAME)-master-0"
             - name: MASTER_PORT
               value: "23456"
+            - name: STORAGE_MOUNT
+              value: "{{ .Values.storage.mount }}"
+            - name: DATASET_PATH
+              value: "{{ .Values.storage.datasetPath }}"
+            - name: LOGS_PATH
+              value: "{{ .Values.storage.logsPath }}"
+            - name: CHECKPOINT_PATH_DIR
+              value: "{{ .Values.storage.checkpointPath }}"
+            - name: CHUNKS
+              value: "{{ .Values.training.chunks }}"
+            - name: GLOBAL_BATCH_SIZE
+              value: "{{ .Values.training.globalBatchSize }}"
+            - name: NUMBER_OF_ITERATIONS
+              value: "{{ .Values.training.iterations }}"
+            - name: SAVE_INTERVAL
+              value: "{{ .Values.training.saveInterval }}"
+            - name: EVAL_INTERVAL
+              value: "{{ .Values.training.evalInterval }}"
+            - name: GPUS_PER_NODE
+              value: "{{ .Values.training.gpusPerNode }}"
+            - name: NODES
+              value: "{{ .Values.training.nodes }}"
+            - name: USE_SHARP
+              value: "{{ .Values.training.useSharp }}"
+            - name: LOGLEVEL
+              value: "{{ .Values.env.logLevel }}"
+            - name: TOPO_FILE
+              value: "{{ .Values.env.topoFile }}"
+            - name: NUM_LAYERS
+              value: "{{ .Values.model.numLayers | default 96 }}"
+            - name: HIDDEN_SIZE
+              value: "{{ .Values.model.hiddenSize | default 12288 }}"
+            - name: NUM_ATTENTION_HEADS
+              value: "{{ .Values.model.numAttentionHeads | default 96 }}"
+            - name: SEQ_LENGTH
+              value: "{{ .Values.model.seqLength | default 2048 }}"
+            - name: TENSOR_MODEL_PARALLEL_SIZE
+              value: "{{ .Values.model.tensorModelParallelSize | default 8 }}"
+            - name: PIPELINE_MODEL_PARALLEL_SIZE
+              value: "{{ .Values.model.pipelineModelParallelSize | default 16 }}"
             resources:
               requests:
                 nvidia.com/gpu: {{ .Values.training.gpusPerNode }}
@@ -113,6 +120,10 @@ spec:
             emptyDir:
               medium: Memory
               sizeLimit: {{ .Values.resources.shmSize }}
+          - name: training-scripts
+            configMap:
+              name: {{ include "megatron-training.fullname" . }}-scripts
+              defaultMode: 0755
     {{- if gt (.Values.training.nodes | int) 1 }}
     Worker:
       replicas: {{ sub (.Values.training.nodes | int) 1 }}
@@ -135,6 +146,8 @@ spec:
           tolerations:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          hostNetwork: {{ .Values.networking.hostNetwork }}
+          dnsPolicy: {{ .Values.networking.dnsPolicy }}
           containers:
           - name: megatron
             image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -146,30 +159,53 @@ spec:
             - |
               set -xe
               
-              # Environment setup
-              {{- include "megatron-training.modelConfig" . | nindent 14 }}
-              
               # Run training script
-              bash /scripts/train_megatron.sh \
-                "{{ .Values.storage.mount }}" \
-                "{{ .Values.storage.datasetPath }}" \
-                "{{ .Values.storage.logsPath }}" \
-                "{{ .Values.storage.checkpointPath }}" \
-                "{{ .Values.training.chunks }}" \
-                "{{ .Values.training.globalBatchSize }}" \
-                "{{ .Values.training.iterations }}" \
-                "{{ .Values.training.saveInterval }}" \
-                "{{ .Values.training.evalInterval }}" \
-                "{{ .Values.training.gpusPerNode }}" \
-                "{{ .Values.training.nodes }}" \
-                "{{ .Values.training.useSharp }}" \
-                "{{ .Values.env.logLevel }}" \
-                "{{ .Values.env.topoFile }}"
+              bash /scripts/train_megatron.sh
             env:
             - name: MASTER_ADDR
               value: "$(PYTORCHJOB_NAME)-master-0"
             - name: MASTER_PORT
               value: "23456"
+            - name: STORAGE_MOUNT
+              value: "{{ .Values.storage.mount }}"
+            - name: DATASET_PATH
+              value: "{{ .Values.storage.datasetPath }}"
+            - name: LOGS_PATH
+              value: "{{ .Values.storage.logsPath }}"
+            - name: CHECKPOINT_PATH_DIR
+              value: "{{ .Values.storage.checkpointPath }}"
+            - name: CHUNKS
+              value: "{{ .Values.training.chunks }}"
+            - name: GLOBAL_BATCH_SIZE
+              value: "{{ .Values.training.globalBatchSize }}"
+            - name: NUMBER_OF_ITERATIONS
+              value: "{{ .Values.training.iterations }}"
+            - name: SAVE_INTERVAL
+              value: "{{ .Values.training.saveInterval }}"
+            - name: EVAL_INTERVAL
+              value: "{{ .Values.training.evalInterval }}"
+            - name: GPUS_PER_NODE
+              value: "{{ .Values.training.gpusPerNode }}"
+            - name: NODES
+              value: "{{ .Values.training.nodes }}"
+            - name: USE_SHARP
+              value: "{{ .Values.training.useSharp }}"
+            - name: LOGLEVEL
+              value: "{{ .Values.env.logLevel }}"
+            - name: TOPO_FILE
+              value: "{{ .Values.env.topoFile }}"
+            - name: NUM_LAYERS
+              value: "{{ .Values.model.numLayers | default 96 }}"
+            - name: HIDDEN_SIZE
+              value: "{{ .Values.model.hiddenSize | default 12288 }}"
+            - name: NUM_ATTENTION_HEADS
+              value: "{{ .Values.model.numAttentionHeads | default 96 }}"
+            - name: SEQ_LENGTH
+              value: "{{ .Values.model.seqLength | default 2048 }}"
+            - name: TENSOR_MODEL_PARALLEL_SIZE
+              value: "{{ .Values.model.tensorModelParallelSize | default 8 }}"
+            - name: PIPELINE_MODEL_PARALLEL_SIZE
+              value: "{{ .Values.model.pipelineModelParallelSize | default 16 }}"
             resources:
               requests:
                 nvidia.com/gpu: {{ .Values.training.gpusPerNode }}
