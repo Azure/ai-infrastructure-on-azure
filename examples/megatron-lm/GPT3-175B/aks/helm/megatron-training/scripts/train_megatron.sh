@@ -25,6 +25,7 @@ STORAGE_MOUNT=${STORAGE_MOUNT:-"/data"}
 DATASET_PATH=${DATASET_PATH:-"slimpajama/preprocessed"}
 LOGS_PATH=${LOGS_PATH:-"logs"}
 CHECKPOINT_PATH_DIR=${CHECKPOINT_PATH_DIR:-"checkpoints"}
+RDZV_ID=${RDZV_ID:-"megatron-training"}
 
 export OMPI_MCA_coll_hcoll_enable=0 \
 	CUDA_DEVICE_ORDER=PCI_BUS_ID \
@@ -72,7 +73,7 @@ readarray -t TEST_DATA < <(find $DATA_PATH -name "*.bin" -type f | sort | tail -
 DISTRIBUTED_ARGS=(
 	--nproc_per_node "$GPUS_PER_NODE"
 	--nnodes "$NODES"
-	--rdzv_id $RANDOM
+	--rdzv_id "$RDZV_ID"
 	--rdzv_backend c10d
 	--rdzv_endpoint "$MASTER_ADDR:$MASTER_PORT"
 )
