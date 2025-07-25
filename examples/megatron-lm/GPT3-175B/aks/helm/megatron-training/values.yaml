@@ -1,0 +1,92 @@
+# Default values for megatron-training
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Model configuration
+model:
+  # Model size: can be "175b", "30b", "13b", "1.3b", "857m", "375m", "125m"
+  size: "375m"
+  # Custom model parameters (will override size-based defaults)
+  custom:
+    numLayers: null
+    hiddenSize: null
+    numAttentionHeads: null
+    seqLength: null
+    tensorModelParallelSize: null
+    pipelineModelParallelSize: null
+
+# Container image configuration
+image:
+  repository: ghcr.io/azure/ai-infrastructure-on-azure/megatron-lm
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# Training configuration
+training:
+  # Number of worker nodes
+  nodes: 2
+  # GPUs per node
+  gpusPerNode: 8
+  # Training iterations
+  iterations: 1500
+  # Global batch size
+  globalBatchSize: 512
+  # Save checkpoint every N iterations
+  saveInterval: 100
+  # Evaluate every N iterations
+  evalInterval: 100
+  # Number of validation/test file chunks
+  chunks: 15
+  # Enable SHARP acceleration (0 or 1)
+  useSharp: 0
+
+# Storage configuration
+storage:
+  # Mount path where the shared storage will be mounted
+  mount: "/data"
+  # Name of the existing PVC to use for shared storage
+  pvcName: "shared-storage-pvc"
+  # Dataset folder name under storage mount
+  datasetPath: "slimpajama/preprocessed"
+  # Checkpoint output path
+  checkpointPath: "checkpoints"
+  # Tensorboard logs path
+  logsPath: "logs"
+
+# Resource configuration
+resources:
+  # RDMA resource type for InfiniBand
+  rdmaResource: "rdma/ib"
+  # Shared memory size per pod
+  shmSize: "64Gi"
+  # CPU requests per GPU
+  cpuPerGpu: 8
+  # Memory requests per GPU (in Gi)
+  memoryPerGpu: 64
+
+# PyTorchJob configuration
+pytorchJob:
+  # Clean pod policy
+  cleanPodPolicy: Running
+  # Restart policy
+  restartPolicy: OnFailure
+  # Backoff limit
+  backoffLimit: 3
+  # TTL for completed job (in seconds)
+  ttlSecondsAfterFinished: 3600
+
+# Node selector for job placement
+nodeSelector: {}
+
+# Tolerations for node scheduling
+tolerations: []
+
+# Affinity rules
+affinity: {}
+
+# Environment variables
+env:
+  # Topology file path
+  topoFile: "/etc/ndv5-topo.xml"
+  # Log level
+  logLevel: "INFO"

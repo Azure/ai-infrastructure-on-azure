@@ -1,0 +1,230 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "megatron-dataset-preprocessing.fullname" . }}-extract
+  labels:
+    {{- include "megatron-dataset-preprocessing.labels" . | nindent 4 }}
+    component: extraction
+spec:
+  backoffLimit: {{ .Values.jobs.backoffLimit }}
+  {{- if .Values.jobs.ttlSecondsAfterFinished }}
+  ttlSecondsAfterFinished: {{ .Values.jobs.ttlSecondsAfterFinished }}
+  {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "megatron-dataset-preprocessing.labels" . | nindent 8 }}
+        component: extraction
+    spec:
+      restartPolicy: {{ .Values.jobs.restartPolicy }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: dataset-extractor
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command: ["/bin/bash", "-c"]
+        args:
+        - |
+          set -euo pipefail
+          
+          INPUT_DIR="{{ .Values.storage.mount }}/{{ .Values.dataset.inputPath }}"
+          
+          # Run extraction script
+          bash /scripts/extract_dataset.sh "$INPUT_DIR" {{ .Values.processing.extractionWorkers }}
+        resources:
+          requests:
+            cpu: "{{ .Values.resources.cpuPerWorker }}"
+            memory: "{{ .Values.resources.memoryPerWorkerGi }}Gi"
+          limits:
+            cpu: "{{ mul .Values.resources.cpuPerWorker 2 }}"
+            memory: "{{ mul .Values.resources.memoryPerWorkerGi 2 }}Gi"
+        volumeMounts:
+        - name: shared-storage
+          mountPath: {{ .Values.storage.mount }}
+        - name: shared-memory
+          mountPath: /dev/shm
+        - name: scripts
+          mountPath: /scripts
+          readOnly: true
+      volumes:
+      - name: shared-storage
+        persistentVolumeClaim:
+          claimName: {{ .Values.storage.pvcName }}
+      - name: shared-memory
+        emptyDir:
+          medium: Memory
+          sizeLimit: {{ .Values.resources.shmSize }}
+      - name: scripts
+        configMap:
+          name: {{ include "megatron-dataset-preprocessing.fullname" . }}-scripts
+          defaultMode: 0755
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "megatron-dataset-preprocessing.fullname" . }}-concatenate
+  labels:
+    {{- include "megatron-dataset-preprocessing.labels" . | nindent 4 }}
+    component: concatenation
+spec:
+  backoffLimit: {{ .Values.jobs.backoffLimit }}
+  {{- if .Values.jobs.ttlSecondsAfterFinished }}
+  ttlSecondsAfterFinished: {{ .Values.jobs.ttlSecondsAfterFinished }}
+  {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "megatron-dataset-preprocessing.labels" . | nindent 8 }}
+        component: concatenation
+    spec:
+      restartPolicy: {{ .Values.jobs.restartPolicy }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: dataset-concatenator
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command: ["/bin/bash", "-c"]
+        args:
+        - |
+          set -euo pipefail
+          
+          INPUT_DIR="{{ .Values.storage.mount }}/{{ .Values.dataset.inputPath }}"
+          
+          # Run concatenation script
+          python /scripts/concatenate_dataset.py \
+            --input-dir "$INPUT_DIR" \
+            --target-files {{ .Values.dataset.targetFiles }} \
+            --workers {{ .Values.processing.concatenationWorkers }}
+          
+          echo "Training files created:"
+          ls -la "$INPUT_DIR"/train_*.jsonl | wc -l
+        resources:
+          requests:
+            cpu: "{{ .Values.resources.cpuPerWorker }}"
+            memory: "{{ .Values.resources.memoryPerWorkerGi }}Gi"
+          limits:
+            cpu: "{{ mul .Values.resources.cpuPerWorker 2 }}"
+            memory: "{{ mul .Values.resources.memoryPerWorkerGi 2 }}Gi"
+        volumeMounts:
+        - name: shared-storage
+          mountPath: {{ .Values.storage.mount }}
+        - name: shared-memory
+          mountPath: /dev/shm
+        - name: scripts
+          mountPath: /scripts
+          readOnly: true
+      volumes:
+      - name: shared-storage
+        persistentVolumeClaim:
+          claimName: {{ .Values.storage.pvcName }}
+      - name: shared-memory
+        emptyDir:
+          medium: Memory
+          sizeLimit: {{ .Values.resources.shmSize }}
+      - name: scripts
+        configMap:
+          name: {{ include "megatron-dataset-preprocessing.fullname" . }}-scripts
+          defaultMode: 0755
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "megatron-dataset-preprocessing.fullname" . }}-preprocess
+  labels:
+    {{- include "megatron-dataset-preprocessing.labels" . | nindent 4 }}
+    component: preprocessing
+spec:
+  backoffLimit: {{ .Values.jobs.backoffLimit }}
+  {{- if .Values.jobs.ttlSecondsAfterFinished }}
+  ttlSecondsAfterFinished: {{ .Values.jobs.ttlSecondsAfterFinished }}
+  {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "megatron-dataset-preprocessing.labels" . | nindent 8 }}
+        component: preprocessing
+    spec:
+      restartPolicy: {{ .Values.jobs.restartPolicy }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: dataset-preprocessor
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command: ["/bin/bash", "-c"]
+        args:
+        - |
+          set -euo pipefail
+          
+          INPUT_DIR="{{ .Values.storage.mount }}/{{ .Values.dataset.inputPath }}"
+          OUTPUT_DIR="{{ .Values.storage.mount }}/{{ .Values.dataset.outputPath }}"
+          VOCAB_DIR="{{ .Values.storage.mount }}/slimpajama/bpe"
+          
+          # Run preprocessing script
+          bash /scripts/preprocess_dataset.sh \
+            "$INPUT_DIR" \
+            "$OUTPUT_DIR" \
+            "$VOCAB_DIR" \
+            {{ .Values.processing.preprocessingWorkers }}
+        resources:
+          requests:
+            cpu: "{{ .Values.resources.cpuPerWorker }}"
+            memory: "{{ .Values.resources.memoryPerWorkerGi }}Gi"
+          limits:
+            cpu: "{{ mul .Values.resources.cpuPerWorker 2 }}"
+            memory: "{{ mul .Values.resources.memoryPerWorkerGi 2 }}Gi"
+        volumeMounts:
+        - name: shared-storage
+          mountPath: {{ .Values.storage.mount }}
+        - name: shared-memory
+          mountPath: /dev/shm
+        - name: scripts
+          mountPath: /scripts
+          readOnly: true
+      volumes:
+      - name: shared-storage
+        persistentVolumeClaim:
+          claimName: {{ .Values.storage.pvcName }}
+      - name: shared-memory
+        emptyDir:
+          medium: Memory
+          sizeLimit: {{ .Values.resources.shmSize }}
+      - name: scripts
+        configMap:
+          name: {{ include "megatron-dataset-preprocessing.fullname" . }}-scripts
+          defaultMode: 0755

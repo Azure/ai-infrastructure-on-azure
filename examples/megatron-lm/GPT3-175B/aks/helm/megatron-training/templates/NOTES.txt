@@ -1,0 +1,31 @@
+1. Get the status of your Megatron training job:
+   kubectl get pytorchjob {{ include "megatron-training.fullname" . }}
+
+2. Watch the training progress:
+   kubectl logs -f pytorchjob/{{ include "megatron-training.fullname" . }}-master-0
+
+3. Check all worker logs:
+   kubectl logs -l job-name={{ include "megatron-training.fullname" . }}
+
+4. Monitor training with port-forward to access TensorBoard:
+   kubectl port-forward service/tensorboard 6006:6006
+   # Then open http://localhost:6006 in your browser
+
+5. Check checkpoint status:
+   kubectl run check-checkpoints --rm -i --tty --image={{ .Values.image.repository }}:{{ .Values.image.tag }} -- \
+     bash -c "ls -la {{ .Values.storage.mount }}/{{ .Values.storage.checkpointPath }}/"
+
+6. To scale the training, update the values and upgrade:
+   helm upgrade {{ .Release.Name }} . --set training.nodes=4
+
+Model Configuration:
+- Size: {{ .Values.model.size }}
+- Nodes: {{ .Values.training.nodes }}
+- GPUs per node: {{ .Values.training.gpusPerNode }}
+- Total GPUs: {{ mul .Values.training.nodes .Values.training.gpusPerNode }}
+- Global batch size: {{ .Values.training.globalBatchSize }}
+- Training iterations: {{ .Values.training.iterations }}
+
+{{- if .Values.training.useSharp }}
+Note: SHARP acceleration is enabled for optimized collective communications.
+{{- end }}

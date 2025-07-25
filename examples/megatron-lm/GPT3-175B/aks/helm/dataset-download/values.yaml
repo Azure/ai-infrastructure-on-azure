@@ -1,0 +1,63 @@
+# Default values for megatron-dataset-download
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Dataset configuration
+dataset:
+  name: "cerebras/SlimPajama-627B"
+  outputPath: "slimpajama"
+  # Set to true to download full dataset, false for sample
+  fullDataset: false
+  # Number of files to download for testing (when fullDataset is false)
+  sampleFiles: 100
+
+# Container image configuration
+image:
+  repository: ghcr.io/azure/ai-infrastructure-on-azure/megatron-lm
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# Storage configuration
+storage:
+  # Mount path where the shared storage will be mounted
+  mount: "/data"
+  # Name of the existing PVC to use for shared storage
+  # This should be created by the shared-storage helm chart
+  pvcName: "shared-storage-pvc"
+
+# Resource configuration
+resources:
+  # Number of parallel download workers
+  workers: 8
+  # CPU per worker
+  cpuPerWorker: 2
+  memoryPerWorkerGi: 4
+  # Shared memory size for the job
+  shmSize: "8Gi"
+
+# Processing configuration
+processing:
+  # Number of parallel workers for extraction
+  extractionWorkers: 32
+  # Number of parallel workers for concatenation
+  concatenationWorkers: 16
+  # Target number of concatenated files
+  targetFiles: 72
+
+# Job configuration
+job:
+  # Restart policy for the job
+  restartPolicy: Never
+  # Backoff limit for failed pods
+  backoffLimit: 3
+  # Time to live after job completion (in seconds)
+  ttlSecondsAfterFinished: 3600
+
+# Node selector for job placement
+nodeSelector: {}
+
+# Tolerations for node scheduling
+tolerations: []
+
+# Affinity rules
+affinity: {}

@@ -1,0 +1,62 @@
+# Default values for megatron-dataset-preprocessing
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Dataset configuration
+dataset:
+  inputPath: "slimpajama"
+  outputPath: "slimpajama/preprocessed"
+  # Target number of concatenated files
+  targetFiles: 72
+
+# Container image configuration
+image:
+  repository: ghcr.io/azure/ai-infrastructure-on-azure/megatron-lm
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# Storage configuration
+storage:
+  # Mount path where the shared storage will be mounted
+  mount: "/data"
+  # Name of the existing PVC to use for shared storage
+  pvcName: "shared-storage-pvc"
+
+# Processing configuration
+processing:
+  # Number of parallel workers for extraction
+  extractionWorkers: 32
+  # Number of parallel workers for concatenation
+  concatenationWorkers: 16
+  # Number of parallel workers for preprocessing
+  preprocessingWorkers: 8
+  # Vocabulary size for tokenizer
+  vocabSize: 50257
+  # Sequence length for preprocessing
+  seqLength: 2048
+
+# Resource configuration
+resources:
+  # CPU per worker
+  cpuPerWorker: 4
+  memoryPerWorkerGi: 8
+  # Shared memory size
+  shmSize: "16Gi"
+
+# Job configuration
+jobs:
+  # Restart policy for jobs
+  restartPolicy: Never
+  # Backoff limit for failed pods
+  backoffLimit: 3
+  # Time to live after job completion (in seconds)
+  ttlSecondsAfterFinished: 3600
+
+# Node selector for job placement
+nodeSelector: {}
+
+# Tolerations for node scheduling
+tolerations: []
+
+# Affinity rules
+affinity: {}

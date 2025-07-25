@@ -1,0 +1,46 @@
+1. Monitor the dataset preprocessing pipeline:
+
+   a) Check extraction job status:
+      kubectl get job {{ include "megatron-dataset-preprocessing.fullname" . }}-extract
+
+   b) Check concatenation job status:
+      kubectl get job {{ include "megatron-dataset-preprocessing.fullname" . }}-concatenate
+
+   c) Check preprocessing job status:
+      kubectl get job {{ include "megatron-dataset-preprocessing.fullname" . }}-preprocess
+
+2. Follow the logs for each stage:
+
+   a) Extraction logs:
+      kubectl logs -f job/{{ include "megatron-dataset-preprocessing.fullname" . }}-extract
+
+   b) Concatenation logs:
+      kubectl logs -f job/{{ include "megatron-dataset-preprocessing.fullname" . }}-concatenate
+
+   c) Preprocessing logs:
+      kubectl logs -f job/{{ include "megatron-dataset-preprocessing.fullname" . }}-preprocess
+
+3. Verify the output after each stage:
+
+   a) Check extracted files:
+      kubectl run check-extracted --rm -i --tty --image={{ .Values.image.repository }}:{{ .Values.image.tag }} -- \
+        bash -c "ls {{ .Values.storage.mount }}/{{ .Values.dataset.inputPath }}/*.jsonl | wc -l"
+
+   b) Check concatenated files:
+      kubectl run check-concatenated --rm -i --tty --image={{ .Values.image.repository }}:{{ .Values.image.tag }} -- \
+        bash -c "ls {{ .Values.storage.mount }}/{{ .Values.dataset.inputPath }}/train_*.jsonl | wc -l"
+
+   c) Check preprocessed files:
+      kubectl run check-preprocessed --rm -i --tty --image={{ .Values.image.repository }}:{{ .Values.image.tag }} -- \
+        bash -c "ls {{ .Values.storage.mount }}/{{ .Values.dataset.outputPath }}/*.bin | wc -l"
+
+4. Pipeline execution order:
+   - Run extraction first: Jobs will extract .zst files to .jsonl format
+   - Then run concatenation: Combines individual files into {{ .Values.dataset.targetFiles }} training files
+   - Finally run preprocessing: Converts to Megatron binary format (.bin/.idx files)
+
+5. Check total processing time and data sizes:
+   kubectl run check-sizes --rm -i --tty --image={{ .Values.image.repository }}:{{ .Values.image.tag }} -- \
+     bash -c "du -sh {{ .Values.storage.mount }}/{{ .Values.dataset.inputPath }} {{ .Values.storage.mount }}/{{ .Values.dataset.outputPath }}"
+
+Note: These jobs should be run sequentially. Wait for each job to complete before starting the next one.

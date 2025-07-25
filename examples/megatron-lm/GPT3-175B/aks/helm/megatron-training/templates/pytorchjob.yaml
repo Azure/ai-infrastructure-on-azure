@@ -1,0 +1,207 @@
+apiVersion: kubeflow.org/v1
+kind: PyTorchJob
+metadata:
+  name: {{ include "megatron-tra            securityContext:
+              capabilities:
+                add:
+                - IPC_LOCK
+          volumes:
+          - name: data-storage
+            persistentVolumeClaim:
+              claimName: {{ .Values.storage.pvcName }}
+          - name: shm
+            emptyDir:
+              medium: Memory
+              sizeLimit: {{ .Values.resources.shmSize }}
+          - name: training-scripts
+            configMap:
+              name: {{ include "megatron-training.fullname" . }}-scripts
+              defaultMode: 0755
+    {{- if gt (.Values.training.nodes | int) 1 }}e" . }}
+  labels:
+    {{- include "megatron-training.labels" . | nindent 4 }}
+spec:
+  {{- if .Values.pytorchJob.ttlSecondsAfterFinished }}
+  ttlSecondsAfterFinished: {{ .Values.pytorchJob.ttlSecondsAfterFinished }}
+  {{- end }}
+  pytorchReplicaSpecs:
+    Master:
+      replicas: 1
+      restartPolicy: {{ .Values.pytorchJob.restartPolicy }}
+      template:
+        metadata:
+          labels:
+            {{- include "megatron-training.labels" . | nindent 12 }}
+            role: master
+        spec:
+          {{- with .Values.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.affinity }}
+          affinity:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.tolerations }}
+          tolerations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          hostNetwork: {{ .Values.networking.hostNetwork }}
+          dnsPolicy: {{ .Values.networking.dnsPolicy }}
+          containers:
+          - name: pytorch
+            image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+            imagePullPolicy: {{ .Values.image.pullPolicy }}
+            command:
+            - "bash"
+            - "-c"
+            args:
+            - |
+              set -xe
+              
+              # Environment setup
+              {{- include "megatron-training.modelConfig" . | nindent 14 }}
+              
+              # Run training script
+              bash /scripts/train_megatron.sh 
+                "{{ .Values.storage.mount }}" 
+                "{{ .Values.storage.datasetPath }}" 
+                "{{ .Values.storage.logsPath }}" 
+                "{{ .Values.storage.checkpointPath }}" 
+                "{{ .Values.training.chunks }}" 
+                "{{ .Values.training.globalBatchSize }}" 
+                "{{ .Values.training.iterations }}" 
+                "{{ .Values.training.saveInterval }}" 
+                "{{ .Values.training.evalInterval }}" 
+                "{{ .Values.training.gpusPerNode }}" 
+                "{{ .Values.training.nodes }}" 
+                "{{ .Values.training.useSharp }}" 
+                "{{ .Values.env.logLevel }}" 
+                "{{ .Values.env.topoFile }}"
+            env:
+            - name: MASTER_ADDR
+              value: "$(PYTORCHJOB_NAME)-master-0"
+            - name: MASTER_PORT
+              value: "23456"
+            resources:
+              requests:
+                nvidia.com/gpu: {{ .Values.training.gpusPerNode }}
+                {{ .Values.resources.rdmaResource }}: {{ .Values.training.gpusPerNode }}
+                cpu: {{ mul .Values.training.gpusPerNode .Values.resources.cpuPerGpu }}
+                memory: "{{ mul .Values.training.gpusPerNode .Values.resources.memoryPerGpu }}Gi"
+              limits:
+                nvidia.com/gpu: {{ .Values.training.gpusPerNode }}
+                {{ .Values.resources.rdmaResource }}: {{ .Values.training.gpusPerNode }}
+            volumeMounts:
+            - name: data-storage
+              mountPath: {{ .Values.storage.mount }}
+            - name: shm
+              mountPath: /dev/shm
+            - name: training-scripts
+              mountPath: /scripts
+              readOnly: true
+            securityContext:
+              privileged: true
+              capabilities:
+                add:
+                - IPC_LOCK
+          volumes:
+          - name: data-storage
+            persistentVolumeClaim:
+              claimName: {{ .Values.storage.pvcName }}
+          - name: shm
+            emptyDir:
+              medium: Memory
+              sizeLimit: {{ .Values.resources.shmSize }}
+    {{- if gt (.Values.training.nodes | int) 1 }}
+    Worker:
+      replicas: {{ sub (.Values.training.nodes | int) 1 }}
+      restartPolicy: {{ .Values.pytorchJob.restartPolicy }}
+      template:
+        metadata:
+          labels:
+            {{- include "megatron-training.labels" . | nindent 12 }}
+            role: worker
+        spec:
+          {{- with .Values.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.affinity }}
+          affinity:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.tolerations }}
+          tolerations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          containers:
+          - name: megatron
+            image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+            imagePullPolicy: {{ .Values.image.pullPolicy }}
+            command:
+            - "bash"
+            - "-c"
+            args:
+            - |
+              set -xe
+              
+              # Environment setup
+              {{- include "megatron-training.modelConfig" . | nindent 14 }}
+              
+              # Run training script
+              bash /scripts/train_megatron.sh \
+                "{{ .Values.storage.mount }}" \
+                "{{ .Values.storage.datasetPath }}" \
+                "{{ .Values.storage.logsPath }}" \
+                "{{ .Values.storage.checkpointPath }}" \
+                "{{ .Values.training.chunks }}" \
+                "{{ .Values.training.globalBatchSize }}" \
+                "{{ .Values.training.iterations }}" \
+                "{{ .Values.training.saveInterval }}" \
+                "{{ .Values.training.evalInterval }}" \
+                "{{ .Values.training.gpusPerNode }}" \
+                "{{ .Values.training.nodes }}" \
+                "{{ .Values.training.useSharp }}" \
+                "{{ .Values.env.logLevel }}" \
+                "{{ .Values.env.topoFile }}"
+            env:
+            - name: MASTER_ADDR
+              value: "$(PYTORCHJOB_NAME)-master-0"
+            - name: MASTER_PORT
+              value: "23456"
+            resources:
+              requests:
+                nvidia.com/gpu: {{ .Values.training.gpusPerNode }}
+                {{ .Values.resources.rdmaResource }}: {{ .Values.training.gpusPerNode }}
+                cpu: {{ mul .Values.training.gpusPerNode .Values.resources.cpuPerGpu }}
+                memory: "{{ mul .Values.training.gpusPerNode .Values.resources.memoryPerGpu }}Gi"
+              limits:
+                nvidia.com/gpu: {{ .Values.training.gpusPerNode }}
+                {{ .Values.resources.rdmaResource }}: {{ .Values.training.gpusPerNode }}
+            volumeMounts:
+            - name: data-storage
+              mountPath: {{ .Values.storage.mount }}
+            - name: shm
+              mountPath: /dev/shm
+            - name: training-scripts
+              mountPath: /scripts
+              readOnly: true
+            securityContext:
+              privileged: true
+              capabilities:
+                add:
+                - IPC_LOCK
+          volumes:
+          - name: data-storage
+            persistentVolumeClaim:
+              claimName: {{ .Values.storage.pvcName }}
+          - name: shm
+            emptyDir:
+              medium: Memory
+              sizeLimit: {{ .Values.resources.shmSize }}
+          - name: training-scripts
+            configMap:
+              name: {{ include "megatron-training.fullname" . }}-scripts
+              defaultMode: 0755
+    {{- end }}

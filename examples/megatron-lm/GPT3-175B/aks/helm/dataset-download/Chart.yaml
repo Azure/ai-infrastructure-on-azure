@@ -1,0 +1,16 @@
+apiVersion: v2
+name: megatron-dataset-download
+description: Download and preprocess SlimPajama dataset for Megatron-LM training
+type: application
+version: 0.1.0
+appVersion: "v1.0.0"
+keywords:
+  - megatron
+  - gpt
+  - slimpajama
+  - dataset
+  - huggingface
+home: https://github.com/Azure/ai-infrastructure-on-azure
+sources:
+  - https://github.com/NVIDIA/Megatron-LM
+  - https://huggingface.co/datasets/cerebras/SlimPajama-627B

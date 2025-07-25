@@ -1,0 +1,15 @@
+apiVersion: v2
+name: megatron-training
+description: Distributed Megatron-LM GPT training on Kubernetes
+type: application
+version: 0.1.0
+appVersion: "v1.0.0"
+keywords:
+  - megatron
+  - gpt
+  - distributed-training
+  - llm
+  - nvidia
+home: https://github.com/Azure/ai-infrastructure-on-azure
+sources:
+  - https://github.com/NVIDIA/Megatron-LM

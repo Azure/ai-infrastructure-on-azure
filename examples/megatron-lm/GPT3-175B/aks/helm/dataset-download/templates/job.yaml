@@ -1,0 +1,86 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "megatron-dataset-download.fullname" . }}
+  labels:
+    {{- include "megatron-dataset-download.labels" . | nindent 4 }}
+spec:
+  backoffLimit: {{ .Values.job.backoffLimit }}
+  {{- if .Values.job.ttlSecondsAfterFinished }}
+  ttlSecondsAfterFinished: {{ .Values.job.ttlSecondsAfterFinished }}
+  {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "megatron-dataset-download.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: {{ .Values.job.restartPolicy }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: dataset-downloader
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command: ["/bin/bash", "-c"]
+        args:
+        - |
+          set -euo pipefail
+          echo "Starting SlimPajama dataset download..."
+          echo "Dataset: {{ .Values.dataset.name }}"
+          echo "Output path: {{ .Values.storage.mount }}/{{ .Values.dataset.outputPath }}"
+          echo "Full dataset: {{ .Values.dataset.fullDataset }}"
+          
+          # Create output directory
+          mkdir -p {{ .Values.storage.mount }}/{{ .Values.dataset.outputPath }}
+          
+          # Run the dataset download using the mounted script
+          python /scripts/download_slimpajama.py \
+            --directory {{ .Values.storage.mount }}/{{ .Values.dataset.outputPath }} \
+            {{- if .Values.dataset.fullDataset }}
+            --full-dataset \
+            {{- else }}
+            --sample-files {{ .Values.dataset.sampleFiles }} \
+            {{- end }}
+          
+          echo "Dataset download completed successfully!"
+          echo "Downloaded files:"
+          ls -la {{ .Values.storage.mount }}/{{ .Values.dataset.outputPath }}/*.zst | wc -l
+          echo "Total size:"
+          du -sh {{ .Values.storage.mount }}/{{ .Values.dataset.outputPath }}
+        resources:
+          requests:
+            cpu: "{{ .Values.resources.cpuPerWorker }}"
+            memory: "{{ .Values.resources.memoryPerWorkerGi }}Gi"
+          limits:
+            cpu: "{{ mul .Values.resources.cpuPerWorker 2 }}"
+            memory: "{{ mul .Values.resources.memoryPerWorkerGi 2 }}Gi"
+        volumeMounts:
+        - name: shared-storage
+          mountPath: {{ .Values.storage.mount }}
+        - name: shared-memory
+          mountPath: /dev/shm
+        - name: scripts
+          mountPath: /scripts
+          readOnly: true
+      volumes:
+      - name: shared-storage
+        persistentVolumeClaim:
+          claimName: {{ .Values.storage.pvcName }}
+      - name: shared-memory
+        emptyDir:
+          medium: Memory
+          sizeLimit: {{ .Values.resources.shmSize }}
+      - name: scripts
+        configMap:
+          name: {{ include "megatron-dataset-download.fullname" . }}-scripts
+          defaultMode: 0755
