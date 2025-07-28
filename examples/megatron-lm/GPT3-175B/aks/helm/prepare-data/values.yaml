@@ -38,8 +38,8 @@ pipeline:
     outputDirectory: "preprocessed"
     resources:
       requests:
-        cpu: "96"
-        memory: "768Gi"
+        cpu: "80"
+        memory: "1024Gi"
 
 # Persistent Volume Claim configuration
 pvc:
