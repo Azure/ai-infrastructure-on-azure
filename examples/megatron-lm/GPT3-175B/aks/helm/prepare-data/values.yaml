@@ -1,27 +1,45 @@
 # Configuration for the data preparation pipeline
 pipeline:
-  parallelism: 4
-  completions: 4
   fullDataset: true
   sampleFiles: 100
   dataDirectory: "slimpajama"
+  
+  # Step-specific configurations
+  download:
+    parallelism: 4
+    image: "nvcr.io/nvidia/nemo:24.05"
+    resources:
+      requests:
+        cpu: "2"
+        memory: "16Gi"
+        
+  extract:
+    parallelism: 4
+    image: "nvcr.io/nvidia/nemo:24.05"
+    resources:
+      requests:
+        cpu: "4"
+        memory: "16Gi"
+        
+  concatenate:
+    parallelism: 4
+    image: "nvcr.io/nvidia/nemo:24.05"
+    resources:
+      requests:
+        cpu: "4"
+        memory: "256Gi"
+        
+  preprocess:
+    parallelism: 4
+    image: "nvcr.io/nvidia/nemo:24.05"
+    resources:
+      requests:
+        cpu: "96"
+        memory: "1024Gi"
 
 # Persistent Volume Claim configuration
 pvc:
   name: "shared-storage"
-
-# Container images
-image:
-  nemo: "nvcr.io/nvidia/nemo:24.05"
-
-# Resource limits
-resources:
-  requests:
-    cpu: "2"
-    memory: "4Gi"
-  limits:
-    cpu: "4"
-    memory: "8Gi"
 
 # Node selector and tolerations
 nodeSelector: {}

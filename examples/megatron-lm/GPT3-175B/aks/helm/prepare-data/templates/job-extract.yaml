@@ -6,21 +6,21 @@ metadata:
     {{- include "prepare-data.labels" . | nindent 4 }}
     app.kubernetes.io/component: extract
 spec:
-  parallelism: {{ .Values.pipeline.parallelism }}
-  completions: {{ .Values.pipeline.completions }}
+  parallelism: {{ .Values.pipeline.extract.parallelism }}
+  completions: {{ .Values.pipeline.extract.parallelism }}
   completionMode: Indexed
   template:
     spec:
       restartPolicy: Never
       initContainers:
       - name: wait-for-download
-        image: {{ .Values.image.nemo }}
+        image: {{ .Values.pipeline.extract.image }}
         command: ["/bin/sh", "-c"]
         args:
         - |
           echo "Waiting for download to complete..."
-          while [ $(find /shared-data/{{ .Values.pipeline.dataDirectory }} -name ".download-*-complete" | wc -l) -lt {{ .Values.pipeline.completions }} ]; do
-            echo "Found $(find /shared-data/{{ .Values.pipeline.dataDirectory }} -name ".download-*-complete" | wc -l) of {{ .Values.pipeline.completions }} workers completed"
+          while [ $(find /shared-data/{{ .Values.pipeline.dataDirectory }} -name ".download-*-complete" | wc -l) -lt {{ .Values.pipeline.download.parallelism }} ]; do
+            echo "Found $(find /shared-data/{{ .Values.pipeline.dataDirectory }} -name ".download-*-complete" | wc -l) of {{ .Values.pipeline.download.parallelism }} workers completed"
             sleep 10
           done
           echo "All download workers completed, starting extract..."
@@ -29,12 +29,12 @@ spec:
           mountPath: /shared-data
       containers:
       - name: extract
-        image: {{ .Values.image.nemo }}
+        image: {{ .Values.pipeline.extract.image }}
         command: ["python", "/scripts/extract.py"]
         args:
         - "--directory=/shared-data/{{ .Values.pipeline.dataDirectory }}"
         - "--worker-index=$(JOB_COMPLETION_INDEX)"
-        - "--total-workers={{ .Values.pipeline.completions }}"
+        - "--total-workers={{ .Values.pipeline.extract.parallelism }}"
         env:
         - name: JOB_COMPLETION_INDEX
           valueFrom:
@@ -46,11 +46,7 @@ spec:
         - name: scripts
           mountPath: /scripts
         resources:
-          {{- toYaml .Values.resources | nindent 10 }}
-        lifecycle:
-          postStart:
-            exec:
-              command: ["pip", "install", "zstandard"]
+          {{- toYaml .Values.pipeline.extract.resources | nindent 10 }}
       volumes:
       - name: shared-storage
         persistentVolumeClaim:

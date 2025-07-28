@@ -6,21 +6,21 @@ metadata:
     {{- include "prepare-data.labels" . | nindent 4 }}
     app.kubernetes.io/component: preprocess
 spec:
-  parallelism: {{ .Values.pipeline.parallelism }}
-  completions: {{ .Values.pipeline.completions }}
+  parallelism: {{ .Values.pipeline.preprocess.parallelism }}
+  completions: {{ .Values.pipeline.preprocess.parallelism }}
   completionMode: Indexed
   template:
     spec:
       restartPolicy: Never
       initContainers:
       - name: wait-for-concatenate
-        image: {{ .Values.image.nemo }}
+        image: {{ .Values.pipeline.preprocess.image }}
         command: ["/bin/sh", "-c"]
         args:
         - |
           echo "Waiting for concatenate to complete..."
-          while [ $(find /shared-data/{{ .Values.pipeline.dataDirectory }} -name ".concatenate-*-complete" | wc -l) -lt {{ .Values.pipeline.completions }} ]; do
-            echo "Found $(find /shared-data/{{ .Values.pipeline.dataDirectory }} -name ".concatenate-*-complete" | wc -l) of {{ .Values.pipeline.completions }} workers completed"
+          while [ $(find /shared-data/{{ .Values.pipeline.dataDirectory }} -name ".concatenate-*-complete" | wc -l) -lt {{ .Values.pipeline.concatenate.parallelism }} ]; do
+            echo "Found $(find /shared-data/{{ .Values.pipeline.dataDirectory }} -name ".concatenate-*-complete" | wc -l) of {{ .Values.pipeline.concatenate.parallelism }} workers completed"
             sleep 10
           done
           echo "All concatenate workers completed, starting preprocess..."
@@ -29,12 +29,12 @@ spec:
           mountPath: /shared-data
       containers:
       - name: preprocess
-        image: {{ .Values.image.nemo }}
+        image: {{ .Values.pipeline.preprocess.image }}
         command: ["python", "/scripts/preprocess.py"]
         args:
         - "--directory=/shared-data/{{ .Values.pipeline.dataDirectory }}"
         - "--worker-index=$(JOB_COMPLETION_INDEX)"
-        - "--total-workers={{ .Values.pipeline.completions }}"
+        - "--total-workers={{ .Values.pipeline.preprocess.parallelism }}"
         env:
         - name: JOB_COMPLETION_INDEX
           valueFrom:
@@ -48,7 +48,7 @@ spec:
         - name: scripts
           mountPath: /scripts
         resources:
-          {{- toYaml .Values.resources | nindent 10 }}
+          {{- toYaml .Values.pipeline.preprocess.resources | nindent 10 }}
       volumes:
       - name: shared-storage
         persistentVolumeClaim:

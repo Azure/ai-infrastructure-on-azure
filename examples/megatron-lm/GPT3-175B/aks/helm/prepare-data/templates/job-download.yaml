@@ -6,20 +6,20 @@ metadata:
     {{- include "prepare-data.labels" . | nindent 4 }}
     app.kubernetes.io/component: download
 spec:
-  parallelism: {{ .Values.pipeline.parallelism }}
-  completions: {{ .Values.pipeline.completions }}
+  parallelism: {{ .Values.pipeline.download.parallelism }}
+  completions: {{ .Values.pipeline.download.parallelism }}
   completionMode: Indexed
   template:
     spec:
       restartPolicy: Never
       containers:
       - name: download
-        image: {{ .Values.image.nemo }}
+        image: {{ .Values.pipeline.download.image }}
         command: ["python", "/scripts/download_slimpajama.py"]
         args:
         - "--directory=/shared-data/{{ .Values.pipeline.dataDirectory }}"
         - "--worker-index=$(JOB_COMPLETION_INDEX)"
-        - "--total-workers={{ .Values.pipeline.completions }}"
+        - "--total-workers={{ .Values.pipeline.download.parallelism }}"
         {{- if .Values.pipeline.fullDataset }}
         - "--full-dataset"
         {{- else }}
@@ -36,7 +36,7 @@ spec:
         - name: scripts
           mountPath: /scripts
         resources:
-          {{- toYaml .Values.resources | nindent 10 }}
+          {{- toYaml .Values.pipeline.download.resources | nindent 10 }}
         lifecycle:
           postStart:
             exec:
