@@ -44,9 +44,15 @@ def split_shards(wsize, dataset):
         shards.append(dataset[idx_start:idx_end])
     return shards
 
-def preprocess(directory="", worker_index=0, total_workers=1):
-    # Create BPE directory and download files on rank 0
-    bpe_dir = os.path.join(directory, "bpe")
+def preprocess(input_directory="", output_directory="", worker_index=0, total_workers=1):
+    logging.info(f"Input directory: {input_directory}")
+    logging.info(f"Output directory: {output_directory}")
+    
+    # Create output directory if it doesn't exist
+    os.makedirs(output_directory, exist_ok=True)
+    
+    # Create BPE directory in output directory and download files on rank 0
+    bpe_dir = os.path.join(output_directory, "bpe")
     vocab_file = os.path.join(bpe_dir, "vocab.json")
     merges_file = os.path.join(bpe_dir, "merges.txt")
     
@@ -69,13 +75,14 @@ def preprocess(directory="", worker_index=0, total_workers=1):
         logging.info(f"Worker {worker_index} waiting for BPE files...")
         wait_for_files([completion_file])
     
-    dataset = sorted(glob(os.path.join(directory, "slim_pajama*jsonl")))
+    dataset = sorted(glob(os.path.join(input_directory, "slim_pajama*jsonl")))
+    logging.info(f"Found {len(dataset)} files to preprocess")
     shards_to_extract = split_shards(total_workers, dataset)
 
     shards_processed = 0
     for num, shard in enumerate(shards_to_extract[worker_index]):
         shard_num = worker_index + (num * total_workers)  # Counter for which file is processed
-        output_path = os.path.join(directory, f"llama-slim-pajama-{shard_num}")
+        output_path = os.path.join(output_directory, f"llama-slim-pajama-{shard_num}")
         command = (
             "python3 /opt/NeMo/scripts/nlp_language_modeling/preprocess_data_for_megatron.py "
             f"--input {shard} "
@@ -91,17 +98,33 @@ def preprocess(directory="", worker_index=0, total_workers=1):
         subprocess.run([command], shell=True)
         shards_processed += 1
     
-    # Create completion marker file
-    completion_file = os.path.join(directory, f".preprocess-{worker_index}-complete")
+    # Create completion marker file in output directory
+    completion_file = os.path.join(output_directory, f".preprocess-{worker_index}-complete")
+    with open(completion_file, "w") as f:
+        f.write(f"Worker {worker_index} completed preprocessing {shards_processed} shards")
+    logging.info(f"Created completion marker: {completion_file}")
     with open(completion_file, "w") as f:
         f.write(f"Worker {worker_index} completed preprocessing {shards_processed} shards")
     logging.info(f"Created completion marker: {completion_file}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Preprocess JSONL files for Megatron")
-    parser.add_argument("--directory", type=str, required=True, help="Directory containing files")
+    parser.add_argument("--input-directory", type=str, required=True, help="Directory containing input files")
+    parser.add_argument("--output-directory", type=str, required=True, help="Directory to write preprocessed files")
     parser.add_argument("--worker-index", type=int, default=0, help="Worker index")
     parser.add_argument("--total-workers", type=int, default=1, help="Total workers")
+    
+    # For backward compatibility
+    parser.add_argument("--directory", type=str, help="Directory containing files (deprecated, use --input-directory)")
+    
     args = parser.parse_args()
 
-    preprocess(args.directory, args.worker_index, args.total_workers)
+    # Handle backward compatibility
+    input_dir = args.input_directory
+    output_dir = args.output_directory
+    
+    if args.directory and not args.input_directory:
+        input_dir = args.directory
+        output_dir = args.directory  # Use same directory for backward compatibility
+
+    preprocess(input_dir, output_dir, args.worker_index, args.total_workers)
