@@ -38,11 +38,7 @@ def concatenate(directory="", worker_index=0, total_workers=1):
             for file_idx in range(file_start, min(file_stop, len(files))):
                 with open(files[file_idx], "r") as inf:
                     outf.write(inf.read())
-        
-        # Remove processed files
-        for file_idx in range(file_start, min(file_stop, len(files))):
-            os.remove(files[file_idx])
-        
+               
         chunks_processed += 1
     
     # Create completion marker file
