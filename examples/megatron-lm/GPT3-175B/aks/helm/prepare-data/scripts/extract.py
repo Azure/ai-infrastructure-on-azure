@@ -30,11 +30,6 @@ def extract_shard(shard, output_directory):
     # Check if already extracted
     if os.path.exists(extracted_filename):
         logging.info(f"Skipping {shard} - already extracted to {extracted_filename}")
-        try:
-            os.remove(shard)
-            logging.info(f"Removed original compressed file {shard}")
-        except OSError as e:
-            logging.warning(f"Could not remove {shard}: {e}")
         return True
 
     try:
@@ -51,13 +46,6 @@ def extract_shard(shard, output_directory):
                     break
                 out_file.write(chunk)
 
-        # Remove original compressed file after successful extraction
-        try:
-            os.remove(shard)
-            logging.info(f"Successfully removed original file {shard}")
-        except OSError as e:
-            logging.warning(f"Could not remove {shard}: {e}")
-        
         logging.info(f"Extracted {shard} to {extracted_filename}")
         return True
         
@@ -106,17 +94,10 @@ if __name__ == "__main__":
     parser.add_argument("--worker-index", type=int, default=0, help="Worker index")
     parser.add_argument("--total-workers", type=int, default=1, help="Total workers")
     
-    # For backward compatibility
-    parser.add_argument("--directory", type=str, help="Directory containing files (deprecated, use --input-directory)")
-    
     args = parser.parse_args()
 
     # Handle backward compatibility
     input_dir = args.input_directory
     output_dir = args.output_directory
-    
-    if args.directory and not args.input_directory:
-        input_dir = args.directory
-        output_dir = args.directory  # Use same directory for backward compatibility
 
     extract(input_dir, output_dir, args.worker_index, args.total_workers)

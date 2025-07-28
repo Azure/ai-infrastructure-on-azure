@@ -39,7 +39,7 @@ pipeline:
     resources:
       requests:
         cpu: "96"
-        memory: "1024Gi"
+        memory: "768Gi"
 
 # Persistent Volume Claim configuration
 pvc:

@@ -61,17 +61,10 @@ if __name__ == "__main__":
     parser.add_argument("--worker-index", type=int, default=0, help="Worker index")
     parser.add_argument("--total-workers", type=int, default=1, help="Total workers")
     
-    # For backward compatibility
-    parser.add_argument("--directory", type=str, help="Directory containing files (deprecated, use --input-directory)")
-    
     args = parser.parse_args()
 
     # Handle backward compatibility
     input_dir = args.input_directory
     output_dir = args.output_directory
-    
-    if args.directory and not args.input_directory:
-        input_dir = args.directory
-        output_dir = args.directory  # Use same directory for backward compatibility
 
     concatenate(input_dir, output_dir, args.worker_index, args.total_workers)
