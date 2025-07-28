@@ -17,7 +17,7 @@ spec:
         image: {{ .Values.image.nemo }}
         command: ["python", "/scripts/download_slimpajama.py"]
         args:
-        - "--directory={{ .Values.pipeline.dataDirectory }}"
+        - "--directory=/shared-data/{{ .Values.pipeline.dataDirectory }}"
         - "--worker-index=$(JOB_COMPLETION_INDEX)"
         - "--total-workers={{ .Values.pipeline.completions }}"
         {{- if .Values.pipeline.fullDataset }}
@@ -32,7 +32,7 @@ spec:
               fieldPath: metadata.annotations['batch.kubernetes.io/job-completion-index']
         volumeMounts:
         - name: shared-storage
-          mountPath: {{ .Values.pipeline.dataDirectory }}
+          mountPath: /shared-data
         - name: scripts
           mountPath: /scripts
         resources:

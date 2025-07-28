@@ -4,7 +4,7 @@ pipeline:
   completions: 4
   fullDataset: true
   sampleFiles: 100
-  dataDirectory: "/shared-data"
+  dataDirectory: "slimpajama"
 
 # Persistent Volume Claim configuration
 pvc:

@@ -36,8 +36,17 @@ def extract_shard(shard):
                 break
             out_file.write(chunk)
 
-    os.remove(shard)
-    logging.info(f"Extracted and removed {shard}")
+    # Ensure file is closed and try to remove with error handling
+    try:
+        logging.info(f"Attempting to remove {shard}")
+        os.remove(shard)
+        logging.info(f"Successfully removed {shard}")
+    except PermissionError as e:
+        logging.error(f"Permission denied removing {shard}: {e}")
+    except OSError as e:
+        logging.error(f"Error removing {shard}: {e}")
+    
+    logging.info(f"Extracted {shard} to {extracted_filename}")
 
 def extract(directory="", worker_index=0, total_workers=1):
     dataset = sorted(glob(os.path.join(directory, "example_train*zst")))
