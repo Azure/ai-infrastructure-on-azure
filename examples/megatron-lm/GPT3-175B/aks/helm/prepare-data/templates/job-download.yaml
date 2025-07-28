@@ -17,7 +17,7 @@ spec:
         image: {{ .Values.pipeline.download.image }}
         command: ["python", "/scripts/download_slimpajama.py"]
         args:
-        - "--directory=/shared-data/{{ .Values.pipeline.dataDirectory }}"
+        - "--directory=/shared-data/{{ .Values.pipeline.dataDirectory }}/{{ .Values.pipeline.download.outputDirectory }}"
         - "--worker-index=$(JOB_COMPLETION_INDEX)"
         - "--total-workers={{ .Values.pipeline.download.parallelism }}"
         {{- if .Values.pipeline.fullDataset }}

@@ -8,6 +8,7 @@ pipeline:
   download:
     parallelism: 4
     image: "nvcr.io/nvidia/nemo:24.05"
+    outputDirectory: "downloaded"
     resources:
       requests:
         cpu: "2"
@@ -16,6 +17,7 @@ pipeline:
   extract:
     parallelism: 4
     image: "nvcr.io/nvidia/nemo:24.05"
+    outputDirectory: "extracted"
     resources:
       requests:
         cpu: "4"
@@ -24,6 +26,7 @@ pipeline:
   concatenate:
     parallelism: 4
     image: "nvcr.io/nvidia/nemo:24.05"
+    outputDirectory: "concatenated"
     resources:
       requests:
         cpu: "4"
@@ -32,6 +35,7 @@ pipeline:
   preprocess:
     parallelism: 4
     image: "nvcr.io/nvidia/nemo:24.05"
+    outputDirectory: "preprocessed"
     resources:
       requests:
         cpu: "96"

@@ -19,8 +19,8 @@ spec:
         args:
         - |
           echo "Waiting for concatenate to complete..."
-          while [ $(find /shared-data/{{ .Values.pipeline.dataDirectory }} -name ".concatenate-*-complete" | wc -l) -lt {{ .Values.pipeline.concatenate.parallelism }} ]; do
-            echo "Found $(find /shared-data/{{ .Values.pipeline.dataDirectory }} -name ".concatenate-*-complete" | wc -l) of {{ .Values.pipeline.concatenate.parallelism }} workers completed"
+          while [ $(find /shared-data/{{ .Values.pipeline.dataDirectory }}/{{ .Values.pipeline.concatenate.outputDirectory }} -name ".concatenate-*-complete" | wc -l) -lt {{ .Values.pipeline.concatenate.parallelism }} ]; do
+            echo "Found $(find /shared-data/{{ .Values.pipeline.dataDirectory }}/{{ .Values.pipeline.concatenate.outputDirectory }} -name ".concatenate-*-complete" | wc -l) of {{ .Values.pipeline.concatenate.parallelism }} workers completed"
             sleep 10
           done
           echo "All concatenate workers completed, starting preprocess..."
@@ -32,7 +32,8 @@ spec:
         image: {{ .Values.pipeline.preprocess.image }}
         command: ["python", "/scripts/preprocess.py"]
         args:
-        - "--directory=/shared-data/{{ .Values.pipeline.dataDirectory }}"
+        - "--input-directory=/shared-data/{{ .Values.pipeline.dataDirectory }}/{{ .Values.pipeline.concatenate.outputDirectory }}"
+        - "--output-directory=/shared-data/{{ .Values.pipeline.dataDirectory }}/{{ .Values.pipeline.preprocess.outputDirectory }}"
         - "--worker-index=$(JOB_COMPLETION_INDEX)"
         - "--total-workers={{ .Values.pipeline.preprocess.parallelism }}"
         env:
