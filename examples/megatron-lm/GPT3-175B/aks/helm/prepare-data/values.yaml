@@ -1,0 +1,32 @@
+# Configuration for the data preparation pipeline
+pipeline:
+  parallelism: 4
+  completions: 4
+  fullDataset: true
+  sampleFiles: 100
+  dataDirectory: "/shared-data"
+
+# Persistent Volume Claim configuration
+pvc:
+  name: "shared-storage"
+  size: "1Ti"
+  storageClass: "default"
+
+# Container images
+images:
+  python: "python:3.11-slim"
+  nemo: "nvcr.io/nvidia/nemo:24.05"
+
+# Resource limits
+resources:
+  requests:
+    cpu: "2"
+    memory: "4Gi"
+  limits:
+    cpu: "4"
+    memory: "8Gi"
+
+# Node selector and tolerations
+nodeSelector: {}
+tolerations: []
+affinity: {}

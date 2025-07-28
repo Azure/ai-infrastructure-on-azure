@@ -1,0 +1,68 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "prepare-data.fullname" . }}-concatenate
+  labels:
+    {{- include "prepare-data.labels" . | nindent 4 }}
+    app.kubernetes.io/component: concatenate
+spec:
+  parallelism: {{ .Values.pipeline.parallelism }}
+  completions: {{ .Values.pipeline.completions }}
+  completionMode: Indexed
+  template:
+    spec:
+      restartPolicy: Never
+      initContainers:
+      - name: wait-for-extract
+        image: {{ .Values.images.python }}
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          echo "Waiting for extract to complete..."
+          while [ $(find {{ .Values.pipeline.dataDirectory }} -name ".extract-*-complete" | wc -l) -lt {{ .Values.pipeline.completions }} ]; do
+            echo "Found $(find {{ .Values.pipeline.dataDirectory }} -name ".extract-*-complete" | wc -l) of {{ .Values.pipeline.completions }} workers completed"
+            sleep 10
+          done
+          echo "All extract workers completed, starting concatenate..."
+        volumeMounts:
+        - name: shared-storage
+          mountPath: {{ .Values.pipeline.dataDirectory }}
+      containers:
+      - name: concatenate
+        image: {{ .Values.images.python }}
+        command: ["python", "/scripts/concatenate.py"]
+        args:
+        - "--directory={{ .Values.pipeline.dataDirectory }}"
+        - "--worker-index=$(JOB_COMPLETION_INDEX)"
+        - "--total-workers={{ .Values.pipeline.completions }}"
+        env:
+        - name: JOB_COMPLETION_INDEX
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['batch.kubernetes.io/job-completion-index']
+        volumeMounts:
+        - name: shared-storage
+          mountPath: {{ .Values.pipeline.dataDirectory }}
+        - name: scripts
+          mountPath: /scripts
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+      volumes:
+      - name: shared-storage
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvc.name }}
+      - name: scripts
+        configMap:
+          name: {{ include "prepare-data.fullname" . }}-scripts
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

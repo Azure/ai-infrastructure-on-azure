@@ -1,0 +1,72 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "prepare-data.fullname" . }}-preprocess
+  labels:
+    {{- include "prepare-data.labels" . | nindent 4 }}
+    app.kubernetes.io/component: preprocess
+spec:
+  parallelism: {{ .Values.pipeline.parallelism }}
+  completions: {{ .Values.pipeline.completions }}
+  completionMode: Indexed
+  template:
+    spec:
+      restartPolicy: Never
+      initContainers:
+      - name: wait-for-concatenate
+        image: {{ .Values.images.python }}
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          echo "Waiting for concatenate to complete..."
+          while [ $(find {{ .Values.pipeline.dataDirectory }} -name ".concatenate-*-complete" | wc -l) -lt {{ .Values.pipeline.completions }} ]; do
+            echo "Found $(find {{ .Values.pipeline.dataDirectory }} -name ".concatenate-*-complete" | wc -l) of {{ .Values.pipeline.completions }} workers completed"
+            sleep 10
+          done
+          echo "All concatenate workers completed, starting preprocess..."
+        volumeMounts:
+        - name: shared-storage
+          mountPath: {{ .Values.pipeline.dataDirectory }}
+      containers:
+      - name: preprocess
+        image: {{ .Values.images.nemo }}
+        command: ["python", "/scripts/preprocess.py"]
+        args:
+        - "--directory={{ .Values.pipeline.dataDirectory }}"
+        - "--worker-index=$(JOB_COMPLETION_INDEX)"
+        - "--total-workers={{ .Values.pipeline.completions }}"
+        env:
+        - name: JOB_COMPLETION_INDEX
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['batch.kubernetes.io/job-completion-index']
+        volumeMounts:
+        - name: shared-storage
+          mountPath: {{ .Values.pipeline.dataDirectory }}
+        - name: nemo-workspace
+          mountPath: /nemo-workspace
+        - name: scripts
+          mountPath: /scripts
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+      volumes:
+      - name: shared-storage
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvc.name }}
+      - name: nemo-workspace
+        emptyDir: {}
+      - name: scripts
+        configMap:
+          name: {{ include "prepare-data.fullname" . }}-scripts
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
