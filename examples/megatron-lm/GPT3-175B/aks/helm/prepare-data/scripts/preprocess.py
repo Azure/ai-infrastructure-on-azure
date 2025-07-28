@@ -51,8 +51,11 @@ def preprocess(input_directory="", output_directory="", worker_index=0, total_wo
     # Create output directory if it doesn't exist
     os.makedirs(output_directory, exist_ok=True)
     
-    # Create BPE directory in output directory and download files on rank 0
-    bpe_dir = os.path.join(output_directory, "bpe")
+    # Create BPE directory one level above (in the main dataset directory)
+    # e.g., if output_directory is /shared-data/slimpajama/preprocessed
+    # then bpe_dir should be /shared-data/slimpajama/bpe
+    dataset_dir = os.path.dirname(output_directory)
+    bpe_dir = os.path.join(dataset_dir, "bpe")
     vocab_file = os.path.join(bpe_dir, "vocab.json")
     merges_file = os.path.join(bpe_dir, "merges.txt")
     
