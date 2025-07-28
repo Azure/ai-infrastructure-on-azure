@@ -25,6 +25,7 @@ fi
 : "${MPI_OPERATOR_VERSION:=v0.6.0}"       # Latest version: https://github.com/kubeflow/mpi-operator/releases
 : "${CERT_MANAGER_VERSION:=v1.18.2}"      # Latest version: https://github.com/cert-manager/cert-manager/releases
 : "${PYTORCH_OPERATOR_VERSION:=v1.8.1}"   # Latest version: https://github.com/kubeflow/training-operator/releases
+: "${KUEUE_VERSION:=v0.13.0}"             # Latest version: https://github.com/kubernetes-sigs/kueue/releases
 
 # Network Operator Device Plugin Configuration
 : "${RDMA_DEVICE_PLUGIN:=sriov-device-plugin}" # Options: sriov-device-plugin, rdma-shared-device-plugin
@@ -523,6 +524,25 @@ function uninstall_amlfs() {
     echo "💡 AMLFS roles have been left intact and can be removed separately if needed using Azure CLI."
 }
 
+function install_kueue() {
+    helm upgrade -i \
+        --wait \
+        --create-namespace \
+        --namespace kueue-system \
+        kueue \
+        oci://registry.k8s.io/kueue/charts/kueue \
+        --version="${KUEUE_VERSION}"
+
+    echo "✅ Kueue installed successfully."
+}
+
+function uninstall_kueue() {
+    helm uninstall kueue --namespace kueue-system
+    kubectl delete namespace kueue-system
+
+    echo "✅ Kueue uninstalled successfully."
+}
+
 function print_usage() {
     echo "Usage: $0 <command> [options]"
     echo ""
@@ -539,6 +559,8 @@ function print_usage() {
     echo "  install-amlfs            Install Azure Managed Lustre File System (AMLFS) CSI driver and setup roles"
     echo "  uninstall-amlfs          Uninstall AMLFS CSI driver (leaves roles intact)"
     echo "  setup-amlfs-roles        Setup AMLFS roles for kubelet identity (without installing CSI driver)"
+    echo "  install-kueue            Install Kueue for workload queue management"
+    echo "  uninstall-kueue          Uninstall Kueue from the cluster"
     echo "  all                      Deploy AKS cluster and install all operators (full setup)"
     echo ""
     echo "Examples:"
@@ -617,6 +639,12 @@ uninstall-amlfs | uninstall_amlfs)
     ;;
 setup-amlfs-roles | setup_amlfs_roles)
     setup_amlfs_roles
+    ;;
+install-kueue | install_kueue)
+    install_kueue
+    ;;
+uninstall-kueue | uninstall_kueue)
+    uninstall_kueue
     ;;
 all)
     deploy_aks
