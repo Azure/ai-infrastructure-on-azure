@@ -20,11 +20,11 @@ fi
 : "${GRAFANA_PASSWORD:=$(tr </dev/urandom -dc 'A-Za-z0-9!@#$%&*_-' | head -c 30)}"
 
 # Versions
-: "${GPU_OPERATOR_VERSION:=v25.3.1}"
-: "${NETWORK_OPERATOR_VERSION:=v25.4.0}"
-: "${MPI_OPERATOR_VERSION:=v0.6.0}"     # Latest version: https://github.com/kubeflow/mpi-operator/releases
-: "${CERT_MANAGER_VERSION:=v1.18.2}"    # Latest version: https://github.com/cert-manager/cert-manager/releases
-: "${PYTORCH_OPERATOR_VERSION:=v1.8.1}" # Latest version: https://github.com/kubeflow/training-operator/releases
+: "${GPU_OPERATOR_VERSION:=v25.3.2}"      # Latest version: https://github.com/NVIDIA/gpu-operator/releases
+: "${NETWORK_OPERATOR_VERSION:=v25.4.0}"  # Latest version: https://github.com/Mellanox/network-operator/releases
+: "${MPI_OPERATOR_VERSION:=v0.6.0}"       # Latest version: https://github.com/kubeflow/mpi-operator/releases
+: "${CERT_MANAGER_VERSION:=v1.18.2}"      # Latest version: https://github.com/cert-manager/cert-manager/releases
+: "${PYTORCH_OPERATOR_VERSION:=v1.8.1}"   # Latest version: https://github.com/kubeflow/training-operator/releases
 
 # Network Operator Device Plugin Configuration
 : "${RDMA_DEVICE_PLUGIN:=sriov-device-plugin}" # Options: sriov-device-plugin, rdma-shared-device-plugin
@@ -382,7 +382,7 @@ function uninstall_pytorch_operator() {
 
 function install_amlfs() {
     echo "⏳ Installing Azure Managed Lustre File System (AMLFS) CSI driver..."
-    
+
     # Check if AMLFS CSI driver is already installed
     echo "⏳ Checking if AMLFS CSI driver is already installed..."
     if kubectl get -n kube-system deployment csi-azurelustre-controller >/dev/null 2>&1; then
@@ -391,57 +391,57 @@ function install_amlfs() {
         # Create temporary directory for AMLFS installation
         TEMP_DIR=$(mktemp -d)
         pushd "${TEMP_DIR}"
-        
+
         # Clone the repository
         echo "⏳ Cloning azurelustre-csi-driver repository..."
         git clone https://github.com/kubernetes-sigs/azurelustre-csi-driver.git
         cd azurelustre-csi-driver
-        
+
         # Switch to the dynamic provisioning preview branch
         git checkout dynamic-provisioning-preview
-        
+
         # Install the CSI driver
         echo "⏳ Installing AMLFS CSI driver..."
         ./deploy/install-driver.sh dynamic-provisioning-preview
-        
+
         # Clean up temporary directory
         popd
         rm -rf "${TEMP_DIR}"
-        
+
         echo "✅ AMLFS CSI driver installed successfully."
-        
+
         # Wait for AMLFS CSI driver to be ready
         echo -e "⏳ Waiting for AMLFS CSI driver to be ready, to see behind the scenes run:\n"
         echo "kubectl get -n kube-system pod -l app=csi-azurelustre-controller"
         echo -e "kubectl get -n kube-system pod -l app=csi-azurelustre-node\n"
-        
+
         # Wait for controller pods to be ready
         while true; do
             controller_ready=$(kubectl get -n kube-system deployment csi-azurelustre-controller -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
             controller_desired=$(kubectl get -n kube-system deployment csi-azurelustre-controller -o jsonpath='{.status.replicas}' 2>/dev/null || echo "0")
-            
+
             if [[ "${controller_ready}" -gt 0 && "${controller_ready}" == "${controller_desired}" ]]; then
                 break
             fi
-            
+
             echo "⏳ Waiting for AMLFS controller pods to be ready (${controller_ready}/${controller_desired})..."
             sleep 5
         done
-        
+
         # Wait for node pods to be ready
         while true; do
             node_ready=$(kubectl get -n kube-system daemonset csi-azurelustre-node -o jsonpath='{.status.numberReady}' 2>/dev/null || echo "0")
             node_desired=$(kubectl get -n kube-system daemonset csi-azurelustre-node -o jsonpath='{.status.desiredNumberScheduled}' 2>/dev/null || echo "0")
-            
+
             if [[ "${node_ready}" -gt 0 && "${node_ready}" == "${node_desired}" ]]; then
                 echo "✅ AMLFS CSI driver is ready."
                 break
             fi
-            
+
             echo "⏳ Waiting for AMLFS node pods to be ready (${node_ready}/${node_desired})..."
             sleep 5
         done
-        
+
         # Display final status
         echo -e "\n📊 AMLFS CSI driver status:\n"
         echo "Controller pods:"
@@ -449,7 +449,7 @@ function install_amlfs() {
         echo -e "\nNode pods:"
         kubectl get -n kube-system pod -l app=csi-azurelustre-node
     fi
-    
+
     # Set up AMLFS roles for kubelet identity if both flags are enabled
     if [[ "${INSTALL_AMLFS}" == "true" && "${INSTALL_AMLFS_ROLES}" == "true" ]]; then
         setup_amlfs_roles
@@ -461,10 +461,10 @@ function install_amlfs() {
 
 function setup_amlfs_roles() {
     echo "⏳ Setting up AMLFS roles for kubelet identity..."
-    
+
     # Get the subscription ID
     SUBSCRIPTION_ID=$(az account show --query id -o tsv)
-    
+
     # Get the kubelet identity objectId and node resource group
     echo "⏳ Fetching kubelet identity and node resource group..."
     KUBELET_IDENTITY=$(az aks show \
@@ -472,20 +472,20 @@ function setup_amlfs_roles() {
         --resource-group "${AZURE_RESOURCE_GROUP}" \
         --query identityProfile.kubeletidentity \
         -o json)
-    
+
     OBJECT_ID=$(echo "${KUBELET_IDENTITY}" | jq -r '.objectId')
-    
+
     # Get the AKS-generated node resource group
     NODE_RESOURCE_GROUP=$(az aks show \
         --name "${CLUSTER_NAME}" \
         --resource-group "${AZURE_RESOURCE_GROUP}" \
         --query nodeResourceGroup \
         -o tsv)
-    
+
     echo "Using node resource group for scope: ${NODE_RESOURCE_GROUP}"
-    
+
     echo "Assigning built-in roles to kubelet identity..."
-    
+
     # Assign Contributor role to the node resource group
     echo "Assigning Contributor role to resource group: ${NODE_RESOURCE_GROUP}"
     EXISTING_CONTRIBUTOR=$(az role assignment list \
@@ -493,7 +493,7 @@ function setup_amlfs_roles() {
         --role "Contributor" \
         --scope "/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${NODE_RESOURCE_GROUP}" \
         --query "[].roleDefinitionName" -o tsv)
-    
+
     if [ -n "${EXISTING_CONTRIBUTOR}" ]; then
         echo "Contributor role is already assigned to kubelet identity in resource group '${NODE_RESOURCE_GROUP}'"
     else
@@ -507,7 +507,7 @@ function setup_amlfs_roles() {
             }
         echo "Successfully assigned Contributor role to resource group: ${NODE_RESOURCE_GROUP}"
     fi
-    
+
     # Assign Reader role to the subscription
     echo "Assigning Reader role to subscription: ${SUBSCRIPTION_ID}"
     EXISTING_READER=$(az role assignment list \
@@ -515,7 +515,7 @@ function setup_amlfs_roles() {
         --role "Reader" \
         --scope "/subscriptions/${SUBSCRIPTION_ID}" \
         --query "[].roleDefinitionName" -o tsv)
-    
+
     if [ -n "${EXISTING_READER}" ]; then
         echo "Reader role is already assigned to kubelet identity at subscription level"
     else
@@ -529,40 +529,40 @@ function setup_amlfs_roles() {
             }
         echo "Successfully assigned Reader role to subscription: ${SUBSCRIPTION_ID}"
     fi
-        
+
     echo "✅ AMLFS role assignment completed successfully."
 }
 
 function uninstall_amlfs() {
     echo "⏳ Uninstalling Azure Managed Lustre File System (AMLFS) CSI driver..."
-    
+
     # Check if AMLFS CSI driver is installed
     echo "⏳ Checking if AMLFS CSI driver is installed..."
     if ! kubectl get -n kube-system deployment csi-azurelustre-controller >/dev/null 2>&1; then
         echo "⚠️ AMLFS CSI driver is not installed, nothing to uninstall!"
         return 0
     fi
-    
+
     # Create temporary directory for AMLFS uninstallation
     TEMP_DIR=$(mktemp -d)
     pushd "${TEMP_DIR}"
-    
+
     # Clone the repository
     echo "⏳ Cloning azurelustre-csi-driver repository..."
     git clone https://github.com/kubernetes-sigs/azurelustre-csi-driver.git
     cd azurelustre-csi-driver
-    
+
     # Switch to the dynamic provisioning preview branch
     git checkout dynamic-provisioning-preview
-    
+
     # Uninstall the CSI driver
     echo "⏳ Uninstalling AMLFS CSI driver..."
     ./deploy/uninstall-driver.sh
-    
+
     # Clean up temporary directory
     popd
     rm -rf "${TEMP_DIR}"
-    
+
     echo "✅ AMLFS CSI driver uninstalled successfully."
     echo "💡 AMLFS roles have been left intact and can be removed separately if needed using Azure CLI."
 }
