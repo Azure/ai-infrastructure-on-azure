@@ -9,12 +9,9 @@ pipeline:
 # Persistent Volume Claim configuration
 pvc:
   name: "shared-storage"
-  size: "1Ti"
-  storageClass: "default"
 
 # Container images
-images:
-  python: "python:3.11-slim"
+image:
   nemo: "nvcr.io/nvidia/nemo:24.05"
 
 # Resource limits

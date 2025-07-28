@@ -14,7 +14,7 @@ spec:
       restartPolicy: Never
       initContainers:
       - name: wait-for-download
-        image: {{ .Values.images.python }}
+        image: {{ .Values.image.nemo }}
         command: ["/bin/sh", "-c"]
         args:
         - |
@@ -29,7 +29,7 @@ spec:
           mountPath: {{ .Values.pipeline.dataDirectory }}
       containers:
       - name: extract
-        image: {{ .Values.images.python }}
+        image: {{ .Values.image.nemo }}
         command: ["python", "/scripts/extract.py"]
         args:
         - "--directory={{ .Values.pipeline.dataDirectory }}"

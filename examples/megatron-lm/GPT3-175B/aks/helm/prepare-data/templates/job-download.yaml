@@ -14,7 +14,7 @@ spec:
       restartPolicy: Never
       containers:
       - name: download
-        image: {{ .Values.images.python }}
+        image: {{ .Values.image.nemo }}
         command: ["python", "/scripts/download_slimpajama.py"]
         args:
         - "--directory={{ .Values.pipeline.dataDirectory }}"
