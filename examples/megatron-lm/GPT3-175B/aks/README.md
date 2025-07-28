@@ -83,91 +83,82 @@ kubectl describe pvc shared-storage-pvc
 
 ### 3.2. Dataset Preparation
 
-Prepare and preprocess the SlimPajama training dataset. This step downloads the raw data in compressed format and prepares it for Megatron-LM training.
+Prepare and preprocess the [SlimPajama 627B dataset](https://huggingface.co/datasets/cerebras/SlimPajama-627B) for Megatron-LM training. The dataset preparation uses a unified Helm chart that orchestrates four sequential stages: download, extract, concatenate, and preprocess. The pipeline uses filesystem markers to track stage completion and allows customization of parallelism and resources for each step.
 
-#### Download Sample Dataset for Testing
+The preparation pipeline is based on modified scripts from the [NVIDIA DGX Cloud documentation](https://docs.nvidia.com/dgx-cloud/run-ai/latest/nemo-e2e-example.html).
 
-For initial testing and validation, download a sample of the dataset:
+#### Quick Test with Sample Dataset
+
+For initial testing and validation, run the pipeline with a limited dataset:
 
 ```bash
-helm install dataset-prep helm/dataset-download \
-  --set storage.pvcName="shared-storage-pvc" \
-  --set dataset.outputPath="slimpajama" \
-  --set dataset.fullDataset=false \
-  --set dataset.sampleFiles=100
+helm install prepare-data helm/prepare-data \
+  --set pipeline.fullDataset=false \
+  --set pipeline.sampleFiles=100 \
+  --set pvc.name=shared-storage-pvc
 ```
 
-#### Download Full Dataset
+This creates a smaller dataset suitable for testing, with typical file sizes:
 
-To download the complete SlimPajama 627B dataset (approximately 900 GiB compressed):
+**Sample Dataset File Sizes (Reference)**
+
+| Directory | Files | Size | Description |
+|-----------|-------|------|-------------|
+| `slimpajama/downloaded` | 100 | 1.5G | Original compressed .zst files |
+| `slimpajama/extracted` | 100 | 4.2G | Extracted .jsonl files |
+| `slimpajama/concatenated` | 1 | 4.2G | Combined training file |
+| `slimpajama/bpe` | 2 | 1.4M | Byte-pair encoding files |
+| `slimpajama/preprocessed` | 1 | 2.0G | Final Megatron binary format |
+
+#### Full Dataset Preparation
+
+To prepare the complete SlimPajama 627B dataset (approximately 900 GiB compressed):
 
 ```bash
-helm install dataset-prep helm/dataset-download \
-  --set storage.pvcName="shared-storage-pvc" \
-  --set dataset.outputPath="slimpajama" \
-  --set dataset.fullDataset=true
+helm install prepare-data helm/prepare-data \
+  --set pipeline.fullDataset=true \
+  --set pvc.name=shared-storage-pvc
 ```
 
-**Note**: The full dataset download will take several hours. Consider using a Hugging Face Pro account to avoid throttling when downloading large datasets.
+**Note**: The full dataset preparation will take several hours. Consider using a Hugging Face Pro account to avoid throttling when downloading large datasets.
 
-#### Monitor Download Progress
+#### Pipeline Stages
+
+The data preparation pipeline executes four sequential stages:
+
+1. **Download**: Retrieves compressed `.zst` files from Hugging Face
+2. **Extract**: Converts from `.zst` format to `.jsonl` format
+3. **Concatenate**: Combines individual files into training chunks
+4. **Preprocess**: Converts to Megatron's binary format (`.bin`/`.idx` files)
+
+Each stage uses filesystem markers to track completion, allowing the pipeline to resume from the last completed stage if interrupted.
+
+#### Monitor Pipeline Progress
 
 ```bash
-# Check job status
-kubectl get job dataset-prep
+# Check overall pipeline status
+kubectl get job prepare-data
 
-# Follow download logs
-kubectl logs -f job/dataset-prep
+# Follow pipeline logs
+kubectl logs -f job/prepare-data
 
-# Check downloaded files count
-kubectl run verify-download --rm -i --tty --image=ghcr.io/azure/ai-infrastructure-on-azure/megatron-lm:latest -- \
-  bash -c "ls /data/slimpajama/*.zst | wc -l"
+# Check stage-specific progress
+kubectl exec -it job/prepare-data -- ls -la /data/slimpajama/
+
+# Monitor current stage marker files
+kubectl exec -it job/prepare-data -- find /data/slimpajama/ -name "*.marker" -ls
 ```
 
-#### Data Processing Pipeline
-
-After download, the data needs to be processed through multiple stages:
-
-1. **Extraction**: Convert from `.zst` (compressed) format to `.jsonl` format
-2. **Concatenation**: Combine individual files into training chunks (default: 72 files)
-3. **Preprocessing**: Convert to Megatron's binary format (`.bin`/`.idx` files)
-
-Run the preprocessing pipeline after the download is complete:
+#### Verify Dataset Preparation
 
 ```bash
-# Extract compressed files
-helm install dataset-extract helm/dataset-preprocessing \
-  --set storage.pvcName="shared-storage-pvc" \
-  --set dataset.inputPath="slimpajama" \
-  --set dataset.outputPath="slimpajama/preprocessed"
+# Check final preprocessed files
+kubectl run verify-dataset --rm -i --tty --image=ghcr.io/azure/ai-infrastructure-on-azure/megatron-lm:latest -- \
+  bash -c "ls /data/slimpajama/preprocessed/*.bin | wc -l && du -sh /data/slimpajama/preprocessed"
 
-# Wait for extraction to complete, then concatenate
-# Check extraction status: kubectl get job dataset-extract-extract
-
-# Concatenate into training files
-helm install dataset-concat helm/dataset-preprocessing \
-  --set storage.pvcName="shared-storage-pvc" \
-  --set dataset.inputPath="slimpajama" \
-  --set dataset.targetFiles=72
-
-# Wait for concatenation to complete, then preprocess
-# Check concatenation status: kubectl get job dataset-concat-concatenate
-
-# Convert to Megatron binary format
-helm install dataset-preprocess helm/dataset-preprocessing \
-  --set storage.pvcName="shared-storage-pvc" \
-  --set dataset.inputPath="slimpajama" \
-  --set dataset.outputPath="slimpajama/preprocessed"
-```
-
-**Verify preprocessing completion:**
-
-```bash
-# Check that 72 training files were created
-kubectl run verify-preprocessing --rm -i --tty --image=ghcr.io/azure/ai-infrastructure-on-azure/megatron-lm:latest -- \
-  bash -c "ls /data/slimpajama/preprocessed/*.bin | wc -l"
-
-# Should return 72 (or your configured target number)
+# Verify all pipeline stages completed
+kubectl run verify-stages --rm -i --tty --image=ghcr.io/azure/ai-infrastructure-on-azure/megatron-lm:latest -- \
+  bash -c "for stage in downloaded extracted concatenated preprocessed; do echo -n \"\$stage: \"; [ -f /data/slimpajama/\$stage.marker ] && echo 'COMPLETE' || echo 'PENDING'; done"
 ```
 
 ### 3.3. Model Training
