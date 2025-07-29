@@ -6,14 +6,14 @@ ARG DOCA_URL=https://linux.mellanox.com/public/repo/doca/2.9.1/ubuntu22.04/x86_6
 # Install system dependencies, DOCA, and Mellanox tools
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends \
-        curl gnupg git wget build-essential \
-        libtool m4 automake \
-        ca-certificates && \
+    curl gnupg git wget build-essential \
+    libtool m4 automake \
+    ca-certificates && \
     curl ${DOCA_URL}/GPG-KEY-Mellanox.pub | gpg --dearmor -o /etc/apt/trusted.gpg.d/mellanox.gpg && \
     echo "deb [signed-by=/etc/apt/trusted.gpg.d/mellanox.gpg] ${DOCA_URL} ./" > /etc/apt/sources.list.d/doca.list && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
-        mft=4.30.1-8 doca-ofed-userspace && \
+    mft=4.30.1-8 doca-ofed-userspace && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Clone LLM Foundry and install Python packages
