@@ -1,24 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name=gpt175b
-#SBATCH --ntasks-per-node=1
-#SBATCH --gpus-per-node=8
-#SBATCH --cpus-per-task=8
-#SBATCH --gpus-per-task=8
-#SBATCH --mem=0
-#SBATCH --output=gpt175b_%j.out
-#SBATCH --error=gpt175b_%j.err
 # Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
 # This script has been modified from https://github.com/NVIDIA/Megatron-LM/blob/main/examples/gpt3/train_gpt3_175b_distributed.sh
 # It contains the procedure to run the training of GPT-3 175B model using Megatron-LM.
 set -xe
 
-if [ -z "$STAGE_PATH" ]; then
-	echo "Please set the STAGE_PATH environment variable to the path where you want to store the image."
-	exit 1
-fi
-
 ## CONFIGURATION
-TOPO_FILE=${TOPO_FILE:-"/opt/microsoft/ndv5-topo.xml"}
+TOPO_FILE=${TOPO_FILE:-"/etc/ndv5-topo.xml"}
 CHUNKS=${CHUNKS:-15}
 GLOBAL_BATCH_SIZE=${GLOBAL_BATCH_SIZE:-512}
 NUMBER_OF_ITERATIONS=${NUMBER_OF_ITERATIONS:-1500}
@@ -32,13 +19,20 @@ SEQ_LENGTH=${SEQ_LENGTH:-2048}
 TENSOR_MODEL_PARALLEL_SIZE=${TENSOR_MODEL_PARALLEL_SIZE:-8}
 PIPELINE_MODEL_PARALLEL_SIZE=${PIPELINE_MODEL_PARALLEL_SIZE:-16}
 USE_SHARP=${USE_SHARP:-0} # Set to 1 to use SHARP, 0 to disable it
+GPUS_PER_NODE=${GPUS_PER_NODE:-8}
+NODES=${NODES:-1}
+STORAGE_MOUNT=${STORAGE_MOUNT:-"/data"}
+DATASET_PATH=${DATASET_PATH:-"slimpajama/preprocessed"}
+LOGS_PATH=${LOGS_PATH:-"logs"}
+CHECKPOINT_PATH_DIR=${CHECKPOINT_PATH_DIR:-"checkpoints"}
+RDZV_ID=${RDZV_ID:-"megatron-training"}
 
 export OMPI_MCA_coll_hcoll_enable=0 \
 	CUDA_DEVICE_ORDER=PCI_BUS_ID \
 	NCCL_SOCKET_IFNAME=eth0 \
 	UCX_TLS=rc \
 	UCX_NET_DEVICES=mlx5_ib0:1 \
-	NCCL_DEBUG=INFO \
+	NCCL_DEBUG=$LOGLEVEL \
 	NCCL_IB_PCI_RELAXED_ORDERING=1 \
 	NCCL_IB_QPS_PER_CONNECTION=4 \
 	NCCL_IGNORE_CPU_AFFINITY=1 \
@@ -47,7 +41,7 @@ export OMPI_MCA_coll_hcoll_enable=0 \
 	NCCL_MIN_NCHANNELS=32
 
 if [ "$USE_SHARP" -eq 1 ]; then
-	SHARP_SMX_UCX_INTERFACE=mlx5_ib0:1 \
+	export SHARP_SMX_UCX_INTERFACE=mlx5_ib0:1 \
 	SHARP_COLL_ENABLE_SAT=1 \
 	SHARP_COLL_LOG_LEVEL=3 \
 	SHARP_COLL_ENABLE_PCI_RELAXED_ORDERING=1 \
@@ -57,20 +51,16 @@ fi
 export NCCL_TOPO_FILE=$TOPO_FILE
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
-## PYTORCH
-PYTORCH_VERSION=${PYTORCH_VERSION:-"25.03"}
-SQUASHED_PYTORCH_IMAGE_NAME="pytorch+${PYTORCH_VERSION}+py3"
-SQUASHED_PYTORCH_IMAGE="$STAGE_PATH/${SQUASHED_PYTORCH_IMAGE_NAME}.sqsh"
-
 ## PATHS
 DATASET_FOLDER_NAME=${DATASET_FOLDER_NAME:-"slimpajama/preprocessed"}
-WORK_DIR=${WORK_DIR:-$STAGE_PATH/Megatron-LM}
-DATA_PATH=${DATA_PATH:-$STAGE_PATH/$DATASET_FOLDER_NAME}
-TENSORBOARD_LOGS_PATH=${TENSORBOARD_LOGS_PATH:-$STAGE_PATH/logs}
-CHECKPOINT_PATH=${CHECKPOINT_PATH:-$STAGE_PATH/checkpoints}
-VOCAB_FILE=${VOCAB_FILE:-$STAGE_PATH/slimpajama/bpe/vocab.json}
-MERGE_FILE=${MERGE_FILE:-$STAGE_PATH/slimpajama/bpe/vocab.json}
-DATA_CACHE_DIR=${DATA_CACHE_DIR:-$STAGE_PATH/datacache}
+WORK_DIR=${WORK_DIR:-/megatron-lm}
+DATA_PATH=${DATA_PATH:-$STORAGE_MOUNT/$DATASET_PATH}
+TENSORBOARD_LOGS_PATH=${TENSORBOARD_LOGS_PATH:-$STORAGE_MOUNT/$LOGS_PATH}
+CHECKPOINT_PATH=${CHECKPOINT_PATH:-$STORAGE_MOUNT/$CHECKPOINT_PATH_DIR}
+VOCAB_FILE=${VOCAB_FILE:-$STORAGE_MOUNT/slimpajama/bpe/vocab.json}
+MERGE_FILE=${MERGE_FILE:-$STORAGE_MOUNT/slimpajama/bpe/merges.txt}
+DATA_CACHE_DIR=${DATA_CACHE_DIR:-$STORAGE_MOUNT/datacache}
+
 
 DATA_SET_SIZE=$(find $DATA_PATH -name "*.bin" -type f | wc -l)
 
@@ -81,11 +71,11 @@ readarray -t VALID_DATA < <(find $DATA_PATH -name "*.bin" -type f | sort | tail 
 readarray -t TEST_DATA < <(find $DATA_PATH -name "*.bin" -type f | sort | tail -n $(($CHUNKS + $CHUNKS)) | head -n $(($CHUNKS)) | xargs -n1 echo 1.0 | sed "s/.bin//g")
 
 DISTRIBUTED_ARGS=(
-	--nproc_per_node "$SLURM_GPUS_PER_NODE"
-	--nnodes "$SLURM_NNODES"
-	--rdzv_id $RANDOM
+	--nproc_per_node "$GPUS_PER_NODE"
+	--nnodes "$NODES"
+	--rdzv_id "$RDZV_ID"
 	--rdzv_backend c10d
-	--rdzv_endpoint "$(hostname)":29500
+	--rdzv_endpoint "$MASTER_ADDR:$MASTER_PORT"
 )
 
 GPT_MODEL_ARGS=(
@@ -149,14 +139,13 @@ EVAL_AND_LOGGING_ARGS=(
 	--ckpt-assume-constant-structure
 )
 
+# Create directories
 mkdir -p "$CHECKPOINT_PATH"
 mkdir -p "$TENSORBOARD_LOGS_PATH"
 mkdir -p "$DATA_CACHE_DIR"
 
-srun --container-mounts="$TOPO_FILE:$TOPO_FILE,$STAGE_PATH:$STAGE_PATH,$DATA_PATH:$DATA_PATH,$WORK_DIR:$WORK_DIR,$VOCAB_FILE:$VOCAB_FILE,$MERGE_FILE:$MERGE_FILE,$CHECKPOINT_PATH:$CHECKPOINT_PATH,/var/tmp:/var/tmp,/opt/microsoft:/opt/microsoft" \
-	--container-env=CUDA_DEVICE_MAX_CONNECTIONS,NCCL_TOPO_FILE,LOGLEVEL \
-	--container-image=$SQUASHED_PYTORCH_IMAGE \
-	torchrun "${DISTRIBUTED_ARGS[@]}" $WORK_DIR/pretrain_gpt.py \
+# Run training
+torchrun "${DISTRIBUTED_ARGS[@]}" $WORK_DIR/pretrain_gpt.py \
 	"${GPT_MODEL_ARGS[@]}" \
 	"${TRAINING_ARGS[@]}" \
 	"${MODEL_PARALLEL_ARGS[@]}" \
