@@ -20,6 +20,7 @@ For each scenario and architecture, the repository will include storage recommen
 
 1. MegatronLM GPT3-175B with Slimpajama 627B dataset - Example of an end-to-end training workflow based on MegatronLM, including data pre-processing from Slimpajama 627B dataset
    - [Slurm version](./examples/megatron-lm/GPT3-175B/slurm/README.md)
+   - [AKS version](./examples/megatron-lm/GPT3-175B/aks/README.md)
 2. LLM Foundry MPT Training - Example of an end-to-end training workflow of Mosaic Pretrained Transformer (MPT) model on [C4](https://huggingface.co/datasets/allenai/c4) dataset, based on LLM Foundry
    - [Slurm version](./examples/llm-foundry/slurm/README.md)
    - [AKS version](./examples/llm-foundry/aks/README.md)
