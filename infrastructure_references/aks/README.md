@@ -10,6 +10,7 @@ This document provides a guide to set up an Azure Kubernetes Service (AKS) clust
 - Helm [installed](https://helm.sh/docs/intro/install/) for managing Kubernetes applications.
 - jq [installed](https://jqlang.github.io/jq/download) for processing JSON.
 - Git [installed](https://git-scm.com/downloads) for cloning repositories (required for AMLFS installation).
+- Kustomize [installed](https://github.com/kubernetes-sigs/kustomize/releases) for managing Kubernetes configurations (required for PyTorch Operator installation). 
 
 ## Setup
 
