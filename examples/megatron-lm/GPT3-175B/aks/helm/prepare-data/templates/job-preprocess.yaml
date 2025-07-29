@@ -36,6 +36,9 @@ spec:
         - "--output-directory=/shared-data/{{ .Values.pipeline.dataDirectory }}/{{ .Values.pipeline.preprocess.outputDirectory }}"
         - "--worker-index=$(JOB_COMPLETION_INDEX)"
         - "--total-workers={{ .Values.pipeline.preprocess.parallelism }}"
+        {{- if .Values.pipeline.preprocess.resources.requests.cpu }}
+        - "--worker-threads={{ .Values.pipeline.preprocess.resources.requests.cpu }}"
+        {{- end }}
         env:
         - name: JOB_COMPLETION_INDEX
           valueFrom:

@@ -76,7 +76,7 @@ def split_shards(wsize, dataset):
         shards.append(dataset[idx_start:idx_end])
     return shards
 
-def preprocess(input_directory="", output_directory="", worker_index=0, total_workers=1):
+def preprocess(input_directory="", output_directory="", worker_index=0, total_workers=1, worker_threads=None):
     logging.info(f"Input directory: {input_directory}")
     logging.info(f"Output directory: {output_directory}")
     
@@ -114,6 +114,19 @@ def preprocess(input_directory="", output_directory="", worker_index=0, total_wo
     logging.info(f"Found {len(dataset)} files to preprocess")
     shards_to_extract = split_shards(total_workers, dataset)
 
+    # Calculate number of worker threads for preprocessing
+    # Use provided worker_threads, or default to reasonable number based on available CPUs
+    if worker_threads is None:
+        try:
+            import multiprocessing
+            # Use 80% of available CPUs, minimum 1, maximum 128
+            worker_threads = max(1, min(128, int(multiprocessing.cpu_count() * 0.8)))
+        except:
+            # Fallback if multiprocessing is not available
+            worker_threads = 16
+    
+    logging.info(f"Using {worker_threads} worker threads for preprocessing")
+
     shards_processed = 0
     for num, shard in enumerate(shards_to_extract[worker_index]):
         shard_num = worker_index + (num * total_workers)  # Counter for which file is processed
@@ -127,9 +140,9 @@ def preprocess(input_directory="", output_directory="", worker_index=0, total_wo
             f"--tokenizer-library megatron "
             f"--vocab-file {vocab_file} "
             f"--merge-file {merges_file} "
-            f"--workers 80"
+            f"--workers {worker_threads}"
         )
-        logging.info(f"Running preprocessing for shard {shard_num}")
+        logging.info(f"Running preprocessing for shard {shard_num} with {worker_threads} workers")
         subprocess.run([command], shell=True)
         shards_processed += 1
     
@@ -145,6 +158,7 @@ if __name__ == "__main__":
     parser.add_argument("--output-directory", type=str, required=True, help="Directory to write preprocessed files")
     parser.add_argument("--worker-index", type=int, default=0, help="Worker index")
     parser.add_argument("--total-workers", type=int, default=1, help="Total workers")
+    parser.add_argument("--worker-threads", type=int, default=None, help="Number of worker threads for preprocessing (default: auto-detect based on CPU count)")
         
     args = parser.parse_args()
 
@@ -152,4 +166,4 @@ if __name__ == "__main__":
     input_dir = args.input_directory
     output_dir = args.output_directory
     
-    preprocess(input_dir, output_dir, args.worker_index, args.total_workers)
+    preprocess(input_dir, output_dir, args.worker_index, args.total_workers, args.worker_threads)

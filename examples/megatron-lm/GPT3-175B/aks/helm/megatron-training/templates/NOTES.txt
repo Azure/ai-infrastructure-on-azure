@@ -19,7 +19,6 @@
    helm upgrade {{ .Release.Name }} . --set training.nodes=4
 
 Model Configuration:
-- Size: {{ .Values.model.size }}
 - Nodes: {{ .Values.training.nodes }}
 - GPUs per node: {{ .Values.training.gpusPerNode }}
 - Total GPUs: {{ mul .Values.training.nodes .Values.training.gpusPerNode }}
