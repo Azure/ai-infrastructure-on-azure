@@ -131,7 +131,7 @@ The data preparation pipeline executes four sequential stages:
 3. **Concatenate**: Combines individual files into training chunks
 4. **Preprocess**: Converts to Megatron's binary format (`.bin`/`.idx` files)
 
-Each stage uses filesystem markers to track completion, allowing the pipeline to resume from the last completed stage if interrupted.
+Each stage uses filesystem markers to track completion.
 
 #### Monitor Pipeline Progress
 

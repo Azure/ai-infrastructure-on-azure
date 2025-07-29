@@ -37,10 +37,6 @@ spec:
           mountPath: /scripts
         resources:
           {{- toYaml .Values.pipeline.download.resources | nindent 10 }}
-        lifecycle:
-          postStart:
-            exec:
-              command: ["pip", "install", "requests"]
       volumes:
       - name: shared-storage
         persistentVolumeClaim:

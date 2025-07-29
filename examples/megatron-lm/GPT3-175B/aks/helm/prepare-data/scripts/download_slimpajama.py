@@ -18,6 +18,7 @@ REPOSITORY_PATH = (
 )
 BACKOFF_TIME = 10
 RETRIES = 3
+REQUEST_TIMEOUT = 300  # 5 minutes timeout for large file downloads
 
 logging.basicConfig(
     level=logging.INFO,
@@ -31,20 +32,45 @@ def download_shard(url, filename, retry=RETRIES):
         logging.warning("File %s already exists. Skipping download.", filename)
         return
 
-    response = requests.get(url)
+    try:
+        response = requests.get(url, timeout=REQUEST_TIMEOUT)
+        
+        if response.status_code == 429 and retry > 0:
+            time.sleep(BACKOFF_TIME)
+            logging.warning("Throttled. Retrying download for %s...", filename)
+            download_shard(url, filename, retry=retry - 1)
+            return
 
-    if response.status_code == 429 and retry > 0:
-        time.sleep(BACKOFF_TIME)
-        logging.warning("Throttled. Retrying download for %s...", filename)
-        download_shard(url, filename, retry=retry - 1)
+        if response.status_code != 200:
+            if retry > 0:
+                time.sleep(BACKOFF_TIME)
+                logging.warning("HTTP %s for %s. Retrying (%d attempts left)...", 
+                              response.status_code, filename, retry)
+                download_shard(url, filename, retry=retry - 1)
+                return
+            else:
+                logging.error("Failed to download %s: HTTP %s", url, response.status_code)
+                return
 
-    if response.status_code != 200:
-        logging.error("Failed to download %s: %s", url, response.status_code)
-        return
-
-    with open(filename, "wb") as fn:
-        fn.write(response.content)
-    logging.info("Downloaded %s", filename)
+        with open(filename, "wb") as fn:
+            fn.write(response.content)
+        logging.info("Downloaded %s", filename)
+        
+    except requests.exceptions.Timeout:
+        if retry > 0:
+            time.sleep(BACKOFF_TIME)
+            logging.warning("Timeout downloading %s. Retrying (%d attempts left)...", filename, retry)
+            download_shard(url, filename, retry=retry - 1)
+        else:
+            logging.error("Timeout downloading %s after %d retries", filename, RETRIES)
+    except requests.exceptions.RequestException as e:
+        if retry > 0:
+            time.sleep(BACKOFF_TIME)
+            logging.warning("Network error downloading %s: %s. Retrying (%d attempts left)...", 
+                          filename, str(e), retry)
+            download_shard(url, filename, retry=retry - 1)
+        else:
+            logging.error("Network error downloading %s after %d retries: %s", filename, RETRIES, str(e))
 
 def download(directory, full_dataset=True, sample_files=100, worker_index=0, total_workers=1):
     """Download SlimPajama dataset from Hugging Face with parallel worker support."""

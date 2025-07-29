@@ -6,22 +6,54 @@ import time
 import requests
 from glob import glob
 
+# Configuration constants
+REQUEST_TIMEOUT = 30  # 30 seconds timeout for BPE file downloads
+DOWNLOAD_RETRIES = 3
+BACKOFF_TIME = 5
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[logging.StreamHandler()],
 )
 
-def download_file(url, filepath):
-    """Download a file from URL to filepath."""
+def download_file(url, filepath, retry=DOWNLOAD_RETRIES):
+    """Download a file from URL to filepath with retry logic."""
     logging.info(f"Downloading {url} to {filepath}")
-    response = requests.get(url)
-    response.raise_for_status()
     
-    os.makedirs(os.path.dirname(filepath), exist_ok=True)
-    with open(filepath, 'wb') as f:
-        f.write(response.content)
-    logging.info(f"Downloaded {filepath}")
+    try:
+        response = requests.get(url, timeout=REQUEST_TIMEOUT)
+        response.raise_for_status()
+        
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        with open(filepath, 'wb') as f:
+            f.write(response.content)
+        logging.info(f"Downloaded {filepath}")
+        
+    except requests.exceptions.Timeout:
+        if retry > 0:
+            time.sleep(BACKOFF_TIME)
+            logging.warning(f"Timeout downloading {filepath}. Retrying ({retry} attempts left)...")
+            download_file(url, filepath, retry=retry - 1)
+        else:
+            logging.error(f"Timeout downloading {filepath} after {DOWNLOAD_RETRIES} retries")
+            raise
+    except requests.exceptions.HTTPError as e:
+        if retry > 0 and e.response.status_code in [429, 500, 502, 503, 504]:
+            time.sleep(BACKOFF_TIME)
+            logging.warning(f"HTTP {e.response.status_code} downloading {filepath}. Retrying ({retry} attempts left)...")
+            download_file(url, filepath, retry=retry - 1)
+        else:
+            logging.error(f"HTTP error downloading {filepath}: {e}")
+            raise
+    except requests.exceptions.RequestException as e:
+        if retry > 0:
+            time.sleep(BACKOFF_TIME)
+            logging.warning(f"Network error downloading {filepath}: {str(e)}. Retrying ({retry} attempts left)...")
+            download_file(url, filepath, retry=retry - 1)
+        else:
+            logging.error(f"Network error downloading {filepath} after {DOWNLOAD_RETRIES} retries: {str(e)}")
+            raise
 
 def wait_for_files(filepaths, timeout=300):
     """Wait for files to exist, with timeout."""
@@ -103,9 +135,6 @@ def preprocess(input_directory="", output_directory="", worker_index=0, total_wo
     
     # Create completion marker file in output directory
     completion_file = os.path.join(output_directory, f".preprocess-{worker_index}-complete")
-    with open(completion_file, "w") as f:
-        f.write(f"Worker {worker_index} completed preprocessing {shards_processed} shards")
-    logging.info(f"Created completion marker: {completion_file}")
     with open(completion_file, "w") as f:
         f.write(f"Worker {worker_index} completed preprocessing {shards_processed} shards")
     logging.info(f"Created completion marker: {completion_file}")
