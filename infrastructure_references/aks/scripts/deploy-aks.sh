@@ -531,7 +531,7 @@ function install_kueue() {
         --namespace kueue-system \
         kueue \
         oci://registry.k8s.io/kueue/charts/kueue \
-        --version="${KUEUE_VERSION}"
+        --version="${KUEUE_VERSION#v}"
 
     echo "✅ Kueue installed successfully."
 }
