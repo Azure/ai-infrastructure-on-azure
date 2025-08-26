@@ -49,10 +49,13 @@ spec:
       - name: torset-discovery
         image: mcr.microsoft.com/aznhc/aznhc-nv:1.2.0
         securityContext:
+          privileged: true
           capabilities:
             add:
             - SYS_RESOURCE
         volumeMounts:
+        - name: dev-infiniband
+          mountPath: /dev/infiniband
         - name: workdir
           mountPath: /work
         command: ["/bin/bash", "-lc"]
@@ -68,7 +71,7 @@ spec:
           fi
 
           # Collect all HCAs' GUIDs
-          guids=$(ibv_devinfo | grep hca | awk '{print $2}' \
+          guids=$(ibstatus | awk '/Infiniband device/ {dev=$3} /link_layer:/ && $2=="InfiniBand" {gsub(/'\''/,"",dev); print dev}' \
               | xargs -I% ibstat "%" \
               | grep "Port GUID" | awk -F: '{print $2}' | sed 's/^0x00/0x/')
 
@@ -150,5 +153,8 @@ spec:
       - name: host-data
         hostPath:
           path: /var/lib/hyperv/.kvp_pool_3
+      - name: dev-infiniband
+        hostPath:
+          path: /dev/infiniband
       - name: workdir
         emptyDir: {}
