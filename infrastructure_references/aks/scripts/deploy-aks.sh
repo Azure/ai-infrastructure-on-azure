@@ -25,7 +25,7 @@ fi
 : "${MPI_OPERATOR_VERSION:=v0.6.0}"       # Latest version: https://github.com/kubeflow/mpi-operator/releases
 : "${CERT_MANAGER_VERSION:=v1.18.2}"      # Latest version: https://github.com/cert-manager/cert-manager/releases
 : "${PYTORCH_OPERATOR_VERSION:=v1.8.1}"   # Latest version: https://github.com/kubeflow/training-operator/releases
-: "${KUEUE_VERSION:=0.13.3}"             # Latest version: https://github.com/kubernetes-sigs/kueue/releases
+: "${KUEUE_VERSION:=0.13.3}"              # Latest version: https://github.com/kubernetes-sigs/kueue/releases
 
 # Network Operator Device Plugin Configuration
 : "${RDMA_DEVICE_PLUGIN:=sriov-device-plugin}" # Options: sriov-device-plugin, rdma-shared-device-plugin
