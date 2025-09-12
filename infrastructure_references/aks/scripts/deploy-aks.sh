@@ -17,7 +17,7 @@ fi
 : "${CLUSTER_NAME:=ai-infra}"
 : "${USER_NAME:=azureuser}"
 : "${SYSTEM_POOL_VM_SIZE:=}"
-: "${GRAFANA_PASSWORD:=$(tr </dev/urandom -dc 'A-Za-z0-9!@#$%&*_-' | head -c 30)}"
+: "${GRAFANA_PASSWORD:=$(LC_ALL=C tr </dev/urandom -dc 'A-Za-z0-9!@#$%&*_-' | head -c 30)}"
 
 # Versions
 : "${GPU_OPERATOR_VERSION:=v25.3.2}"      # Latest version: https://github.com/NVIDIA/gpu-operator/releases
