@@ -111,8 +111,11 @@ Published image: `ghcr.io/azure/ai-infrastructure-on-azure/llm-foundry:latest`
 To create a squash file from the published image:
 
 ```bash
-sudo enroot import -o llm-foundry-latest.sqsh docker://ghcr.io/azure/ai-infrastructure-on-azure/llm-foundry:latest
+sudo docker pull ghcr.io/azure/ai-infrastructure-on-azure/llm-foundry:latest
+sudo enroot import -o llm-foundry-latest.sqsh dockerd://ghcr.io/azure/ai-infrastructure-on-azure/llm-foundry:latest
 ```
+
+> Note: The commands above will pull locally first and create from the Docker local cache.
 
 ### Manual Build (Optional)
 
