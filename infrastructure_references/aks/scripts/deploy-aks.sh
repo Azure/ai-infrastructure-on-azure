@@ -110,7 +110,7 @@ function add_nodepool() {
         --name AKSInfinibandSupport -o tsv --query 'properties.state'"
 
     # Until the output of the above command is not "Registered", keep running the command.
-    while [[ "$(eval "$aks_infiniband_support")" != "Registered" ]]; do
+    while [[ "$(eval "$aks_infiniband_support" | tr -d '\r')" != "Registered" ]]; do
         az feature register --name AKSInfinibandSupport --namespace Microsoft.ContainerService
         echo "⏳ Waiting for the feature 'AKSInfinibandSupport' to be registered..."
         sleep 10
