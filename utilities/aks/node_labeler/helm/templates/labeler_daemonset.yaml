@@ -44,7 +44,7 @@ spec:
       containers:
       - name: labeler
         image: mcr.microsoft.com/cbl-mariner/busybox:1.35
-        command: ["sh", "-c", "echo 'Task completed'; sleep 3600"]
+        command: ["sh", "-c", "echo 'Task completed'"]
       initContainers:
       - name: torset-discovery
         image: mcr.microsoft.com/aznhc/aznhc-nv:1.2.0
