@@ -71,19 +71,9 @@ spec:
           fi
 
           # Collect all HCAs' GUIDs
-          guids=""
-          # Find all InfiniBand devices and collect their Port GUIDs
-          for dev in $(ibstatus | awk '/Infiniband device/ {print $3}'); do
-            # Check if device is InfiniBand
-            if ibstatus "$dev" | grep -q "link_layer: InfiniBand"; then
-              # Extract Port GUIDs for the device
-              for guid in $(ibstat "$dev" | grep "Port GUID" | awk -F: '{print $2}' | sed 's/^0x00/0x/'); do
-                guids="${guids}${guid}\n"
-              done
-            fi
-          done
-          # Remove trailing newline and set guids variable
-          guids=$(echo -e "$guids" | sed '/^$/d')
+          guids=$(ibstatus | awk '/Infiniband device/ {dev=$3} /link_layer:/ && $2=="InfiniBand" {gsub(/'\''/,"",dev); print dev}' \
+              | xargs -I% ibstat "%" \
+              | grep "Port GUID" | awk -F: '{print $2}' | sed 's/^0x00/0x/')
 
           guid_file=/work/guids.txt
           echo "$guids" > "$guid_file"
