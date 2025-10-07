@@ -19,7 +19,7 @@ storage:
   amlfs:
     # AMLFS SKU name
     skuName: "AMLFS-Durable-Premium-125"
-    # Availability zones (comma-separated string)
+    # Availability zone
     zones: "1"
     # Maintenance day of week
     maintenanceDayOfWeek: "Sunday"
