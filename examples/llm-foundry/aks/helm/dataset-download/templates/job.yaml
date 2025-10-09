@@ -29,6 +29,14 @@ spec:
           echo "Output path: {{ .Values.storage.mount }}/{{ .Values.dataset.outputPath }}"
           echo "Workers: {{ .Values.resources.workers }}"
           
+          # Check if GPUs are available and remove MegaBlocks if not
+          if ! nvidia-smi &>/dev/null; then
+            echo "No GPUs detected. Removing MegaBlocks package to avoid GPU dependencies..."
+            pip uninstall -y megablocks
+          else
+            echo "GPUs detected. Keeping MegaBlocks package."
+          fi
+          
           # Create output directory
           mkdir -p {{ .Values.storage.mount }}/{{ .Values.dataset.outputPath }}
           
