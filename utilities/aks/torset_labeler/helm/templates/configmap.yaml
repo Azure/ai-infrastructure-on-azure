@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: torset-tool-script
+  namespace: kube-system
+data:
+  torset_tool.py: |
+{{ .Files.Get "torset_tool.py" | indent 4 }}

@@ -38,6 +38,13 @@ For each scenario and architecture, the repository will include storage recommen
 4. FIO Storage Performance Testing - I/O performance testing with Azure Blob Storage and blobfuse
    - [AKS version](./infrastructure_validations/aks/blobfuse/README.md)
 
+## Utilities catalog
+
+1. Node Labeler - Automatically labels nodes with host information and InfiniBand HCA GUIDs for network topology awareness
+   - [AKS version](./utilities/aks/node_labeler/helm/README.md)
+2. Torset Labeler - Discovers and labels nodes with torset (InfiniBand switching domain) information using SHARP topology discovery
+   - [AKS version](./utilities/aks/torset_labeler/helm/README.md)
+
 ## Contributing
 
 This project welcomes contributions and suggestions. Most contributions require you to agree to a
