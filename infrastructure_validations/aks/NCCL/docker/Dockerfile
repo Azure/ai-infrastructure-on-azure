@@ -1,4 +1,4 @@
-ARG PYTORCH_IMAGE=nvcr.io/nvidia/pytorch:25.06-py3
+ARG PYTORCH_IMAGE=nvcr.io/nvidia/pytorch:24.09-py3
 FROM ${PYTORCH_IMAGE}
 
 ENV DEBIAN_FRONTEND=noninteractive
