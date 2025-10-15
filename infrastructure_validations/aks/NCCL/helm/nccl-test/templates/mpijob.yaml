@@ -60,8 +60,33 @@ spec:
       template:
         metadata:
           labels:
+            # IMPORTANT: This label is used by the affinity rules below
             task: {{ include "nccl-test.fullname" . }}
         spec:
+          {{- if or .Values.affinity.required .Values.affinity.preferred }}
+          affinity:
+            podAffinity:
+              {{- if .Values.affinity.required }}
+              requiredDuringSchedulingIgnoredDuringExecution:
+              {{- range .Values.affinity.required }}
+                - labelSelector:
+                    matchLabels:
+                      task: {{ include "nccl-test.fullname" $ }}
+                  topologyKey: {{ .topologyKey }}
+              {{- end }}
+              {{- end }}
+              {{- if .Values.affinity.preferred }}
+              preferredDuringSchedulingIgnoredDuringExecution:
+              {{- range .Values.affinity.preferred }}
+                - weight: {{ .weight | default 100 }}
+                  podAffinityTerm:
+                    labelSelector:
+                      matchLabels:
+                        task: {{ include "nccl-test.fullname" $ }}
+                    topologyKey: {{ .topologyKey }}
+              {{- end }}
+              {{- end }}
+          {{- end }}
           containers:
           - image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
             name: nccl

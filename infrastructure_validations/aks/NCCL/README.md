@@ -36,6 +36,8 @@ helm install nccl-test ./helm/nccl-test \
 | `image.pullPolicy` | Image pull policy | `IfNotPresent` |
 | `ncclTest.testArgs` | Arguments for NCCL test | `"-b 1K -e 16G -f 2 -g 1 -c 0"` |
 | `ncclTest.env.*` | NCCL environment variables | See values.yaml |
+| `affinity.required` | Required pod affinity topology keys | `[{topologyKey: agentpool}]` |
+| `affinity.preferred` | Preferred pod affinity topology keys | `[]` |
 
 #### NCCL Test Parameters
 
@@ -47,6 +49,55 @@ The `ncclTest.testArgs` parameter controls the test execution:
 - `-g`: Number of GPUs per process (typically 1)
 - `-c`: Enable data validation (0=disabled, 1=enabled)
 - `-N`: Number of iterations per test
+
+#### Pod Affinity Configuration
+
+The `affinity` parameter controls where worker pods are scheduled to ensure optimal network topology:
+
+- **`affinity.required`**: List of topology keys that **must** be satisfied (hard constraint). All worker pods will be co-located based on these topology keys. Default ensures all workers run in the same `agentpool`.
+- **`affinity.preferred`**: List of topology keys that are **preferred** but not required (soft constraint). Each entry should include `topologyKey` and optionally `weight` (1-100, default 100).
+
+**Examples:**
+
+1. **Require same torset (InfiniBand domain)** - Use this when torset labels are present and you want guaranteed co-location within the same IB switching domain:
+
+```bash
+helm install nccl-test ./helm/nccl-test \
+  --set nodes=16 \
+  --set affinity.required[0].topologyKey=agentpool \
+  --set affinity.required[1].topologyKey=ib/torset
+```
+
+2. **Prefer same torset (best effort)** - Use this when torset labels may not be present on all nodes:
+
+```bash
+helm install nccl-test ./helm/nccl-test \
+  --set nodes=16 \
+  --set affinity.preferred[0].topologyKey=ib/torset \
+  --set affinity.preferred[0].weight=100
+```
+
+3. **Using a custom values file** for complex affinity rules:
+
+```yaml
+# custom-affinity.yaml
+nodes: 16
+affinity:
+  required:
+    - topologyKey: agentpool
+  preferred:
+    - topologyKey: ib/torset
+      weight: 100
+    - topologyKey: topology.kubernetes.io/zone
+      weight: 50
+```
+
+Then install:
+```bash
+helm install nccl-test ./helm/nccl-test -f custom-affinity.yaml
+```
+
+**Note:** If torset labels (`ib/torset`) are not present on nodes, using them in `required` will prevent pods from scheduling. Use `preferred` instead for graceful degradation.
 
 
 #### Using Custom Values Files
