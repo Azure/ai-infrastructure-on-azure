@@ -1,0 +1,188 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: torset-labeler-sa
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: torset-labeler-role
+rules:
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: torset-labeler-rolebinding
+subjects:
+- kind: ServiceAccount
+  name: torset-labeler-sa
+  namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: torset-labeler-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: torset-labeler
+  namespace: kube-system
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      serviceAccountName: torset-labeler-sa
+      restartPolicy: OnFailure
+      # Run on a GPU node with InfiniBand to access SHARP
+      nodeSelector:
+        agentpool: gpu
+      initContainers:
+      - name: cleanup-old-labels
+        image: "{{ .Values.kubectl.repository }}:{{ .Values.kubectl.tag }}"
+        env:
+        - name: NODEPOOL_SELECTOR
+          value: "{{ .Values.nodepool.selectorLabel }}"
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          set -e
+          echo "Removing existing torset labels from nodes matching selector: $NODEPOOL_SELECTOR"
+          
+          # Get all nodes matching the selector
+          nodes=$(kubectl get nodes -l "$NODEPOOL_SELECTOR" -o jsonpath='{.items[*].metadata.name}')
+          
+          if [ -z "$nodes" ]; then
+            echo "No nodes found matching selector: $NODEPOOL_SELECTOR"
+            exit 1
+          fi
+          
+          echo "Found nodes: $nodes"
+          
+          # Remove torset label from each node
+          for node in $nodes; do
+            echo "Removing ib/torset label from node: $node"
+            kubectl label node "$node" ib/torset- 2>/dev/null || echo "  (no label to remove)"
+          done
+          
+          echo "Cleanup completed"
+      - name: fetch-guids
+        image: "{{ .Values.kubectl.repository }}:{{ .Values.kubectl.tag }}"
+        volumeMounts:
+        - name: workdir
+          mountPath: /work
+        env:
+        - name: NODEPOOL_SELECTOR
+          value: "{{ .Values.nodepool.selectorLabel }}"
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          set -e
+          echo "Fetching nodes with HCA GUID annotations..."
+          
+          # Get nodes with HCA GUID annotations matching the selector
+          kubectl get nodes -l "$NODEPOOL_SELECTOR" -o json | \
+            jq -r '[.items[] | select(.metadata.annotations["ib/hca-guids"]) | {name: .metadata.name, guids: .metadata.annotations["ib/hca-guids"]}]' \
+            > /work/nodes_guids.json
+          
+          if [ ! -s /work/nodes_guids.json ] || [ "$(cat /work/nodes_guids.json)" = "[]" ]; then
+            echo "No nodes found with ib/hca-guids annotation matching selector: $NODEPOOL_SELECTOR"
+            exit 1
+          fi
+
+          echo "Found nodes with HCA GUIDs:"
+          cat /work/nodes_guids.json | jq '.'
+      - name: torset-discovery
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+        securityContext:
+          privileged: true
+          capabilities:
+            add:
+            - SYS_RESOURCE
+        volumeMounts:
+        - name: dev-infiniband
+          mountPath: /dev/infiniband
+        - name: workdir
+          mountPath: /work
+        - name: torset-script
+          mountPath: /scripts
+        command: ["/bin/bash", "-lc"]
+        args:
+        - |
+          ulimit -l unlimited
+          set -euo pipefail
+
+          # Skip if no RDMA devices present
+          if [ ! -d /dev/infiniband ]; then
+            echo "No RDMA devices found; cannot perform torset discovery."
+            exit 1
+          fi
+
+          # Check if sharp_cmd is available
+          if [ ! -f /opt/mellanox/sharp/bin/sharp_cmd ]; then
+            echo "SHARP command not found; cannot perform torset discovery."
+            exit 1
+          fi
+
+          # Check if Python script exists
+          if [ ! -f /scripts/torset_tool.py ]; then
+            echo "Torset tool script not found at /scripts/torset_tool.py"
+            exit 1
+          fi
+
+          # Check if nodes JSON exists
+          if [ ! -f /work/nodes_guids.json ]; then
+            echo "Nodes GUID JSON not found at /work/nodes_guids.json"
+            exit 1
+          fi
+
+          echo "Running torset discovery..."
+          cd /work
+          
+          # Read the JSON and run the Python script
+          guids_json=$(cat /work/nodes_guids.json)
+          python3 /scripts/torset_tool.py "$guids_json" /opt/mellanox /work
+          
+          echo "Torset discovery completed successfully"
+      containers:
+      - name: apply-labels
+        image: "{{ .Values.kubectl.repository }}:{{ .Values.kubectl.tag }}"
+        volumeMounts:
+        - name: workdir
+          mountPath: /work
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          set -e
+
+          echo "Applying torset labels to nodes..."
+          
+          if [ ! -f /work/torset_mapping.json ]; then
+            echo "Torset mapping file not found"
+            exit 1
+          fi
+
+          echo "Torset mapping:"
+          cat /work/torset_mapping.json | jq '.'
+          
+          # Apply labels to each node
+          cat /work/torset_mapping.json | jq -r 'to_entries[] | "\(.key) \(.value)"' | while read node torset; do
+            echo "Labeling node $node with torset=$torset"
+            kubectl label node "$node" "ib/torset=$torset" --overwrite
+          done
+          
+          echo "Successfully labeled all nodes with torset information"
+      volumes:
+      - name: dev-infiniband
+        hostPath:
+          path: /dev/infiniband
+      - name: workdir
+        emptyDir: {}
+      - name: torset-script
+        configMap:
+          name: torset-tool-script
+          defaultMode: 0755

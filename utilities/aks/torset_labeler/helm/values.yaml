@@ -1,0 +1,13 @@
+# Default values for torset-labeler
+nodepool:
+  # Label selector for the nodepool to label (key=value format)
+  selectorLabel: "agentpool=gpu"
+
+image:
+  repository: mcr.microsoft.com/aznhc/aznhc-nv
+  tag: "1.2.0"
+  pullPolicy: IfNotPresent
+
+kubectl:
+  repository: mcr.microsoft.com/oss/kubernetes/kubectl
+  tag: v1.26.3

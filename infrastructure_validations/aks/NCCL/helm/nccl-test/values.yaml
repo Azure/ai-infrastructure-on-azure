@@ -56,3 +56,17 @@ ncclTest:
     SHARP_COLL_LOG_LEVEL: "3"
     SHARP_COLL_ENABLE_PCI_RELAXED_ORDERING: "1"
 
+# Affinity configuration for worker pods
+# This controls pod placement to ensure optimal network topology
+affinity:
+  # Required affinity rules (must be satisfied)
+  # Default: ensures all workers are in the same agentpool
+  required:
+    - topologyKey: agentpool
+  
+  # Preferred affinity rules (best effort)
+  # Default: empty (no preferred affinity)
+  # Example: To prefer same torset, add:
+  #   - topologyKey: ib/torset
+  #     weight: 100
+  preferred: []

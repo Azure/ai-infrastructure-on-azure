@@ -46,7 +46,7 @@ spec:
         image: mcr.microsoft.com/cbl-mariner/busybox:1.35
         command: ["sh", "-c", "echo 'Task completed' && sleep infinity"]
       initContainers:
-      - name: torset-discovery
+      - name: hca-guid-discovery
         image: mcr.microsoft.com/aznhc/aznhc-nv:1.2.0
         securityContext:
           privileged: true
@@ -66,102 +66,34 @@ spec:
 
           # Skip if no RDMA devices present
           if [ ! -d /dev/infiniband ]; then
-            echo "No RDMA devices found; skipping torset discovery."
+            echo "No RDMA devices found; skipping HCA GUID discovery."
             exit 0
           fi
 
           # Collect all HCAs' GUIDs - fail gracefully if ibstatus fails
           if ! command -v ibstatus >/dev/null 2>&1; then
-            echo "ibstatus not available; skipping torset discovery."
+            echo "ibstatus not available; skipping HCA GUID discovery."
             exit 0
           fi
 
           if ! guids=$(ibstatus 2>/dev/null | awk '/Infiniband device/ {dev=$3} /link_layer:/ && $2=="InfiniBand" {gsub(/'\''/,"",dev); print dev}' \
               | xargs -I% ibstat "%" 2>/dev/null \
-              | grep "Port GUID" | awk -F: '{print $2}' | sed 's/^0x00/0x/'); then
-            echo "Failed to collect HCA GUIDs; skipping torset discovery."
+              | grep "Port GUID" | awk -F: '{print $2}' | sed 's/^ *0x00/0x/'); then
+            echo "Failed to collect HCA GUIDs; skipping HCA GUID discovery."
             exit 0
           fi
 
           if [ -z "$guids" ]; then
-            echo "No InfiniBand GUIDs found; skipping torset discovery."
+            echo "No InfiniBand GUIDs found; skipping HCA GUID discovery."
             exit 0
           fi
 
-          guid_file=/work/guids.txt
-          echo "$guids" > "$guid_file"
-
-          topo_file=/work/topology.txt
-          # Try SHARP topology discovery - fail gracefully if SHARP AM is not available
-          echo "Attempting SHARP topology discovery..."
+          # Convert GUIDs to comma-separated list and save to file
+          guids_csv=$(echo "$guids" | tr '\n' ',' | sed 's/,$//')
+          echo "$guids_csv" > /work/hca_guids.txt
+          echo "Collected HCA GUIDs: $guids_csv"
           
-          # Temporarily disable exit on error for this command
-          set +e
-          SHARP_SMX_UCX_INTERFACE=mlx5_0:1 \
-              /opt/mellanox/sharp/bin/sharp_cmd topology \
-              --ib-dev mlx5_0:1 \
-              --guids_file "$guid_file" \
-              --topology_file "$topo_file" 2>/dev/null
-          sharp_exit_code=$?
-          set -e
-          
-          if [ $sharp_exit_code -ne 0 ]; then
-            echo "SHARP topology discovery failed (SHARP AM may not be available); skipping torset labeling."
-            exit 0
-          fi
-
-          # Parse torset from topology
-          if [ -f "$topo_file" ] && [ -s "$topo_file" ]; then
-            echo "Processing topology file for torset discovery..."
-            if leafs=$(grep "Nodes=" "$topo_file" 2>/dev/null | awk '{print $1}' | cut -d= -f2) && [ -n "$leafs" ]; then
-              
-              declare -A parent_counts
-              while read -r line; do
-                if sw_name=$(echo "$line" | awk '{print $1}' | cut -d= -f2 2>/dev/null) && [ -n "$sw_name" ]; then
-                  if switches_field=$(echo "$line" | grep "Switches=" | awk '{print $2}' | cut -d= -f2 2>/dev/null); then
-                    IFS=',' read -ra switches <<< "$switches_field"
-                    for leaf in $leafs; do
-                      for s in "${switches[@]}"; do
-                        if [[ "$s" == "$leaf" ]]; then
-                          parent_counts["$sw_name"]=1
-                        fi
-                      done
-                    done
-                  fi
-                fi
-              done < <(grep "Switches=" "$topo_file" 2>/dev/null || true)
-
-              declare -A torset_candidates
-              for parent in "${!parent_counts[@]}"; do
-                while read -r line; do
-                  if sw_name=$(echo "$line" | awk '{print $1}' | cut -d= -f2 2>/dev/null) && [ -n "$sw_name" ]; then
-                    if switches_field=$(echo "$line" | grep "Switches=" | awk '{print $2}' | cut -d= -f2 2>/dev/null || echo ""); then
-                      IFS=',' read -ra switches <<< "$switches_field"
-                      for p in "${switches[@]}"; do
-                        if [[ "$p" == "$parent" ]]; then
-                          torset_candidates["$sw_name"]=1
-                        fi
-                      done
-                    fi
-                  fi
-                done < <(grep "Switches=" "$topo_file" 2>/dev/null || true)
-              done
-
-              if [ ${#torset_candidates[@]} -gt 0 ]; then
-                torset=$(printf "%s\n" "${!torset_candidates[@]}" | head -n1)
-                echo "Found torset: $torset"
-                echo -n "$torset" > /work/torset
-              else
-                echo "No torset candidates found in topology"
-              fi
-            else
-              echo "No leaf nodes found in topology file"
-            fi
-          else
-            echo "No valid topology file found; skipping torset parsing"
-          fi
-          
-          echo "Torset discovery completed successfully"
+          echo "HCA GUID discovery completed successfully"
       - name: init-labeler
         image: mcr.microsoft.com/oss/kubernetes/kubectl:v1.26.3
         env:
@@ -187,9 +119,10 @@ spec:
               kubectl label node "$NODE_NAME" "ib/pkey=$pkey" --overwrite
             fi
 
-            if [ -s /work/torset ]; then
-              torset=$(cat /work/torset)
-              kubectl label node "$NODE_NAME" "ib/torset=$torset" --overwrite
+            if [ -s /work/hca_guids.txt ]; then
+              hca_guids=$(cat /work/hca_guids.txt)
+              kubectl annotate node "$NODE_NAME" "ib/hca-guids=$hca_guids" --overwrite
+              echo "Annotated node with HCA GUIDs: $hca_guids"
             fi
       volumes:
       - name: host-data
