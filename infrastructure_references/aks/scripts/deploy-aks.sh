@@ -354,12 +354,9 @@ function install_amlfs() {
         git clone https://github.com/kubernetes-sigs/azurelustre-csi-driver.git
         cd azurelustre-csi-driver
 
-        # Switch to the dynamic provisioning preview branch
-        git checkout dynamic-provisioning-preview
-
         # Install the CSI driver
         echo "⏳ Installing AMLFS CSI driver..."
-        ./deploy/install-driver.sh dynamic-provisioning-preview
+        ./deploy/install-driver.sh
 
         # Clean up temporary directory
         popd

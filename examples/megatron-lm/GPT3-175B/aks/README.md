@@ -39,7 +39,7 @@ Follow the [infrastructure reference documentation](../../../../infrastructure_r
 
 ### 3.1. Shared Storage Configuration
 
-Deploy shared storage infrastructure to provide persistent, scalable storage accessible across all training pods. The shared storage Helm charts are located in `../../../shared_storage/aks/helm/` and offer two storage options. For detailed configuration options and setup instructions, see the [shared storage README](../../../shared_storage/aks/README.md).
+Deploy shared storage infrastructure to provide persistent, scalable storage accessible across all training pods. The shared storage Helm charts are located in `storage_references/aks/shared_storage/helm` and offer two storage options. For detailed configuration options and setup instructions, see the [shared storage README](../../../storage_references/aks/shared_storage/README.md).
 
 #### Option 1: Azure Managed Lustre File System (AMLFS)
 
@@ -55,7 +55,7 @@ AMLFS delivers high-throughput, low-latency storage optimized for large-scale tr
 Example deployment for AMLFS:
 
 ```bash
-helm install shared-storage ../../../shared_storage/aks/helm/amlfs-shared-storage \
+helm install shared-storage ../../../storage_references/aks/shared_storage/helm/amlfs-shared-storage \
   --set amlfs.skuName="AMLFS-Durable-Premium-125" \
   --set amlfs.storageCapacityTiB=16 \
   --set pvc.name="shared-storage-pvc"
@@ -66,7 +66,7 @@ helm install shared-storage ../../../shared_storage/aks/helm/amlfs-shared-storag
 Blob storage provides cost-effective storage with good performance for most training scenarios.
 
 ```bash
-helm install shared-storage ../../../shared_storage/aks/helm/blob-shared-storage \
+helm install shared-storage ../../../storage_references/aks/shared_storage/helm/blob-shared-storage \
   --set pvc.name="shared-storage-pvc" \
   --set-json 'storage.mountOptions=["-o allow_other","--use-attr-cache=true","--cancel-list-on-mount-seconds=10","-o attr_timeout=120","-o entry_timeout=120","-o negative_timeout=120","--log-level=LOG_WARNING","--file-cache-timeout-in-seconds=120","--block-cache","--block-cache-block-size=32","--block-cache-parallelism=80"]'
 ```
