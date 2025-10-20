@@ -44,8 +44,7 @@ Deploy shared storage infrastructure to provide persistent, scalable storage acc
 
 AMLFS delivers high-throughput, low-latency storage optimized for large-scale training workloads. 
 
-AMLFS offers different performance tiers with bandwidth scaling per Ti
-B of storage. The tier and size can be tuned for your cluster requirements. This example uses the 125 MB/s/TiB tier with 16TiB total storage capacity.
+AMLFS offers different performance tiers with bandwidth scaling per TiB of storage. The tier and size can be tuned for your cluster requirements. This example uses the 125 MB/s/TiB tier with 16TiB total storage capacity.
 
 ```bash
 helm install shared-storage ../../../storage_references/aks/shared_storage/helm/amlfs-shared-storage \
