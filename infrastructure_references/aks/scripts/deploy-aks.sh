@@ -20,8 +20,8 @@ fi
 : "${GRAFANA_PASSWORD:=$(LC_ALL=C tr </dev/urandom -dc 'A-Za-z0-9!@#$%&*_-' | head -c 30)}"
 
 # Versions
-: "${GPU_OPERATOR_VERSION:=v25.3.2}"      # Latest version: https://github.com/NVIDIA/gpu-operator/releases
-: "${NETWORK_OPERATOR_VERSION:=v25.4.0}"  # Latest version: https://github.com/Mellanox/network-operator/releases
+: "${GPU_OPERATOR_VERSION:=v25.3.4}"      # Latest version: https://github.com/NVIDIA/gpu-operator/releases
+: "${NETWORK_OPERATOR_VERSION:=v25.7.0}"  # Latest version: https://github.com/Mellanox/network-operator/releases
 : "${MPI_OPERATOR_VERSION:=v0.6.0}"       # Latest version: https://github.com/kubeflow/mpi-operator/releases
 : "${CERT_MANAGER_VERSION:=v1.18.2}"      # Latest version: https://github.com/cert-manager/cert-manager/releases
 : "${PYTORCH_OPERATOR_VERSION:=v1.8.1}"   # Latest version: https://github.com/kubeflow/training-operator/releases
