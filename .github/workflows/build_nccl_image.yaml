@@ -45,7 +45,8 @@ jobs:
       with:
         images: ghcr.io/azure/ai-infrastructure-on-azure/nccl-test
         tags: |
-          type=raw,value=latest
+          type=raw,value=latest,enable={{is_default_branch}}
+          type=ref,event=branch
           type=schedule,pattern={{date 'YYYYMMDD-hhmmss' tz='Europe/London'}}
 
     - name: Build and push
