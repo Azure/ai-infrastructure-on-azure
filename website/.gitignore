@@ -8,8 +8,11 @@ build/
 .docusaurus/
 .cache-loader/
 
-# Generated docs (copied from repository READMEs by sync-readmes.sh)
+# Generated docs (copied from repository READMEs by generate-site.py)
 docs/
+
+# Generated sidebar (generated from site-structure.yaml by generate-site.py)
+sidebars.js
 
 # Misc
 .DS_Store

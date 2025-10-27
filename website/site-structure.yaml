@@ -1,0 +1,142 @@
+# Docusaurus Site Structure Configuration
+# This file defines the documentation structure, sidebar navigation, and README mappings
+
+site:
+  sections:
+    - id: intro
+      type: page
+      source: null  # intro.md is manually maintained
+      
+    - id: infrastructure
+      type: category
+      label: Infrastructure
+      items:
+        - id: cyclecloud-slurm
+          title: Azure CycleCloud Slurm Workspace AI Cluster
+          sidebar_label: CycleCloud Slurm (Slurm)
+          tags: [slurm, infrastructure]
+          source: infrastructure_references/azure_cyclecloud_workspace_for_slurm/README.md
+          
+        - id: aks-cluster
+          title: Azure Kubernetes Service Cluster
+          sidebar_label: AKS Cluster (AKS)
+          tags: [aks, infrastructure]
+          source: infrastructure_references/aks/README.md
+          
+    - id: validations
+      type: category
+      label: Validations
+      items:
+        - id: aks
+          type: category
+          label: AKS
+          items:
+            - id: storage-performance
+              title: Blobfuse Storage Performance Testing
+              sidebar_label: Storage Performance
+              tags: [aks, validation, storage]
+              source: infrastructure_validations/aks/blobfuse/README.md
+              
+            - id: nccl-testing
+              title: NCCL All-reduce Testing (AKS)
+              sidebar_label: NCCL Testing
+              tags: [aks, validation, nccl]
+              source: infrastructure_validations/aks/NCCL/README.md
+              
+            - id: node-health-checks
+              title: Node Health Checks (AKS)
+              sidebar_label: Node Health Checks
+              tags: [aks, validation, health]
+              source: infrastructure_validations/aks/NHC/README.md
+              
+        - id: slurm
+          type: category
+          label: Slurm
+          items:
+            - id: nccl-testing
+              title: NCCL All-reduce Testing (Slurm)
+              sidebar_label: NCCL Testing
+              tags: [slurm, validation, nccl]
+              source: infrastructure_validations/slurm/NCCL/README.md
+              
+            - id: node-health-checks
+              title: Node Health Checks (Slurm)
+              sidebar_label: Node Health Checks
+              tags: [slurm, validation, health]
+              source: infrastructure_validations/slurm/NHC/README.md
+              
+            - id: thermal-testing
+              title: Thermal Test (Slurm)
+              sidebar_label: Thermal Testing
+              tags: [slurm, validation, thermal]
+              source: infrastructure_validations/slurm/thermal_test/README.md
+              
+    - id: examples
+      type: category
+      label: Examples
+      items:
+        - id: ai-training
+          type: category
+          label: AI Training
+          items:
+            - id: megatron-gpt3-slurm
+              title: MegatronLM GPT3-175B Training (Slurm)
+              sidebar_label: Megatron GPT3 (Slurm)
+              tags: [slurm, training, megatron, gpt-3]
+              source: examples/megatron-lm/GPT3-175B/slurm/README.md
+              
+            - id: megatron-gpt3-aks
+              title: MegatronLM GPT3-175B Training (AKS)
+              sidebar_label: Megatron GPT3 (AKS)
+              tags: [aks, training, megatron, gpt-3]
+              source: examples/megatron-lm/GPT3-175B/aks/README.md
+              
+            - id: llm-foundry-slurm
+              title: LLM Foundry Training (Slurm)
+              sidebar_label: LLM Foundry (Slurm)
+              tags: [slurm, training, llm-foundry]
+              source: examples/llm-foundry/slurm/README.md
+              
+            - id: llm-foundry-aks
+              title: LLM Foundry Training (AKS)
+              sidebar_label: LLM Foundry (AKS)
+              tags: [aks, training, llm-foundry]
+              source: examples/llm-foundry/aks/README.md
+              
+            - id: llm-foundry-docker
+              title: LLM Foundry Docker Build
+              sidebar_label: LLM Foundry Docker
+              tags: [docker, llm-foundry]
+              source: examples/llm-foundry/docker/README.md
+              
+        - id: shared-storage
+          type: category
+          label: Shared Storage
+          items:
+            - id: shared-storage-aks
+              title: Shared Storage Solutions (AKS)
+              sidebar_label: Shared Storage (AKS)
+              tags: [aks, storage]
+              source: storage_references/aks/shared_storage/README.md
+              
+    - id: guidance
+      type: category
+      label: Guidance
+      items:
+        - id: node-labeler
+          title: Node Labeler for AKS
+          sidebar_label: Node Labeler
+          tags: [aks, utilities]
+          source: utilities/aks/node_labeler/README.md
+          
+        - id: torset-labeler
+          title: Torset Labeler for AKS
+          sidebar_label: Torset Labeler
+          tags: [aks, utilities]
+          source: utilities/aks/torset_labeler/helm/README.md
+          
+        - id: squashed-images
+          title: Squashed Container Images
+          sidebar_label: Squashed Images
+          tags: [storage, containers]
+          source: storage_references/slurm/squashed_images/README.md

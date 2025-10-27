@@ -12,9 +12,11 @@ cd "$(dirname "$0")"
 
 # Remove generated docs (these are copied from repository READMEs)
 if [ -d "docs" ]; then
-    echo "📋 Removing generated docs directory..."
-    rm -rf docs
-    echo "✅ docs/ removed"
+    echo "📋 Removing generated docs (preserving intro.md)..."
+    # Remove all docs except intro.md
+    find docs -type f -name "*.md" ! -name "intro.md" -delete
+    find docs -type d -empty -delete
+    echo "✅ Generated docs removed"
 fi
 
 # Remove build artifacts

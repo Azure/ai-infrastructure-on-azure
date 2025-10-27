@@ -12,12 +12,12 @@ echo "=========================================="
 cd "$(dirname "$0")"
 
 echo ""
-echo "📋 Step 1: Syncing README files from repository..."
-./sync-readmes.sh
+echo "📋 Step 1: Generating site structure from YAML..."
+./generate-site.py
 if [ $? -eq 0 ]; then
-    echo "✅ README sync complete"
+    echo "✅ Site generation complete"
 else
-    echo "❌ README sync failed"
+    echo "❌ Site generation failed"
     exit 1
 fi
 
