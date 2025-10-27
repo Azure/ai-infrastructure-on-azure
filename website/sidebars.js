@@ -59,6 +59,7 @@ const sidebars = {
             'examples/ai-training/megatron-gpt3-aks',
             'examples/ai-training/llm-foundry-slurm',
             'examples/ai-training/llm-foundry-aks',
+            'examples/ai-training/llm-foundry-docker',
           ],
         },
         {

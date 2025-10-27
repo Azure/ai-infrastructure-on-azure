@@ -133,6 +133,16 @@ tags: [aks, training, llm-foundry]
 HEREDOC
 cat ${BASE_PATH}/examples/llm-foundry/aks/README.md >> docs/examples/ai-training/llm-foundry-aks.md
 
+cat > docs/examples/ai-training/llm-foundry-docker.md << 'HEREDOC'
+---
+title: LLM Foundry Docker Build
+sidebar_label: LLM Foundry Docker
+tags: [docker, llm-foundry]
+---
+
+HEREDOC
+cat ${BASE_PATH}/examples/llm-foundry/docker/README.md >> docs/examples/ai-training/llm-foundry-docker.md
+
 # Examples - Shared Storage
 echo "Copying Shared Storage Example READMEs..."
 cat > docs/examples/shared-storage/shared-storage-aks.md << 'HEREDOC'
