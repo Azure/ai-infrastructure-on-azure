@@ -1,12 +1,23 @@
 # Deploying Azure CycleCloud Workspace for Slurm
 
+## Table of Contents
+
+1. [Overview](#1-overview)
+2. [Prerequisites](#2-prerequisites)
+3. [Define the environment variables](#3-define-the-environment-variables)
+4. [Create a MySQL Flexible server](#4-create-a-mysql-flexible-server)
+5. [Create the parameters file](#5-create-the-parameters-file)
+6. [Deploy the Azure CycleCloud Slurm Workspace environment](#6-deploy-the-azure-cyclecloud-slurm-workspace-environment)
+
+## 1. Overview
+
 This section of the repository contains the guidance to deploy Azure CycleCloud Workspace for Slurm environments.
 
 The templates contained in this folder have some deployment examples with different features and storage types.
 
 The deployment guide follows what described in the [official Azure CycleCloud Workspace for Slurm documentation pages](https://learn.microsoft.com/en-us/azure/cyclecloud/how-to/ccws/deploy-with-cli?view=cyclecloud-8).
 
-## Prequisites
+## 2. Prerequisites
 
 In order to deploy the infrastructure described in this section of the guide in an existing Azure Subscription, be sure to have:
 
@@ -15,7 +26,7 @@ In order to deploy the infrastructure described in this section of the guide in 
 - User Access Administrator on the Subscription
 - Be sure that `az account show` is displaying the right subscription. In case, fix the subscription with `az account set --subscription "your-subscription-name"`
 
-## Define the environment variables
+## 3. Define the environment variables
 
 In order to customize the templates according to your specific configuration needs, you can manually edit a copy of the templates.
 There are however a series of parameters that can be passed defining some environment variables and using `envsubst`.
@@ -45,7 +56,7 @@ export GPU_NODE_COUNT=64                         # Number of GPU nodes at maximu
 > [!WARNING]  
 > Check other parameters in the template before proceeding with the deployment, like AMLFS file system size and the desired SKU.
 
-## Create a MySQL Flexible server
+## 4. Create a MySQL Flexible server
 
 Some of the templates in this folder require the presence of a pre-existing MySQL Flexible server for Slurm job accounting.
 
@@ -73,7 +84,7 @@ Let's then export the ID in a variable for the subsequent steps:
 export MYSQL_ID=$( az mysql flexible-server show -n $DB_NAME -g $RESOURCE_GROUP_NAME --query "id" --output tsv)
 ```
 
-## Create the parameters file
+## 5. Create the parameters file
 
 The deployment ready file can be generated with the following commands after the steps described in the previous paragraphs are completed:
 
@@ -81,7 +92,7 @@ The deployment ready file can be generated with the following commands after the
 envsubst < large-ai-training-cluster-parameters.template > large-ai-training-cluster-parameters-deploy.json
 ```
 
-## Deploy the Azure CycleCloud Slurm Workspace environment
+## 6. Deploy the Azure CycleCloud Slurm Workspace environment
 
 > [!WARNING]  
 > Check other parameters in the template before proceeding with the deployment, like AMLFS file system size and the desired SKU.

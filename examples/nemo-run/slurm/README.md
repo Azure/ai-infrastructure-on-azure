@@ -43,7 +43,7 @@ Keep in mind that CCWS does not allow connections via public IP, so if a Bastion
 
 Refer to this [quickstart](https://learn.microsoft.com/en-us/azure/mysql/flexible-server/quickstart-create-connect-server-vnet) to create an instance of MySQL Flexible Server with private access. Make sure to select **Private Access** in the **Networking** tab, and to select the VNET and subnet that you created earlier.
 
-This can be done through infrastructure-as-code [following the infrastructure reference example](../../../infrastructure_references/azure_cyclecloud_workspaces_for_slurm/README.md#create-a-mysql-flexible-server).
+This can be done through infrastructure-as-code [following the infrastructure reference example](../../../infrastructure_references/azure_cyclecloud_workspace_for_slurm/README.md#create-a-mysql-flexible-server).
 
 Once the instance is created, adjust the server parameters as [needed](https://slurm.schedmd.com/accounting.html#:~:text=NOTE%3A%20Before%20running,than%20max_script_size.).
 

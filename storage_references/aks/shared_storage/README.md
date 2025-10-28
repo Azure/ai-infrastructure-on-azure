@@ -1,13 +1,22 @@
 # Shared Storage Helm Charts for AKS
 
+## Table of Contents
+
+1. [Overview](#1-overview)
+2. [Available Storage Options](#2-available-storage-options)
+3. [Blob Shared Storage](#3-blob-shared-storage)
+4. [AMLFS Shared Storage](#4-amlfs-shared-storage)
+
+## 1. Overview
+
 This directory contains Helm charts for deploying ReadWriteMany storage options on Azure Kubernetes Service (AKS).
 
-## Available Storage Options
+## 2. Available Storage Options
 
 * **Blob Shared Storage** (`blob-shared-storage`) - Cost-effective storage using Azure Blob with BlobFuse
 * **AMLFS Shared Storage** (`amlfs-shared-storage`) - High-performance storage using Azure Managed Lustre File System
 
-## Blob Shared Storage
+## 3. Blob Shared Storage
 
 Provides shared storage using Azure Blob Storage mounted with BlobFuse. This option offers cost-effective storage with good performance for most workloads.
 
@@ -29,7 +38,7 @@ helm install shared-storage ./blob-shared-storage \
 ```
 
 
-## AMLFS Shared Storage
+## 4. AMLFS Shared Storage
 
 Provides high-throughput, low-latency shared storage using Azure Managed Lustre File System. AMLFS is optimized for large-scale, performance-critical workloads that require fast I/O operations.
 

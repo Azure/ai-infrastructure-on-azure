@@ -1,19 +1,29 @@
 # Node Labeler for AKS
 
+## Table of Contents
+
+1. [Overview](#1-overview)
+2. [Prerequisites](#2-prerequisites)
+3. [Installation](#3-installation)
+4. [Verification](#4-verification)
+5. [Uninstallation](#5-uninstallation)
+
+## 1. Overview
+
 This chart deploys a DaemonSet that labels and annotates each node with:
 - **Labels**: KVP-derived host information from `/var/lib/hyperv/.kvp_pool_3` (e.g., `hyperv/PhysicalHostName`)
 - **Labels**: InfiniBand PKey (`ib/pkey`) when RDMA devices are present
 - **Annotations**: HCA (Host Channel Adapter) GUIDs (`ib/hca-guids`) as a comma-separated list when InfiniBand devices are detected
 
-The HCA GUID annotations are used by the [Torset Labeler](../../torset_labeler/helm/README.md) to discover and label nodes with their InfiniBand switching domain (torset) information.
+The HCA GUID annotations are used by the [Torset Labeler](../torset_labeler/helm/README.md) to discover and label nodes with their InfiniBand switching domain (torset) information.
 
-## Prerequisites
+## 2. Prerequisites
 
 - Cluster-admin permissions to install cluster-scoped RBAC.
 - Nodes with InfiniBand hardware will have HCA GUID annotations automatically collected.
 
 
-## Installation
+## 3. Installation
 
 Install or upgrade the chart from this repository (namespace is `kube-system`):
 
@@ -21,7 +31,7 @@ Install or upgrade the chart from this repository (namespace is `kube-system`):
 helm upgrade --install node-labeler ./utilities/aks/node_labeler/helm -n kube-system
 ```
 
-## Verification
+## 4. Verification
 
 Verify the DaemonSet rollout:
 
@@ -41,9 +51,9 @@ Check HCA GUID annotations on nodes with InfiniBand:
 kubectl get nodes -o json | jq -r '.items[] | select(.metadata.annotations["ib/hca-guids"]) | {name: .metadata.name, guids: .metadata.annotations["ib/hca-guids"]}'
 ```
 
-Once HCA GUIDs are collected, use the [Torset Labeler](../../torset_labeler/helm/README.md) to discover and apply torset labels.
+Once HCA GUIDs are collected, use the [Torset Labeler](../torset_labeler/helm/README.md) to discover and apply torset labels.
 
-## Uninstallation
+## 5. Uninstallation
 
 Remove the node labeler from your cluster:
 
