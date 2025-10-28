@@ -1,5 +1,18 @@
 # Azure Kubernetes Service (AKS) Infrastructure Setup
 
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Prerequisites](#prerequisites)
+3. [Setup](#setup)
+4. [Available Commands](#available-commands)
+5. [Environment Variables](#environment-variables)
+6. [RDMA Device Plugin Configuration](#rdma-device-plugin-configuration)
+7. [Azure Managed Lustre File System (AMLFS) Support](#azure-managed-lustre-file-system-amlfs-support)
+8. [Monitoring](#monitoring)
+
+## Overview
+
 This document provides a guide to set up an Azure Kubernetes Service (AKS) cluster with GPU support, including the installation of necessary operators and monitoring tools.
 
 ## Prerequisites

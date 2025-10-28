@@ -1,5 +1,10 @@
 # Multi-node NCCL all_reduce test
 
+## Table of Contents
+
+1. [Launch with SLURM](#launch-with-slurm)
+2. [Launch with mpirun](#launch-with-mpirun)
+
 ## Launch with SLURM
 
 ```bash

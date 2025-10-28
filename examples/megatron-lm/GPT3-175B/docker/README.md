@@ -1,5 +1,20 @@
 # Megatron-LM Docker Image
 
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Contents](#contents)
+3. [Included Components](#included-components)
+4. [Build Process](#build-process)
+5. [Image Capabilities](#image-capabilities)
+6. [Health Checks](#health-checks)
+7. [Usage Examples](#usage-examples)
+8. [Environment Variables](#environment-variables)
+9. [Working Directory](#working-directory)
+10. [Security](#security)
+
+## Overview
+
 This directory contains the Dockerfile for building a Megatron-LM container image optimized for distributed training on Azure Kubernetes Service (AKS).
 
 ## Contents

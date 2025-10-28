@@ -1,5 +1,13 @@
 # Azure Node Health Check (AZNHC)
 
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Launching the Helm Chart](#launching-the-helm-chart)
+3. [Building the Container Image](#building-the-container-image)
+
+## Overview
+
 Azure Node Health Check is a comprehensive validation tool for GPU clusters that tests hardware components, GPUs, and InfiniBand connectivity on each node.
 
 ## Launching the Helm Chart

@@ -1,5 +1,13 @@
 # LLM Foundry Container Image
 
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Container Image](#container-image)
+3. [Manual Build (Optional)](#manual-build-optional)
+
+## Overview
+
 This directory contains the Dockerfile for building a custom LLM Foundry container image with additional optimizations for Azure infrastructure, including DOCA/OFED drivers for InfiniBand connectivity and topology files for ND-series VMs.
 
 ## Container Image

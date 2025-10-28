@@ -1,5 +1,14 @@
 # Node and cluster validations
 
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Node Health Checks (NHC)](#node-health-checks-nhc)
+3. [NCCL all-reduce Validation](#nccl-all-reduce-validation)
+4. [GPU Thermal Screening](#gpu-thermal-screening)
+
+## Overview
+
 Ensuring cluster readiness is essential prior to executing large-scale LLM training benchmarks.  
 Our validation process on Azure involved several components, _i.e._ node health checks, NCCL all-reduce performance testing, and GPU thermal screening.  
 This systematic approach enabled early detection of hardware or software inconsistencies and ensured consistent baseline performance.  

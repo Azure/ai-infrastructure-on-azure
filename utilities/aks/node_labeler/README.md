@@ -1,5 +1,15 @@
 # Node Labeler for AKS
 
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Prerequisites](#prerequisites)
+3. [Installation](#installation)
+4. [Verification](#verification)
+5. [Uninstallation](#uninstallation)
+
+## Overview
+
 This chart deploys a DaemonSet that labels and annotates each node with:
 - **Labels**: KVP-derived host information from `/var/lib/hyperv/.kvp_pool_3` (e.g., `hyperv/PhysicalHostName`)
 - **Labels**: InfiniBand PKey (`ib/pkey`) when RDMA devices are present

@@ -1,5 +1,13 @@
 # Optimizing DGX Benchmark on Azure
 
+## Table of Contents
+
+1. [Overview](#overview)
+2. [System-Level Optimizations](#system-level-optimizations)
+3. [Model-Level Parameter Tuning](#model-level-parameter-tuning)
+
+## Overview
+
 Due to differences in virtualization, network fabric, and topology awareness, Azure demands tailored optimizations.
 
 ## System-Level Optimizations

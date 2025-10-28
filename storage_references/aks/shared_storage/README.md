@@ -1,5 +1,14 @@
 # Shared Storage Helm Charts for AKS
 
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Available Storage Options](#available-storage-options)
+3. [Blob Shared Storage](#blob-shared-storage)
+4. [AMLFS Shared Storage](#amlfs-shared-storage)
+
+## Overview
+
 This directory contains Helm charts for deploying ReadWriteMany storage options on Azure Kubernetes Service (AKS).
 
 ## Available Storage Options

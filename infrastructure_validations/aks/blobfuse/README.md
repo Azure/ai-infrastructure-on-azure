@@ -1,8 +1,18 @@
 # FIO Testing with Blobfuse on AKS
 
-This directory contains tools and examples for testing Azure Blob Storage performance using FIO (Flexible I/O Tester) with blobfuse mounts on Azure Kubernetes Service (AKS).
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Prerequisites](#prerequisites)
+3. [Quick Start](#quick-start)
+4. [Configuration](#configuration)
+5. [Test Examples](#test-examples)
 
 ## Overview
+
+## Overview
+
+This directory contains tools and examples for testing Azure Blob Storage performance using FIO (Flexible I/O Tester) with blobfuse mounts on Azure Kubernetes Service (AKS).
 
 FIO is a versatile tool for testing I/O performance. This setup allows you to test different I/O patterns against Azure Blob Storage mounted via blobfuse, which is useful for:
 

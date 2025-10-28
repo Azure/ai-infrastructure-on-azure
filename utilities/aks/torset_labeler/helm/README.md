@@ -1,5 +1,21 @@
 # Torset Labeler Helm Chart
 
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Prerequisites](#prerequisites)
+3. [What This Chart Does](#what-this-chart-does)
+4. [Installation](#installation)
+5. [Configuration](#configuration)
+6. [How It Works](#how-it-works)
+7. [Checking Results](#checking-results)
+8. [Troubleshooting](#troubleshooting)
+9. [Cleanup](#cleanup)
+10. [Re-running Discovery](#re-running-discovery)
+11. [Integration with Workloads](#integration-with-workloads)
+
+## Overview
+
 This Helm chart labels AKS nodes with torset information based on their HCA (Host Channel Adapter) GUIDs collected by the `node-labeler` chart.
 
 ## Prerequisites

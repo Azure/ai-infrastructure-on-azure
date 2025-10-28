@@ -1,12 +1,23 @@
 # Deploying Azure CycleCloud Workspace for Slurm
 
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Prerequisites](#prerequisites)
+3. [Define the environment variables](#define-the-environment-variables)
+4. [Create a MySQL Flexible server](#create-a-mysql-flexible-server)
+5. [Create the parameters file](#create-the-parameters-file)
+6. [Deploy the Azure CycleCloud Slurm Workspace environment](#deploy-the-azure-cyclecloud-slurm-workspace-environment)
+
+## Overview
+
 This section of the repository contains the guidance to deploy Azure CycleCloud Workspace for Slurm environments.
 
 The templates contained in this folder have some deployment examples with different features and storage types.
 
 The deployment guide follows what described in the [official Azure CycleCloud Workspace for Slurm documentation pages](https://learn.microsoft.com/en-us/azure/cyclecloud/how-to/ccws/deploy-with-cli?view=cyclecloud-8).
 
-## Prequisites
+## Prerequisites
 
 In order to deploy the infrastructure described in this section of the guide in an existing Azure Subscription, be sure to have:
 

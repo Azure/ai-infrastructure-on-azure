@@ -1,5 +1,11 @@
 # Squashed image file tuning
 
+## Table of Contents
+
+1. [Introduction](#introduction)
+2. [Adjusting Azure Managed Lustre striping](#adjusting-azure-managed-lustre-striping)
+3. [Staging in local NVME](#staging-in-local-nvme)
+
 ## Introduction
 
 For a Slurm cluster using `pyxis` and `enroot` for multi-node and multi-GPU container runs, during the training job startup, all the cluster nodes will read the squashed image files from the shared file-system, generating a start-up storm on a single file read.
