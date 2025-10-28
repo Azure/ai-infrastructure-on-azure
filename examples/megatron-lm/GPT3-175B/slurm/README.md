@@ -70,7 +70,7 @@ sbatch -p hpc 00-setup_environment.sh
 
 ## 3. Filesystem tuning
 
-To get the best filesystem performance on job startup [please refer to the optimizations](../../../../storage_references/squashed_images/README.md) to be applied to the `sqsh` image file.
+To get the best filesystem performance on job startup [please refer to the optimizations](../../../../storage_references/slurm/squashed_images/README.md) to be applied to the `sqsh` image file.
 
 ## 4. Data preparation
 

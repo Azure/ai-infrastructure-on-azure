@@ -15,7 +15,7 @@ This chart deploys a DaemonSet that labels and annotates each node with:
 - **Labels**: InfiniBand PKey (`ib/pkey`) when RDMA devices are present
 - **Annotations**: HCA (Host Channel Adapter) GUIDs (`ib/hca-guids`) as a comma-separated list when InfiniBand devices are detected
 
-The HCA GUID annotations are used by the [Torset Labeler](../../torset_labeler/helm/README.md) to discover and label nodes with their InfiniBand switching domain (torset) information.
+The HCA GUID annotations are used by the [Torset Labeler](../torset_labeler/helm/README.md) to discover and label nodes with their InfiniBand switching domain (torset) information.
 
 ## Prerequisites
 
@@ -51,7 +51,7 @@ Check HCA GUID annotations on nodes with InfiniBand:
 kubectl get nodes -o json | jq -r '.items[] | select(.metadata.annotations["ib/hca-guids"]) | {name: .metadata.name, guids: .metadata.annotations["ib/hca-guids"]}'
 ```
 
-Once HCA GUIDs are collected, use the [Torset Labeler](../../torset_labeler/helm/README.md) to discover and apply torset labels.
+Once HCA GUIDs are collected, use the [Torset Labeler](../torset_labeler/helm/README.md) to discover and apply torset labels.
 
 ## Uninstallation
 
