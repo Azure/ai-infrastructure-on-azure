@@ -2,7 +2,7 @@
 
 ## Table of Contents
 
-1. [Introduction](#introduction)
+1. [Introduction](#1-introduction)
 2. [Prerequisites and AKS Environment Setup](#2-prerequisites-and-aks-environment-setup)
 3. [Deployment Steps](#3-deployment-steps)
    
