@@ -51,13 +51,14 @@ docusaurus/
 ├── build.sh                 # Main build script
 ├── serve.sh                 # Local server script
 └── website/                 # Docusaurus site files
-    ├── docs/                # Documentation content
+    ├── docs/                # Documentation content (generated)
     ├── src/                 # React components
     ├── static/              # Static assets
     ├── docusaurus.config.js # Site configuration
-    ├── sidebars.js          # Sidebar navigation
+    ├── sidebars.js          # Sidebar navigation (generated)
     ├── package.json         # Node dependencies
-    ├── sync-readmes.sh      # Sync README files from repo
+    ├── site-structure.yaml  # Site structure definition
+    ├── generate-site.py     # Generate docs and sidebar from YAML
     ├── postprocess-mdx.sh   # Fix MDX compatibility
     └── fix-links.sh         # Fix relative links
 ```

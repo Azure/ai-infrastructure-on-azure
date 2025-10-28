@@ -68,10 +68,10 @@ Content comes from repository READMEs. When README files are updated, run:
 ## Migration from Old System
 
 **Old approach:**
-- Edit `sync-readmes.sh` with HEREDOC blocks
-- Edit `sidebars.js` manually
-- Edit `fix-links.sh` for new pages
-- Keep all three in sync manually
+- Edit `sync-readmes.sh` with HEREDOC blocks for each page
+- Edit `sidebars.js` manually to add navigation items
+- Edit `fix-links.sh` for new page link mappings
+- Keep all three files in sync manually
 
 **New approach:**
 - Edit `site-structure.yaml` only
