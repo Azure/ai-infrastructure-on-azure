@@ -2,15 +2,13 @@
 
 ## Table of Contents
 
-1. [Overview](#overview)
-2. [Prerequisites](#prerequisites)
-3. [Quick Start](#quick-start)
-4. [Configuration](#configuration)
-5. [Test Examples](#test-examples)
+1. [Overview](#1-overview)
+2. [Prerequisites](#2-prerequisites)
+3. [Quick Start](#3-quick-start)
+4. [Configuration](#4-configuration)
+5. [Test Examples](#5-test-examples)
 
-## Overview
-
-## Overview
+## 1. Overview
 
 This directory contains tools and examples for testing Azure Blob Storage performance using FIO (Flexible I/O Tester) with blobfuse mounts on Azure Kubernetes Service (AKS).
 
@@ -21,13 +19,13 @@ FIO is a versatile tool for testing I/O performance. This setup allows you to te
 - Benchmarking blob storage performance with various configurations
 - Validating blobfuse mount options and caching settings
 
-## Prerequisites
+## 2. Prerequisites
 
 - AKS cluster with blob CSI driver enabled
 - Azure Storage Account with blob container
 - kubectl access to the cluster
 
-## Quick Start
+## 3. Quick Start
 
 1. **Deploy the Helm chart (runs default random write test):**
    ```bash
@@ -44,7 +42,7 @@ FIO is a versatile tool for testing I/O performance. This setup allows you to te
    helm uninstall fio-test
    ```
 
-## Configuration
+## 4. Configuration
 
 The Helm chart creates:
 - A StorageClass for blob storage with optimized mount options
@@ -69,7 +67,7 @@ You can customize the test by modifying the values in the Helm chart:
 - FIO test parameters (block size, I/O pattern, duration)
 - Container resources and limits
 
-## Test Examples
+## 5. Test Examples
 
 The `examples/` directory contains pre-configured FIO test scenarios:
 

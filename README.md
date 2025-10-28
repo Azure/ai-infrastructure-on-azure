@@ -2,16 +2,16 @@
 
 ## Table of Contents
 
-1. [Overview](#overview)
-2. [Infrastructure References Catalog](#infrastructure-references-catalog)
-3. [AI Training Example Catalog](#ai-training-example-catalog)
-4. [Infrastructure Validation Catalog](#infrastructure-validation-catalog)
-5. [Utilities Catalog](#utilities-catalog)
-6. [Contributing](#contributing)
-7. [Trademarks](#trademarks)
-8. [Contributors](#contributors)
+1. [Overview](#1-overview)
+2. [Infrastructure References Catalog](#2-infrastructure-references-catalog)
+3. [AI Training Example Catalog](#3-ai-training-example-catalog)
+4. [Infrastructure Validation Catalog](#4-infrastructure-validation-catalog)
+5. [Utilities Catalog](#5-utilities-catalog)
+6. [Contributing](#6-contributing)
+7. [Trademarks](#7-trademarks)
+8. [Contributors](#8-contributors)
 
-## Overview
+## 1. Overview
 
 This repository collects architectural guidance and AI training examples meant to run on Azure AI Infrastructure.
 
@@ -24,12 +24,12 @@ This includes infrastructure examples and real use case scenarios on Azure AI In
 For each scenario and architecture, the repository will include storage recommendations among Azure Storage services ([Azure Blob Storage](https://azure.microsoft.com/en-us/products/storage/blobs),
 [Azure Managed Lustre](https://learn.microsoft.com/en-us/azure/azure-managed-lustre/amlfs-overview), [Azure NetApp Files](https://learn.microsoft.com/en-us/azure/azure-netapp-files/azure-netapp-files-introduction)), monitoring and observability.
 
-## Infrastructure References Catalog
+## 2. Infrastructure References Catalog
 
 1. [Azure CycleCloud Slurm Workspace AI Cluster](./infrastructure_references/azure_cyclecloud_workspace_for_slurm/README.md) - Prototypes for the creation of Azure CycleCloud Slurm Workspace AI Clusters using CLI deployment
 2. [Azure Kubernetes Service Cluster](./infrastructure_references/aks/README.md) - Deployment script for AKS cluster 
 
-## AI Training Example Catalog
+## 3. AI Training Example Catalog
 
 1. MegatronLM GPT3-175B with Slimpajama 627B dataset - Example of an end-to-end training workflow based on MegatronLM, including data pre-processing from Slimpajama 627B dataset
    - [Slurm version](./examples/megatron-lm/GPT3-175B/slurm/README.md)
@@ -38,7 +38,7 @@ For each scenario and architecture, the repository will include storage recommen
    - [Slurm version](./examples/llm-foundry/slurm/README.md)
    - [AKS version](./examples/llm-foundry/aks/README.md)
 
-## Infrastructure Validation Catalog
+## 4. Infrastructure Validation Catalog
 
 1. NCCL All-reduce - Testing distributed communication performance for multi-GPU training
    - [Slurm version](./infrastructure_validations/slurm/NCCL/README.md)
@@ -51,14 +51,14 @@ For each scenario and architecture, the repository will include storage recommen
 4. FIO Storage Performance Testing - I/O performance testing with Azure Blob Storage and blobfuse
    - [AKS version](./infrastructure_validations/aks/blobfuse/README.md)
 
-## Utilities Catalog
+## 5. Utilities Catalog
 
 1. Node Labeler - Automatically labels nodes with host information and InfiniBand HCA GUIDs for network topology awareness
    - [AKS version](./utilities/aks/node_labeler/README.md)
 2. Torset Labeler - Discovers and labels nodes with torset (InfiniBand switching domain) information using SHARP topology discovery
    - [AKS version](./utilities/aks/torset_labeler/helm/README.md)
 
-## Contributing
+## 6. Contributing
 
 This project welcomes contributions and suggestions. Most contributions require you to agree to a
 Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
@@ -72,7 +72,7 @@ This project has adopted the [Microsoft Open Source Code of Conduct](https://ope
 For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
 contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
 
-## Trademarks
+## 7. Trademarks
 
 This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft
 trademarks or logos is subject to and must follow
@@ -80,7 +80,7 @@ trademarks or logos is subject to and must follow
 Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
 Any use of third-party trademarks or logos is subject to those third-party's policies.
 
-## Contributors
+## 8. Contributors
 
 Please join us in contributing to the project
 

@@ -2,22 +2,22 @@
 
 ## Table of Contents
 
-1. [Overview](#overview)
-2. [Contents](#contents)
-3. [Included Components](#included-components)
-4. [Build Process](#build-process)
-5. [Image Capabilities](#image-capabilities)
-6. [Health Checks](#health-checks)
-7. [Usage Examples](#usage-examples)
-8. [Environment Variables](#environment-variables)
-9. [Working Directory](#working-directory)
-10. [Security](#security)
+1. [Overview](#1-overview)
+2. [Contents](#2-contents)
+3. [Included Components](#3-included-components)
+4. [Build Process](#4-build-process)
+5. [Image Capabilities](#5-image-capabilities)
+6. [Health Checks](#6-health-checks)
+7. [Usage Examples](#7-usage-examples)
+8. [Environment Variables](#8-environment-variables)
+9. [Working Directory](#9-working-directory)
+10. [Security](#10-security)
 
-## Overview
+## 1. Overview
 
 This directory contains the Dockerfile for building a Megatron-LM container image optimized for distributed training on Azure Kubernetes Service (AKS).
 
-## Contents
+## 2. Contents
 
 - **Dockerfile**: Multi-stage build for Megatron-LM with all dependencies
 - Built on NVIDIA PyTorch NGC image (25.03-py3)
@@ -25,7 +25,7 @@ This directory contains the Dockerfile for building a Megatron-LM container imag
 - Pre-configured with Mellanox DOCA and networking tools
 - Optimized for RDMA and InfiniBand networking
 
-## Included Components
+## 3. Included Components
 
 ### Base Image
 - **NVIDIA PyTorch**: 25.03-py3 with CUDA 12.4+ support
@@ -47,7 +47,7 @@ This directory contains the Dockerfile for building a Megatron-LM container imag
 - **Compression**: zstd for dataset decompression
 - **Topology files**: NDv5 InfiniBand topology for Azure HPC VMs
 
-## Build Process
+## 4. Build Process
 
 The image is automatically built and published via GitHub Actions when changes are made to the Dockerfile. The workflow file is located at:
 
@@ -71,7 +71,7 @@ The image is automatically published to:
 ghcr.io/azure/ai-infrastructure-on-azure/megatron-lm:latest
 ```
 
-## Image Capabilities
+## 5. Image Capabilities
 
 ### Supported Training
 - **GPT models**: 125M to 175B+ parameters
@@ -92,14 +92,14 @@ ghcr.io/azure/ai-infrastructure-on-azure/megatron-lm:latest
 - **RDMA networking**: InfiniBand optimization
 - **CPU optimization**: Optimized for ND-series Azure VMs
 
-## Health Checks
+## 6. Health Checks
 
 The image includes health checks to verify:
 - CUDA availability and GPU detection
 - PyTorch installation and GPU access
 - Basic import functionality for all frameworks
 
-## Usage Examples
+## 7. Usage Examples
 
 ### Basic Training
 ```bash
@@ -118,7 +118,7 @@ docker run --gpus all ghcr.io/azure/ai-infrastructure-on-azure/megatron-lm:lates
 docker run -it --gpus all ghcr.io/azure/ai-infrastructure-on-azure/megatron-lm:latest bash
 ```
 
-## Environment Variables
+## 8. Environment Variables
 
 The following environment variables are pre-configured:
 
@@ -126,11 +126,11 @@ The following environment variables are pre-configured:
 - **NEMO_VERSION**: 24.05  
 - **MEGATRON_LM_VERSION**: 878d65f
 
-## Working Directory
+## 9. Working Directory
 
 The container's working directory is set to `/megatron-lm` for easy access to training scripts.
 
-## Security
+## 10. Security
 
 The image is configured for secure operation in Kubernetes environments:
 - Non-root user capability (when not requiring privileged access)

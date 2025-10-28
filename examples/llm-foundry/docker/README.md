@@ -2,15 +2,15 @@
 
 ## Table of Contents
 
-1. [Overview](#overview)
-2. [Container Image](#container-image)
-3. [Manual Build (Optional)](#manual-build-optional)
+1. [Overview](#1-overview)
+2. [Container Image](#2-container-image)
+3. [Manual Build (Optional)](#3-manual-build-optional)
 
-## Overview
+## 1. Overview
 
 This directory contains the Dockerfile for building a custom LLM Foundry container image with additional optimizations for Azure infrastructure, including DOCA/OFED drivers for InfiniBand connectivity and topology files for ND-series VMs.
 
-## Container Image
+## 2. Container Image
 
 The container image is automatically built and published to GitHub Container Registry via GitHub Actions whenever changes are made to the Dockerfile or workflow.
 
@@ -25,7 +25,7 @@ The container image is based on `mosaicml/llm-foundry:2.6.0_cu124-latest` and in
 - **Azure NDv5 Topology**: Optimized topology file for Azure ND-series VMs
 - **Python Dependencies**: All required packages for GPU training
 
-### Manual Build (Optional)
+## 3. Manual Build (Optional)
 
 If you need to build a custom version with modifications, follow these instructions:
 

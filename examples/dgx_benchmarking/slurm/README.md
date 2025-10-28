@@ -2,15 +2,15 @@
 
 ## Table of Contents
 
-1. [Overview](#overview)
-2. [System-Level Optimizations](#system-level-optimizations)
-3. [Model-Level Parameter Tuning](#model-level-parameter-tuning)
+1. [Overview](#1-overview)
+2. [System-Level Optimizations](#2-system-level-optimizations)
+3. [Model-Level Parameter Tuning](#3-model-level-parameter-tuning)
 
-## Overview
+## 1. Overview
 
 Due to differences in virtualization, network fabric, and topology awareness, Azure demands tailored optimizations.
 
-## System-Level Optimizations
+## 2. System-Level Optimizations
 
 The system-level optimization involves ensuring proper CPU, GPU, and NIC affinity using an NCCL topology file, which is included as part of the Azure HPC VM image. This file defines the mapping between NUMA nodes, GPUs, and network interfaces, allowing the NCCL library to assign communication threads to the correct CPU cores.
 
@@ -44,7 +44,7 @@ srun --container-image ${IMAGE} \
      <launcher-script>
 ```
 
-## Model-Level Parameter Tuning
+## 3. Model-Level Parameter Tuning
 
 In addition to system configuration, optimizing the model parallelism parameters was essential for certain LLMs.
 

@@ -2,17 +2,17 @@
 
 ## Table of Contents
 
-1. [Launch with SLURM](#launch-with-slurm)
-2. [Launch with mpirun](#launch-with-mpirun)
+1. [Launch with SLURM](#1-launch-with-slurm)
+2. [Launch with mpirun](#2-launch-with-mpirun)
 
-## Launch with SLURM
+## 1. Launch with SLURM
 
 ```bash
 # Run NCCL all_reduce on a given set of nodes
 sbatch -w ccw-gpu-[1-10] nccl_test.slurm
 ```
 
-## Launch with mpirun
+## 2. Launch with mpirun
 
 This takes a SLURM node list format to create a hostfile:
 

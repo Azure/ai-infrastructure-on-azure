@@ -2,20 +2,20 @@
 
 ## Table of Contents
 
-1. [Overview](#overview)
-2. [Prerequisites](#prerequisites)
-3. [Setup](#setup)
-4. [Available Commands](#available-commands)
-5. [Environment Variables](#environment-variables)
-6. [RDMA Device Plugin Configuration](#rdma-device-plugin-configuration)
-7. [Azure Managed Lustre File System (AMLFS) Support](#azure-managed-lustre-file-system-amlfs-support)
-8. [Monitoring](#monitoring)
+1. [Overview](#1-overview)
+2. [Prerequisites](#2-prerequisites)
+3. [Setup](#3-setup)
+4. [Available Commands](#4-available-commands)
+5. [Environment Variables](#5-environment-variables)
+6. [RDMA Device Plugin Configuration](#6-rdma-device-plugin-configuration)
+7. [Azure Managed Lustre File System (AMLFS) Support](#7-azure-managed-lustre-file-system-amlfs-support)
+8. [Monitoring](#8-monitoring)
 
-## Overview
+## 1. Overview
 
 This document provides a guide to set up an Azure Kubernetes Service (AKS) cluster with GPU support, including the installation of necessary operators and monitoring tools.
 
-## Prerequisites
+## 2. Prerequisites
 
 - Access to an Azure subscription with permissions to create resources.
 - Azure CLI [installed](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) and configured.
@@ -25,7 +25,7 @@ This document provides a guide to set up an Azure Kubernetes Service (AKS) clust
 - Git [installed](https://git-scm.com/downloads) for cloning repositories (required for AMLFS installation).
 - Kustomize [installed](https://github.com/kubernetes-sigs/kustomize/releases) for managing Kubernetes configurations (required for PyTorch Operator installation). 
 
-## Setup
+## 3. Setup
 
 Export the following environment variables to configure your AKS cluster:
 
@@ -54,7 +54,7 @@ Run the following command to deploy the AKS cluster and additional necessary com
 ./scripts/deploy-aks.sh all
 ```
 
-## Available Commands
+## 4. Available Commands
 
 The `deploy-aks.sh` script supports the following commands:
 
@@ -98,7 +98,7 @@ The `deploy-aks.sh` script supports the following commands:
 INSTALL_AMLFS=false ./scripts/deploy-aks.sh all
 ```
 
-## Environment Variables
+## 5. Environment Variables
 
 ### Mandatory Variables
 
@@ -137,7 +137,7 @@ INSTALL_AMLFS=false ./scripts/deploy-aks.sh all
 - **`INSTALL_AMLFS`** - Install Azure Managed Lustre File System CSI driver (default: "true")
   - Set to "false" to skip AMLFS installation in the 'all' command
 
-## RDMA Device Plugin Configuration
+## 6. RDMA Device Plugin Configuration
 
 The script supports two types of RDMA device plugins for InfiniBand networking:
 
@@ -177,7 +177,7 @@ export RDMA_DEVICE_PLUGIN=rdma-shared-device-plugin
 ./scripts/deploy-aks.sh install-network-operator
 ```
 
-## Azure Managed Lustre File System (AMLFS) Support
+## 7. Azure Managed Lustre File System (AMLFS) Support
 
 The deployment script includes support for Azure Managed Lustre File System (AMLFS), which provides high-performance storage for AI/ML workloads.
 
@@ -217,7 +217,7 @@ INSTALL_AMLFS=false ./scripts/deploy-aks.sh all
 - **Repository**: `https://github.com/kubernetes-sigs/azurelustre-csi-driver.git`
 
 
-## Monitoring
+## 8. Monitoring
 
 ### Installation
 
