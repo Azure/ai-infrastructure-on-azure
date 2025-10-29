@@ -24,7 +24,7 @@ All the scripts and code that have been derived by any of the above repositories
 
 ## 2. Creation of an Azure CycleCloud Workspace for Slurm environment
 
-The first step in the process implies the creation of an Azure CycleCloud Slurm Workspace environment. The documentation [available in Microsoft Learn](https://learn.microsoft.com/en-us/azure/cyclecloud/overview-ccws?view=cyclecloud-8) guides through the deployment process.
+The first step in the process implies the creation of an Azure CycleCloud Workspace for Slurm environment. The documentation [available in Microsoft Learn](https://learn.microsoft.com/en-us/azure/cyclecloud/overview-ccws?view=cyclecloud-8) guides through the deployment process.
 
 This can be done through infrastructure-as-code [following the infrastructure reference example](../../../../infrastructure_references/azure_cyclecloud_workspace_for_slurm/README.md).
 
