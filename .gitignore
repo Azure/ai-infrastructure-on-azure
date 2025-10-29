@@ -6,3 +6,5 @@ github_conf/branch_protection_rules.json
 # The dashboards are downloaded when the deploy aks script runs. The dashboards
 # may be updated on the Github repos, so not checking them in.
 infrastructure_references/aks/configs/monitoring/
+infrastructure_references/azure_cyclecloud_workspace_for_slurm/scripts/output.json
+infrastructure_references/azure_cyclecloud_workspace_for_slurm/scripts/cyclecloud-slurm-workspace

@@ -15,41 +15,9 @@ In order to deploy the infrastructure described in this section of the guide in 
 - User Access Administrator on the Subscription
 - Be sure that `az account show` is displaying the right subscription. In case, fix the subscription with `az account set --subscription "your-subscription-name"`
 
-## Define the environment variables
+## Create a MySQL Flexible server (optional)
 
-In order to customize the templates according to your specific configuration needs, you can manually edit a copy of the templates.
-There are however a series of parameters that can be passed defining some environment variables and using `envsubst`.
-
-### Large AI Training Cluster
-
-In order to define the deployment parameters in `large-ai-training-cluster-parameters-deploy.json` the following environment variables are required.
-
-```bash
-export LOCATION="your-azure-region"              # Azure region for resource deployment (e.g., eastus, westus2)
-export USERNAME="your-admin-username"            # Administrator username for Azure CycleCloud UI
-export PASSWORD="your-admin-password"            # Administrator password for Azure CycleCloud UI
-export SSH_PUBLIC_KEY="your-ssh-public-key"      # Public SSH key for secure access to all cluster nodes and Azure CycleCloud VM
-export RESOURCE_GROUP_NAME="your-resource-group" # Azure resource group name for deployment
-export NETWORK_RANGE="10.0.0.0/21"               # Address space for the virtual network in CIDR notation (if template creates a new VNET)
-export DB_PASSWORD="your-db-password"            # MySQL Database administrator password (if required by the template)
-export DB_USERNAME="your-db-username"            # MySQL Database administrator username (if required by the template)
-export DB_NAME="your-database-name"              # Name of the MySQL database (if required by the template)
-export ANF_SKU="Premium"                         # SKU for Azure NetApp Files
-export ANF_SIZE=4                                # Size for Azure NetApp Files (Standard | Premium | Ultra)
-export AMLFS_SKU="AMLFS-Durable-Premium-500"     # SKU for AMLFS (AMLFS-Durable-Premium-40 | AMLFS-Durable-Premium-125 | AMLFS-Durable-Premium-250 | AMLFS-Durable-Premium-500)
-export AMLFS_SIZE=128                            # Size for Azure Managed Lustre
-export GPU_SKU="Standard_ND96isr_H100_v5"        # GPU Node SKU
-export GPU_NODE_COUNT=64                         # Number of GPU nodes at maximum scale
-```
-
-> [!WARNING]  
-> Check other parameters in the template before proceeding with the deployment, like AMLFS file system size and the desired SKU.
-
-## Create a MySQL Flexible server
-
-Some of the templates in this folder require the presence of a pre-existing MySQL Flexible server for Slurm job accounting.
-
-This is a prerequisites for some of the deployments below.
+Optionally, user can decide to deploy a MySQL Flexible server for Slurm job accounting. This should exist before the deployment.
 
 In order to deploy the smallest MySQL Flexible server, with the lowest tier:
 
@@ -73,25 +41,214 @@ Let's then export the ID in a variable for the subsequent steps:
 export MYSQL_ID=$( az mysql flexible-server show -n $DB_NAME -g $RESOURCE_GROUP_NAME --query "id" --output tsv)
 ```
 
-## Create the parameters file
+## Deployment with `deploy-ccws.sh`
 
-The deployment ready file can be generated with the following commands after the steps described in the previous paragraphs are completed:
+Instead of manually editing and generating a parameters JSON file, this repository provides an automation helper script: `scripts/deploy-ccws.sh`. The script:
+
+* Clones the official CycleCloud Slurm Workspace repository at a chosen ref/commit.
+  
+> [!WARNING]
+> This guide intentionally uses a **specific commit SHA** of the Azure CycleCloud Slurm Workspace repository to pull in hotfixes that may not yet be part of the latest tagged release. Pinning the commit ensures reproducible deployments and avoids regressions from upstream changes. If user switches to `--workspace-ref main` without a `--workspace-commit` override user may pick up newer code paths that have not been validated in this environment. Always re-run validation (storage mounts, Slurm job submission, NCCL tests) after changing the commit. Default **commit SHA** in the current repository includes some fix on top of `2025.09.15` for AMLFS networking and availbility zone enforcement. 
+
+* User can specify a specific `commit-id` or `branch` for checkout. 
+* Builds an `output.json` parameters file for the Bicep template.
+* Optionally prompts for availability zones only if the region supports zonal SKUs.
+* Can immediately deploy the environment (or let user review first).
+
+### Prerequisites
+
+* Azure CLI installed and logged in (`az login`).
+* Proper role assignments on the subscription: Contributor + User Access Administrator.
+* SSH public key file (OpenSSH format) available locally.
+* (Optional) MySQL Flexible Server already provisioned if user plans to enable accounting in templates requiring it.
+
+### Basic Usage
 
 ```bash
-envsubst < large-ai-training-cluster-parameters.template > large-ai-training-cluster-parameters-deploy.json
+./scripts/deploy-ccws.sh \
+  --subscription-id <sub-id> \
+  --resource-group <rg-name> \
+  --location <region> \
+  --ssh-public-key-file ~/.ssh/id_rsa.pub \
+  --admin-password 'YourP@ssw0rd!' \
+  --htc-sku Standard_F2s_v2 \
+  --hpc-sku Standard_HB176rs_v4 \
+  --gpu-sku Standard_ND96amsr_A100_v4 \
+  --specify-az
 ```
 
-## Deploy the Azure CycleCloud Slurm Workspace environment
+User will be interactively prompted for availability zones only if:
 
-> [!WARNING]  
-> Check other parameters in the template before proceeding with the deployment, like AMLFS file system size and the desired SKU.
+1. User supplied `--specify-az`, and
+2. The region contains at least one zonal-capable VM SKU (auto-detected via `az vm list-skus`).
+3. If availability zones are specified using the CLI commands for each partition and for storage, it will not prompt for them.
+
+If the region does not support zones (or `az`/`jq` are missing), the script will fall back silently to non-zonal deployment and produce empty `availabilityZone` arrays.
+
+### Selecting Availability Zones
+
+Choosing an Availability Zone impacts both **storage latency** and **overall workload performance**:
+
+* Co-locate compute partitions (HTC/HPC/GPU) with shared storage (ANF / AMLFS) in the **same zone** whenever possible to minimize cross-zone latency.
+* Cross-zone access can introduce higher I/O latency for metadata-heavy or small-block operations.
+
+When prompted, press Enter to skip (no zone) or provide a number like `1`. For ANF and AMLFS, the script uses manual prompts because their zone capabilities are not derived from the VM SKU query. If user skips, the deployment uses region-level (non-zonal) placement. AMLFS will default to zone `1`.
+
+### Example With Marketplace Acceptance and Automatic Deployment
 
 ```bash
-export TENANT_ID="your-tenant-id"
-export SUBSCRIPTION_NAME="your-subscription-name"
-az login --tenant $TENANT_ID
-az account show ### Check you are in the right subscription
-az account set --subscription $SUBSCRIPTION_NAME ### In case you are not in the right one
-git clone --depth 1 --branch 2025.02.06 https://github.com/azure/cyclecloud-slurm-workspace.git
-az deployment sub create --template-file cyclecloud-slurm-workspace/bicep/mainTemplate.bicep --parameters large-ai-training-cluster-parameters-deploy.json --location $LOCATION
+./scripts/deploy-ccws.sh \
+  --subscription-id <sub-id> \
+  --resource-group <rg-name> \
+  --location eastus \
+  --ssh-public-key-file ~/.ssh/id_rsa.pub \
+  --admin-password 'YourP@ssw0rd!' \
+  --htc-sku Standard_F2s_v2 \
+  --hpc-sku Standard_HB176rs_v4 \
+  --gpu-sku Standard_ND96amsr_A100_v4 \
+  --anf-sku Premium --anf-size 2 \
+  --amlfs-sku AMLFS-Durable-Premium-500 --amlfs-size 4 \
+  --accept-marketplace \
+  --specify-az \
+  --deploy
+```
+
+### Generated Artifacts
+
+* `output.json` – parameter file used for the Bicep deployment.
+* Random deployment name previewed in the summary section.
+* Summary of chosen SKUs and zones printed for validation.
+
+### Optional Flags
+
+* `--workspace-ref <branch|tag>`: Choose a git ref (default: `main`).
+* `--workspace-commit <sha>`: Pin to a specific commit (detached HEAD).
+* `--scheduler-sku`, `--login-sku`: Override default CycleCloud scheduler/login node sizes.
+* `--accept-marketplace`: Sets `acceptMarketplaceTerms=true` in parameters.
+* `--deploy`: Perform deployment immediately without interactive confirmation.
+
+### Optional Database Configuration
+
+If users want to enable Slurm accounting with an existing MySQL Flexible Server, supply all of the following flags. They are validated as an all-or-nothing set; if any is missing the script exits with an error.
+
+Required together:
+
+* `--db-name` – The MySQL Flexible Server name
+* `--db-user` – The database administrator/user for accounting
+* `--db-password` – The password for the database user
+* `--db-id` – The full Azure resource ID of the MySQL Flexible Server (e.g. `/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.DBforMySQL/flexibleServers/<name>`)
+
+If none of the flags are provided, `databaseConfig` defaults to:
+
+```json
+"databaseConfig": { "value": { "type": "disabled" } }
+```
+
+Example with database enabled:
+
+```bash
+./scripts/deploy-ccws.sh \
+  --subscription-id <sub-id> \
+  --resource-group <rg-name> \
+  --location eastus \
+  --ssh-public-key-file ~/.ssh/id_rsa.pub \
+  --admin-password 'YourP@ssw0rd!' \
+  --htc-sku Standard_F2s_v2 \
+  --hpc-sku Standard_HB176rs_v4 \
+  --gpu-sku Standard_ND96amsr_A100_v4 \
+  --db-name myccdb \
+  --db-user dbadmin \
+  --db-password 'DbP@ssw0rd!' \
+  --db-id /subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.DBforMySQL/flexibleServers/myccdb \
+  --deploy
+```
+
+> [!TIP]
+> For security, prefer storing the database password in an environment variable and referencing it.
+
+### Script Reference (Docstring Style)
+
+Below is a docstring-style summary of `deploy-ccws.sh` for quick reference:
+
+```
+deploy-ccws.sh - Generate and optionally deploy an Azure CycleCloud Slurm Workspace environment.
+
+USAGE:
+  deploy-ccws.sh \
+    --subscription-id <subId> --resource-group <rg> --location <region> \
+    --ssh-public-key-file <path> --admin-password <password> \
+    --htc-sku <sku> --hpc-sku <sku> --gpu-sku <sku> [options]
+
+REQUIRED PARAMETERS:
+  --subscription-id        Azure subscription ID
+  --resource-group         Target resource group name
+  --location               Azure region
+  --ssh-public-key-file    Path to OpenSSH public key file
+  --admin-password         Admin password for CycleCloud UI / cluster DB
+  --htc-sku                HTC partition VM SKU
+  --hpc-sku                HPC partition VM SKU
+  --gpu-sku                GPU partition VM SKU
+
+OPTIONAL PARAMETERS:
+  --admin-username         (default: hpcadmin)
+  --scheduler-sku          (default: Standard_D4as_v5)
+  --login-sku              (default: Standard_D2as_v5)
+  --htc-az / --hpc-az / --gpu-az  Explicit AZ override; suppresses interactive prompt
+  --anf-sku / --anf-size / --anf-az        NetApp Files config
+  --amlfs-sku / --amlfs-size / --amlfs-az  Azure Managed Lustre config
+  --specify-az             Enable interactive AZ prompting (only if region has zonal SKUs)
+  --accept-marketplace     Accept marketplace terms automatically
+  --workspace-ref <ref>    Git ref (branch/tag) to checkout (default: main)
+  --workspace-commit <sha> Explicit commit (detached HEAD override)
+  --workspace-dir <path>   Clone destination (default: script dir)
+  --output-file <path>     Output parameters file path (default: output.json in script dir)
+  --db-name / --db-user / --db-password / --db-id  Enable privateEndpoint DB config (all required)
+  --deploy                 Perform deployment after generating output.json
+
+BEHAVIOR:
+  * Auto-discovers zonal availability using `az vm list-skus` + `jq`.
+  * Skips AZ prompts if region lacks zonal SKUs or tools are missing.
+  * Generates parameter file with conditional database and storage sections.
+  * Interactive confirmation unless --deploy provided.
+
+OUTPUT ARTIFACT:
+  output.json containing all deployment parameters for the Bicep template.
+
+EXIT CODES:
+  0 Success
+  1 Missing required arguments or validation failure
+
+SECURITY NOTES:
+  * Avoid committing generated output.json containing passwords.
+  * Prefer environment variables for sensitive values.
+```
+
+### Non-Interactive Deployment
+
+To avoid interactive zone prompts entirely, omit `--specify-az` or specify them with the corresponding command line options:
+
+```bash
+./scripts/deploy-ccws.sh --subscription-id <sub-id> --resource-group <rg> --location eastus \
+  --ssh-public-key-file ~/.ssh/id_rsa.pub --admin-password 'YourP@ssw0rd!' \
+  --htc-sku Standard_F2s_v2 --hpc-sku Standard_HB176rs_v4 --gpu-sku Standard_ND96amsr_A100_v4 --deploy
+```
+
+### Re-Running / Modifying
+
+User can re-run the script with different SKUs or zone selections; it will regenerate `output.json`. Delete or move the file if user wants to keep multiple versions.
+
+### Troubleshooting
+
+* Missing zones: Ensure `jq` is installed and that your Azure CLI is up to date.
+* Permission errors: Verify subscription context (`az account show`) and role assignments.
+* Marketplace errors: Include `--accept-marketplace` if required for first-time SKU usage.
+
+### Manual Deployment (Optional)
+
+If the user only wants the parameters file and prefer manual deployment:
+
+```bash
+az deployment sub create --name <name> --location <region> \
+  --template-file cyclecloud-slurm-workspace/bicep/mainTemplate.bicep \
+  --parameters @output.json
 ```
