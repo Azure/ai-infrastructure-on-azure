@@ -22,7 +22,7 @@ This chart runs a Kubernetes Job that:
 ### Basic Installation
 
 ```bash
-helm install torset-labeler ./utilities/aks/torset_labeler/helm -n kube-system
+helm install torset-labeler utilities/aks/torset_labeler/helm -n kube-system
 ```
 
 ### Custom Nodepool Selector
@@ -30,7 +30,7 @@ helm install torset-labeler ./utilities/aks/torset_labeler/helm -n kube-system
 To target a specific nodepool:
 
 ```bash
-helm install torset-labeler ./utilities/aks/torset_labeler/helm -n kube-system \
+helm install torset-labeler utilities/aks/torset_labeler/helm -n kube-system \
   --set nodepool.selector="agentpool=mygpupool"
 ```
 
@@ -163,7 +163,7 @@ kubectl label nodes --all ib/torset-
 The Job will complete after labeling nodes. To re-run torset discovery (e.g., after adding new nodes with autoscaling):
 
 1. Delete the existing Job: `helm uninstall torset-labeler -n kube-system`
-2. Reinstall: `helm install torset-labeler ./utilities/aks/torset_labeler/helm -n kube-system`
+2. Reinstall: `helm install torset-labeler utilities/aks/torset_labeler/helm -n kube-system`
 
 **Important:** The job automatically removes all existing torset labels from the target nodepool before performing discovery. This ensures:
 - Stale labels from removed nodes are cleaned up
