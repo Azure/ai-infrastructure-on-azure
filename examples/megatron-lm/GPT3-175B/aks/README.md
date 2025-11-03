@@ -92,7 +92,7 @@ The preparation pipeline is based on modified scripts from the [NVIDIA DGX Cloud
 For initial testing and validation, run the pipeline with a limited dataset:
 
 ```bash
-helm install prepare-data helm/prepare-data \
+helm install prepare-data examples/megatron-lm/GPT3-175B/aks/helm/prepare-data \
   --set pipeline.fullDataset=false \
   --set pipeline.sampleFiles=100 \
   --set pvc.name=shared-storage-pvc
@@ -115,7 +115,7 @@ This creates a smaller dataset suitable for testing, with typical file sizes:
 To prepare the complete SlimPajama 627B dataset (approximately 900 GiB compressed):
 
 ```bash
-helm install prepare-data helm/prepare-data \
+helm install prepare-data examples/megatron-lm/GPT3-175B/aks/helm/prepare-data \
   --set pipeline.fullDataset=true \
   --set pvc.name=shared-storage-pvc
 ```
@@ -182,7 +182,7 @@ The chart supports several predefined model configurations:
 Execute a lightweight training run for validation and testing:
 
 ```bash
-helm install megatron-training helm/megatron-training \
+helm install megatron-training examples/megatron-lm/GPT3-175B/aks/helm/megatron-training \
   --set image.tag=latest \
   --set model.size="375m" \
   --set training.nodes=2 \
@@ -198,7 +198,7 @@ helm install megatron-training helm/megatron-training \
 Deploy a full-scale GPT-3 175B training configuration:
 
 ```bash
-helm install megatron-training helm/megatron-training \
+helm install megatron-training examples/megatron-lm/GPT3-175B/aks/helm/megatron-training \
   --set image.tag=latest \
   --set model.size="175b" \
   --set training.nodes=64 \
@@ -218,7 +218,7 @@ helm install megatron-training helm/megatron-training \
 For custom model architectures, override the model parameters directly:
 
 ```bash
-helm install megatron-training helm/megatron-training \
+helm install megatron-training examples/megatron-lm/GPT3-175B/aks/helm/megatron-training \
   --set image.tag=latest \
   --set model.size="custom" \
   --set model.custom.numLayers=24 \
@@ -236,7 +236,7 @@ helm install megatron-training helm/megatron-training \
 For clusters with Mellanox InfiniBand and SHARP support:
 
 ```bash
-helm install megatron-training helm/megatron-training \
+helm install megatron-training examples/megatron-lm/GPT3-175B/aks/helm/megatron-training \
   --set model.size="175b" \
   --set training.useSharp=1 \
   --set training.nodes=32 \

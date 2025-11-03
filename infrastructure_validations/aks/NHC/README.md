@@ -6,10 +6,10 @@ Azure Node Health Check is a comprehensive validation tool for GPU clusters that
 
 ```bash
 # Install with default values (2 nodes)
-helm install aznhc-test ./helm/aznhc
+helm install aznhc-test infrastructure_validations/aks/NHC/helm/aznhc
 
 # Install with custom number of nodes
-helm install aznhc-test ./helm/aznhc --set nodes=4
+helm install aznhc-test infrastructure_validations/aks/NHC/helm/aznhc --set nodes=4
 ```
 
 ### Configuration Options
@@ -55,7 +55,7 @@ nhcConfig: |
 
 Then install with:
 ```bash
-helm install aznhc-test ./helm/aznhc -f custom-values.yaml
+helm install aznhc-test infrastructure_validations/aks/NHC/helm/aznhc -f custom-values.yaml
 ```
 
 ### Monitoring the Health Checks
@@ -106,7 +106,7 @@ Published image: `ghcr.io/azure/ai-infrastructure-on-azure/aznhc:latest`
 The instructions below show how to build and push to an Azure Container Registry, `$ACR_NAME`:
 
 ```bash
-cd docker/
+cd infrastructure_validations/aks/NHC/docker/
 az acr login -n $ACR_NAME
 docker build -t $ACR_NAME.azurecr.io/aznhc-test:dev .
 docker push $ACR_NAME.azurecr.io/aznhc-test:dev
@@ -115,7 +115,7 @@ docker push $ACR_NAME.azurecr.io/aznhc-test:dev
 Set the `image` values to use a custom image with the Helm chart:
 
 ```bash
-helm install aznhc-test ./helm/aznhc-test \
+helm install aznhc-test infrastructure_validations/aks/NHC/helm/aznhc \
   --set image.repository=$ACR_NAME.azurecr.io/aznhc-test \
   --set image.tag=dev \
   --set image.pullPolicy=Never

@@ -16,14 +16,14 @@ For detailed configuration options, see the [Azure Storage Fuse documentation](h
 ### Deployment Example
 
 ```bash
-helm install shared-storage ./blob-shared-storage \
+helm install shared-storage storage_references/aks/shared_storage/helm/blob-shared-storage \
   --set pvc.name="shared-storage-pvc"
 ```
 
 With optimized mount options for multiple clients writing large, independent files:
 
 ```bash
-helm install shared-storage ./blob-shared-storage \
+helm install shared-storage storage_references/aks/shared_storage/helm/blob-shared-storage \
   --set pvc.name="shared-storage-pvc" \
   --set-json 'storage.mountOptions=["-o allow_other","--use-attr-cache=true","--cancel-list-on-mount-seconds=10","-o attr_timeout=120","-o entry_timeout=120","-o negative_timeout=120","--log-level=LOG_WARNING","--file-cache-timeout-in-seconds=120","--block-cache","--block-cache-block-size=32","--block-cache-parallelism=80"]'
 ```
@@ -51,7 +51,7 @@ For detailed information about throughput configurations, see the [Azure Managed
 This is an example of 16TiB filesystem with 2GB/s total throughput:
 
 ```bash
-helm install shared-storage ./amlfs-shared-storage \
+helm install shared-storage storage_references/aks/shared_storage/helm/amlfs-shared-storage \
   --set storage.amlfs.skuName="AMLFS-Durable-Premium-125" \
   --set storage.size=16Ti \
   --set pvc.name="shared-storage-pvc"
