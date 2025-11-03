@@ -1,8 +1,16 @@
 # NCCL Allreduce
 
+## Table of Contents
+
+1. [Overview](#1-overview)
+2. [Launching the Helm Chart](#2-launching-the-helm-chart)
+3. [Building the Container Image](#3-building-the-container-image)
+
+## 1. Overview
+
 NCCL Allreduce is a quick test for the IB network and this example has a container image and a helm chart to deploy.
 
-## Launching the Helm Chart
+## 2. Launching the Helm Chart
 
 ```bash
 # Install with default values (2 nodes, 8 GPUs per node)
@@ -145,7 +153,7 @@ kubectl logs -l task=nccl-test
 helm uninstall nccl-test
 ```
 
-## Building the Container Image
+## 3. Building the Container Image
 
 The container image is automatically built and published to GitHub Container Registry via GitHub Actions whenever changes are made to the Dockerfile or workflow.
 

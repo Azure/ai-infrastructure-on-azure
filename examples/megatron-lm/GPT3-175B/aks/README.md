@@ -2,7 +2,7 @@
 
 ## Table of Contents
 
-1. [Introduction](#introduction)
+1. [Introduction](#1-introduction)
 2. [Prerequisites and AKS Environment Setup](#2-prerequisites-and-aks-environment-setup)
 3. [Deployment Steps](#3-deployment-steps)
    
@@ -39,7 +39,7 @@ Follow the [infrastructure reference documentation](../../../../infrastructure_r
 
 ### 3.1. Shared Storage Configuration
 
-Deploy shared storage infrastructure to provide persistent, scalable storage accessible across all training pods. The shared storage Helm charts are located in `storage_references/aks/shared_storage/helm` and offer two storage options. For detailed configuration options and setup instructions, see the [shared storage README](../../../storage_references/aks/shared_storage/README.md).
+Deploy shared storage infrastructure to provide persistent, scalable storage accessible across all training pods. The shared storage Helm charts are located in `storage_references/aks/shared_storage/helm` and offer two storage options. For detailed configuration options and setup instructions, see the [shared storage README](../../../../storage_references/aks/shared_storage/README.md).
 
 #### Option 1: Azure Managed Lustre File System (AMLFS)
 

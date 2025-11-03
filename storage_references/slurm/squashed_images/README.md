@@ -1,6 +1,12 @@
 # Squashed image file tuning
 
-## Introduction
+## Table of Contents
+
+1. [Introduction](#1-introduction)
+2. [Adjusting Azure Managed Lustre striping](#2-adjusting-azure-managed-lustre-striping)
+3. [Staging in local NVME](#3-staging-in-local-nvme)
+
+## 1. Introduction
 
 For a Slurm cluster using `pyxis` and `enroot` for multi-node and multi-GPU container runs, during the training job startup, all the cluster nodes will read the squashed image files from the shared file-system, generating a start-up storm on a single file read.
 
@@ -11,7 +17,7 @@ Potential solutions to manage this initial I/O are:
 - [Adjusting the striping](#adjusting-azure-managed-lustre-striping) configuration if the `sqsh` file is stored on an Azure Managed Lustre instance
 - [Staging](#staging-in-local-nvme) the `sqsh` file in the local NVME of the GPU nodes
 
-## Adjusting Azure Managed Lustre striping
+## 2. Adjusting Azure Managed Lustre striping
 
 If the image file just keeps default Azure Managed Lustre striping configuration, this may lead to get most of the I/O pressure on a limited number of OSSs.
 
@@ -60,7 +66,7 @@ Here is a comparison on an `AMLFS 500 - 128 TiB` of the time to startup with `sr
 | Default striping     | 1 x 23 GiB     | 200                                    |
 | Full 32 OST striping | 1 x 23 GiB     | 74                                     |
 
-## Staging in local NVME
+## 3. Staging in local NVME
 
 Alternatively to adjusting Azure Managed Lustre striping, it is possible to stage the image in the local NVME disks of the GPU nodes (which are automatically paired in a software RAID 0 under `/mnt/nvme` in an Azure CycleCloud Workspace for Slurm deployment).
 

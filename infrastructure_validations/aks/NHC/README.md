@@ -1,8 +1,16 @@
 # Azure Node Health Check (AZNHC)
 
+## Table of Contents
+
+1. [Overview](#1-overview)
+2. [Launching the Helm Chart](#2-launching-the-helm-chart)
+3. [Building the Container Image](#3-building-the-container-image)
+
+## 1. Overview
+
 Azure Node Health Check is a comprehensive validation tool for GPU clusters that tests hardware components, GPUs, and InfiniBand connectivity on each node.
 
-## Launching the Helm Chart
+## 2. Launching the Helm Chart
 
 ```bash
 # Install with default values (2 nodes)
@@ -95,7 +103,7 @@ Each node runs independently, so you can identify which specific nodes have issu
 helm uninstall aznhc-test
 ```
 
-## Building the Container Image
+## 3. Building the Container Image
 
 The container image is automatically built and published to GitHub Container Registry via GitHub Actions whenever changes are made to the Dockerfile or workflow.
 

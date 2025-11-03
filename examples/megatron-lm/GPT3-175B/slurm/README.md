@@ -2,14 +2,14 @@
 
 ## Table of Contents
 
-1. [Introduction](#introduction)
-2. [Creation of an Azure CycleCloud Workspace for Slurm environment](#1-creation-of-an-azure-cyclecloud-workspace-for-slurm-environment)
-3. [Environment setup](#2-environment-setup)
-4. [Filesystem Tuning](#3-filesystem-tuning)
-5. [Data Preparation](#4-data-preparation)
-6. [Training](#5-training-run)
+1. [Introduction](#1-introduction)
+2. [Creation of an Azure CycleCloud Workspace for Slurm environment](#2-creation-of-an-azure-cyclecloud-workspace-for-slurm-environment)
+3. [Environment setup](#3-environment-setup)
+4. [Filesystem Tuning](#4-filesystem-tuning)
+5. [Data Preparation](#5-data-preparation)
+6. [Training](#6-training-run)
 
-## Introduction
+## 1. Introduction
 
 In this example, we will demonstrate how to train a 175B GPT3 model on Azure, using a Slurm cluster.
 
@@ -22,7 +22,7 @@ The references that have been used to build this example are:
 
 All the scripts and code that have been derived by any of the above repositories will be explicitly marked and will contain the proper copyright disclaimer according to the relative licensing.
 
-## 1. Creation of an Azure CycleCloud Workspace for Slurm environment
+## 2. Creation of an Azure CycleCloud Workspace for Slurm environment
 
 The first step in the process implies the creation of an Azure CycleCloud Slurm Workspace environment. The documentation [available in Microsoft Learn](https://learn.microsoft.com/en-us/azure/cyclecloud/overview-ccws?view=cyclecloud-8) guides through the deployment process.
 
@@ -46,7 +46,7 @@ We should consider that the selected model size (independently from the number o
 | AMLFS 250 | 512        | 128              | 0.31                                    |
 | AMLFS 500 | 512        | 256              | 0.15                                    |
 
-## 2. Environment setup
+## 3. Environment setup
 
 In order to prepare the environment, there are several components to be downloaded for the execution.
 
@@ -68,11 +68,11 @@ mkdir -p $STAGE_PATH
 sbatch -p hpc 00-setup_environment.sh
 ```
 
-## 3. Filesystem tuning
+## 4. Filesystem tuning
 
-To get the best filesystem performance on job startup [please refer to the optimizations](../../../../storage_references/squashed_images/README.md) to be applied to the `sqsh` image file.
+To get the best filesystem performance on job startup [please refer to the optimizations](../../../../storage_references/slurm/squashed_images/README.md) to be applied to the `sqsh` image file.
 
-## 4. Data preparation
+## 5. Data preparation
 
 ### Data set download
 
@@ -140,7 +140,7 @@ TASKS_PER_NODE=32 NNODES=4 PARTITION=hpc ./03-preprocess_dataset.sh
 
 In case some jobs result in failure, please check the logs available for each stage in folder `$STAGE_PATH/results.data_preparation`
 
-## 5. Training run
+## 6. Training run
 
 After the data preparation is completed, the execution of the training on a certain number of nodes can be simply run using the following command:
 
