@@ -1,8 +1,21 @@
 # Azure Kubernetes Service (AKS) Infrastructure Setup
 
+## Table of Contents
+
+1. [Overview](#1-overview)
+2. [Prerequisites](#2-prerequisites)
+3. [Setup](#3-setup)
+4. [Available Commands](#4-available-commands)
+5. [Environment Variables](#5-environment-variables)
+6. [RDMA Device Plugin Configuration](#6-rdma-device-plugin-configuration)
+7. [Azure Managed Lustre File System (AMLFS) Support](#7-azure-managed-lustre-file-system-amlfs-support)
+8. [Monitoring](#8-monitoring)
+
+## 1. Overview
+
 This document provides a guide to set up an Azure Kubernetes Service (AKS) cluster with GPU support, including the installation of necessary operators and monitoring tools.
 
-## Prerequisites
+## 2. Prerequisites
 
 - Access to an Azure subscription with permissions to create resources.
 - Azure CLI [installed](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) and configured.
@@ -12,9 +25,9 @@ This document provides a guide to set up an Azure Kubernetes Service (AKS) clust
 - Git [installed](https://git-scm.com/downloads) for cloning repositories (required for AMLFS installation).
 - Kustomize [installed](https://github.com/kubernetes-sigs/kustomize/releases) for managing Kubernetes configurations (required for PyTorch Operator installation). 
 
-## Setup
+## 3. Setup
 
-Export the following environment variables to configure your AKS cluster:
+Export the following environment variables to configure your AKS cluster. A dedicated Virtual Network with two subnets (aks and service) is created by default and the AKS cluster is deployed into the aks subnet. You can disable or customize this behavior using the VNet variables below.
 
 ```bash
 export AZURE_REGION=""
@@ -33,15 +46,23 @@ export NODE_POOL_VM_SIZE=""
 # export CERT_MANAGER_VERSION=""
 # export PYTORCH_OPERATOR_VERSION=""
 # export RDMA_DEVICE_PLUGIN=""
+# export CREATE_DEDICATED_VNET="true"          # Set to false to use AKS-generated VNet
+# export VNET_NAME=""                           # Defaults to "${CLUSTER_NAME}-vnet"
+# export VNET_ADDRESS_SPACE="10.16.0.0/12"       # VNet CIDR (higher /12 boundary)
+# export AKS_SUBNET_NAME="aks"                  # Subnet for AKS nodes
+# export AKS_SUBNET_PREFIX="10.16.0.0/16"        # AKS subnet CIDR (default /16)
+# export SERVICE_SUBNET_NAME="service"          # Additional service subnet
+# export SERVICE_SUBNET_PREFIX="10.17.0.0/16"    # Service subnet CIDR (default /16)
+# export USE_EXISTING_SUBNET_ID=""             # If set, skip VNet creation and use this subnet id
 ```
 
-Run the following command to deploy the AKS cluster and additional necessary components:
+Run the following command to deploy the AKS cluster and additional necessary components (includes dedicated VNet creation by default):
 
 ```bash
 ./scripts/deploy-aks.sh all
 ```
 
-## Available Commands
+## 4. Available Commands
 
 The `deploy-aks.sh` script supports the following commands:
 
@@ -77,6 +98,13 @@ The `deploy-aks.sh` script supports the following commands:
 ./scripts/deploy-aks.sh install-pytorch-operator
 ./scripts/deploy-aks.sh install-amlfs
 
+# Dedicated VNet configuration examples
+# Disable dedicated VNet creation
+CREATE_DEDICATED_VNET=false ./scripts/deploy-aks.sh deploy-aks
+
+# Customize address space and subnets
+VNET_ADDRESS_SPACE=10.32.0.0/12 AKS_SUBNET_PREFIX=10.32.0.0/16 SERVICE_SUBNET_PREFIX=10.33.0.0/16 ./scripts/deploy-aks.sh deploy-aks
+
 # Install with custom parameters
 ./scripts/deploy-aks.sh deploy-aks --node-vm-size standard_ds4_v2
 ./scripts/deploy-aks.sh add-nodepool --gpu-driver=none --node-osdisk-size 1000
@@ -85,7 +113,7 @@ The `deploy-aks.sh` script supports the following commands:
 INSTALL_AMLFS=false ./scripts/deploy-aks.sh all
 ```
 
-## Environment Variables
+## 5. Environment Variables
 
 ### Mandatory Variables
 
@@ -103,8 +131,8 @@ INSTALL_AMLFS=false ./scripts/deploy-aks.sh all
 
 ### Operator Version Variables
 
-- **`GPU_OPERATOR_VERSION`** - Version of GPU Operator to install (default: "v25.3.1")
-- **`NETWORK_OPERATOR_VERSION`** - Version of Network Operator to install (default: "v25.4.0")
+- **`GPU_OPERATOR_VERSION`** - Version of GPU Operator to install (default: "v25.3.4")
+- **`NETWORK_OPERATOR_VERSION`** - Version of Network Operator to install (default: "v25.7.0")
 - **`MPI_OPERATOR_VERSION`** - Version of MPI Operator to install (default: "v0.6.0")
 - **`CERT_MANAGER_VERSION`** - Version of cert-manager to install (default: "v1.18.2")
 - **`PYTORCH_OPERATOR_VERSION`** - Version of PyTorch Operator to install (default: "v1.8.1")
@@ -124,7 +152,7 @@ INSTALL_AMLFS=false ./scripts/deploy-aks.sh all
 - **`INSTALL_AMLFS`** - Install Azure Managed Lustre File System CSI driver (default: "true")
   - Set to "false" to skip AMLFS installation in the 'all' command
 
-## RDMA Device Plugin Configuration
+## 6. RDMA Device Plugin Configuration
 
 The script supports two types of RDMA device plugins for InfiniBand networking:
 
@@ -164,7 +192,7 @@ export RDMA_DEVICE_PLUGIN=rdma-shared-device-plugin
 ./scripts/deploy-aks.sh install-network-operator
 ```
 
-## Azure Managed Lustre File System (AMLFS) Support
+## 7. Azure Managed Lustre File System (AMLFS) Support
 
 The deployment script includes support for Azure Managed Lustre File System (AMLFS), which provides high-performance storage for AI/ML workloads.
 
@@ -199,12 +227,38 @@ INSTALL_AMLFS=false ./scripts/deploy-aks.sh all
 ### AMLFS Configuration
 
 - **Environment Variable**: `INSTALL_AMLFS` (default: `true`)
+
+### Dedicated Virtual Network Configuration
+
+By default the script creates (or reuses if pre-existing) a dedicated VNet and two subnets:
+
+- `CREATE_DEDICATED_VNET` (default: `true`) - Set to `false` to use the AKS generated networking resources.
+- `VNET_NAME` (default: `${CLUSTER_NAME}-vnet`) - Name of the VNet.
+- `VNET_ADDRESS_SPACE` (default: `10.10.0.0/16`) - CIDR of the VNet address space.
+- `AKS_SUBNET_NAME` (default: `aks`) / `AKS_SUBNET_PREFIX` (default: `10.10.0.0/21`) - Subnet and CIDR for AKS node pool.
+- `SERVICE_SUBNET_NAME` (default: `service`) / `SERVICE_SUBNET_PREFIX` (default: `10.10.8.0/24`) - Additional service subnet you can later use for ingress controllers, private endpoints, etc.
+
+If the VNet or subnets already exist they are reused idempotently.
+
+Examples:
+
+```bash
+# Disable dedicated VNet
+CREATE_DEDICATED_VNET=false ./scripts/deploy-aks.sh deploy-aks
+
+# Custom CIDR ranges
+VNET_ADDRESS_SPACE=10.50.0.0/16 AKS_SUBNET_PREFIX=10.50.0.0/21 SERVICE_SUBNET_PREFIX=10.50.8.0/24 ./scripts/deploy-aks.sh deploy-aks
+
+# Use an existing subnet (bypass VNet creation)
+USE_EXISTING_SUBNET_ID="/subscriptions/<subid>/resourceGroups/<rg>/providers/Microsoft.Network/virtualNetworks/<vnet>/subnets/<subnet>" ./scripts/deploy-aks.sh deploy-aks
+```
+
 - **CSI Driver**: Azure Lustre CSI Driver (dynamic provisioning preview)
 - **Branch**: `dynamic-provisioning-preview`
 - **Repository**: `https://github.com/kubernetes-sigs/azurelustre-csi-driver.git`
 
 
-## Monitoring
+## 8. Monitoring
 
 ### Installation
 

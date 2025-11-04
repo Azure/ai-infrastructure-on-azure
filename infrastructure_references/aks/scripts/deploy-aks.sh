@@ -19,6 +19,16 @@ fi
 : "${SYSTEM_POOL_VM_SIZE:=}"
 : "${GRAFANA_PASSWORD:=$(LC_ALL=C tr </dev/urandom -dc 'A-Za-z0-9!@#$%&*_-' | head -c 30)}"
 
+# Virtual Network configuration (optional dedicated VNet for AKS)
+: "${CREATE_DEDICATED_VNET:=true}"  # Set to false to use AKS generated VNet (current behavior)
+: "${VNET_NAME:=${CLUSTER_NAME}-vnet}"                 # Name of the VNet to create/use
+: "${VNET_ADDRESS_SPACE:=10.16.0.0/12}"                 # CIDR for VNet address space (higher /12 boundary)
+: "${AKS_SUBNET_NAME:=aks}"                            # Subnet name for AKS nodes
+: "${AKS_SUBNET_PREFIX:=10.16.0.0/16}"                  # CIDR for AKS subnet (defaults to /16 within VNet)
+: "${SERVICE_SUBNET_NAME:=service}"                    # Subnet name for additional services
+: "${SERVICE_SUBNET_PREFIX:=10.17.0.0/16}"              # CIDR for service subnet (defaults to /16 within VNet)
+: "${USE_EXISTING_SUBNET_ID:=}"                        # If set, use this subnet id directly and skip VNet creation
+
 # Versions
 : "${GPU_OPERATOR_VERSION:=v25.3.4}"      # Latest version: https://github.com/NVIDIA/gpu-operator/releases
 : "${NETWORK_OPERATOR_VERSION:=v25.7.0}"  # Latest version: https://github.com/Mellanox/network-operator/releases
@@ -47,6 +57,60 @@ function check_prereqs() {
     done
 }
 
+# ensure_vnet_and_subnets creates (or reuses) a Virtual Network and required subnets when
+# CREATE_DEDICATED_VNET is true. Sets AKS_SUBNET_ID for cluster creation.
+function ensure_vnet_and_subnets() {
+    echo "⏳ Ensuring VNet '${VNET_NAME}' and subnets exist in resource group '${AZURE_RESOURCE_GROUP}'..."
+
+    # Create VNet if it does not exist
+    if ! az network vnet show --resource-group "${AZURE_RESOURCE_GROUP}" --name "${VNET_NAME}" &>/dev/null; then
+        echo "⏳ Creating VNet '${VNET_NAME}' with address space '${VNET_ADDRESS_SPACE}'..."
+        az network vnet create \
+            --resource-group "${AZURE_RESOURCE_GROUP}" \
+            --name "${VNET_NAME}" \
+            --address-prefixes "${VNET_ADDRESS_SPACE}" \
+            --location "${AZURE_REGION}" >/dev/null
+        echo "✅ VNet '${VNET_NAME}' created."
+    else
+        echo "⚠️ VNet '${VNET_NAME}' already exists, reusing it."
+    fi
+
+    # Create AKS subnet if it does not exist
+    if ! az network vnet subnet show --resource-group "${AZURE_RESOURCE_GROUP}" --vnet-name "${VNET_NAME}" --name "${AKS_SUBNET_NAME}" &>/dev/null; then
+        echo "⏳ Creating AKS subnet '${AKS_SUBNET_NAME}' with prefix '${AKS_SUBNET_PREFIX}'..."
+        az network vnet subnet create \
+            --resource-group "${AZURE_RESOURCE_GROUP}" \
+            --vnet-name "${VNET_NAME}" \
+            --name "${AKS_SUBNET_NAME}" \
+            --address-prefixes "${AKS_SUBNET_PREFIX}" >/dev/null
+        echo "✅ AKS subnet '${AKS_SUBNET_NAME}' created."
+    else
+        echo "⚠️ AKS subnet '${AKS_SUBNET_NAME}' already exists, reusing it."
+    fi
+
+    # Create Service subnet if it does not exist
+    if ! az network vnet subnet show --resource-group "${AZURE_RESOURCE_GROUP}" --vnet-name "${VNET_NAME}" --name "${SERVICE_SUBNET_NAME}" &>/dev/null; then
+        echo "⏳ Creating service subnet '${SERVICE_SUBNET_NAME}' with prefix '${SERVICE_SUBNET_PREFIX}'..."
+        az network vnet subnet create \
+            --resource-group "${AZURE_RESOURCE_GROUP}" \
+            --vnet-name "${VNET_NAME}" \
+            --name "${SERVICE_SUBNET_NAME}" \
+            --address-prefixes "${SERVICE_SUBNET_PREFIX}" >/dev/null
+        echo "✅ Service subnet '${SERVICE_SUBNET_NAME}' created."
+    else
+        echo "⚠️ Service subnet '${SERVICE_SUBNET_NAME}' already exists, reusing it."
+    fi
+
+    # Export AKS subnet ID for use during cluster creation
+    AKS_SUBNET_ID=$(az network vnet subnet show \
+        --resource-group "${AZURE_RESOURCE_GROUP}" \
+        --vnet-name "${VNET_NAME}" \
+        --name "${AKS_SUBNET_NAME}" \
+        --query id -o tsv)
+    export AKS_SUBNET_ID
+    echo "🔗 Using AKS subnet id: ${AKS_SUBNET_ID}"
+}
+
 # deploy_aks creates a resource group and a new AKS cluster with the provided
 # arguments.
 function deploy_aks() {
@@ -69,6 +133,17 @@ function deploy_aks() {
 
     echo "⏳ Creating AKS cluster '${CLUSTER_NAME}' in resource group '${AZURE_RESOURCE_GROUP}'..."
 
+    # Decide networking strategy
+    if [[ -n "${USE_EXISTING_SUBNET_ID}" ]]; then
+        echo "🔗 Using existing subnet id provided via USE_EXISTING_SUBNET_ID. Skipping VNet creation."
+        AKS_SUBNET_ID="${USE_EXISTING_SUBNET_ID}"
+    elif [[ "${CREATE_DEDICATED_VNET}" == "true" ]]; then
+        echo "⏳ Dedicated VNet requested (CREATE_DEDICATED_VNET=true). Ensuring VNet and subnets exist..."
+        ensure_vnet_and_subnets
+    else
+        echo "ℹ️ Using AKS-managed networking (no custom subnet)."
+    fi
+
     # Build the az aks create command
     local aks_create_cmd=(
         az aks create
@@ -84,6 +159,11 @@ function deploy_aks() {
         --admin-username "${USER_NAME}"
         --os-sku Ubuntu
     )
+
+    # Attach cluster to subnet if one was selected/provided
+    if [[ -n "${AKS_SUBNET_ID:-}" ]]; then
+        aks_create_cmd+=(--vnet-subnet-id "${AKS_SUBNET_ID}")
+    fi
 
     # Add node-vm-size if SYSTEM_POOL_VM_SIZE is set
     if [[ -n "${SYSTEM_POOL_VM_SIZE}" ]]; then
@@ -578,8 +658,8 @@ function print_usage() {
     echo "  SYSTEM_POOL_VM_SIZE      VM size for system node pool (default: AKS default)"
     echo "  NODE_POOL_NAME           Node pool name (default: gpu)"
     echo "  NODE_POOL_NODE_COUNT     Number of nodes in pool (default: 2)"
-    echo "  GPU_OPERATOR_VERSION     Version of GPU Operator to install (default: v25.3.1)"
-    echo "  NETWORK_OPERATOR_VERSION Version of Network Operator to install (default: v25.4.0)"
+    echo "  GPU_OPERATOR_VERSION     Version of GPU Operator to install (default: ${GPU_OPERATOR_VERSION})"
+    echo "  NETWORK_OPERATOR_VERSION Version of Network Operator to install (default: ${NETWORK_OPERATOR_VERSION})"
     echo "  MPI_OPERATOR_VERSION     Version of MPI Operator to install (default: v0.6.0)"
     echo "  CERT_MANAGER_VERSION     Version of cert-manager to install (default: v1.18.2)"
     echo "  PYTORCH_OPERATOR_VERSION Version of PyTorch Operator to install (default: v1.8.1)"
@@ -590,6 +670,14 @@ function print_usage() {
     echo "  INSTALL_AMLFS            Install AMLFS CSI driver (default: true)"
     echo "  INSTALL_AMLFS_ROLES      Install AMLFS roles for kubelet identity (default: true)"
     echo "                           Note: Both INSTALL_AMLFS and INSTALL_AMLFS_ROLES must be true for role assignment"
+    echo "  CREATE_DEDICATED_VNET    Create & use dedicated VNet/subnets for AKS (default: true)"
+    echo "  USE_EXISTING_SUBNET_ID   Existing subnet resource ID to use directly (overrides CREATE_DEDICATED_VNET)"
+    echo "  VNET_NAME                Name of VNet when CREATE_DEDICATED_VNET=true (default: \"${CLUSTER_NAME}-vnet\")"
+    echo "  VNET_ADDRESS_SPACE       CIDR for VNet address space (default: 10.16.0.0/12)"
+    echo "  AKS_SUBNET_NAME          Name of AKS subnet (default: aks)"
+    echo "  AKS_SUBNET_PREFIX        CIDR for AKS subnet (default: 10.16.0.0/16)"
+    echo "  SERVICE_SUBNET_NAME      Name of service subnet (default: service)"
+    echo "  SERVICE_SUBNET_PREFIX    CIDR for service subnet (default: 10.17.0.0/16)"
     echo ""
     echo "RDMA Device Plugin Options:"
     echo "  sriov-device-plugin      Uses SR-IOV device plugin (resource: rdma/ib)"

@@ -1,15 +1,31 @@
 # Torset Labeler Helm Chart
 
+## Table of Contents
+
+1. [Overview](#1-overview)
+2. [Prerequisites](#2-prerequisites)
+3. [What This Chart Does](#3-what-this-chart-does)
+4. [Installation](#4-installation)
+5. [Configuration](#5-configuration)
+6. [How It Works](#6-how-it-works)
+7. [Checking Results](#7-checking-results)
+8. [Troubleshooting](#8-troubleshooting)
+9. [Cleanup](#9-cleanup)
+10. [Re-running Discovery](#10-re-running-discovery)
+11. [Integration with Workloads](#11-integration-with-workloads)
+
+## 1. Overview
+
 This Helm chart labels AKS nodes with torset information based on their HCA (Host Channel Adapter) GUIDs collected by the `node-labeler` chart.
 
-## Prerequisites
+## 2. Prerequisites
 
 1. The `node-labeler` chart must be installed and running first to collect HCA GUID annotations
 2. Nodes must have the `ib/hca-guids` annotation populated
 3. At least one GPU node with InfiniBand hardware and SHARP support
 4. The target nodepool must have InfiniBand connectivity
 
-## What This Chart Does
+## 3. What This Chart Does
 
 This chart runs a Kubernetes Job that:
 
@@ -17,7 +33,7 @@ This chart runs a Kubernetes Job that:
 2. **Discovers Torsets**: Uses SHARP topology discovery to identify which nodes belong to the same torset (InfiniBand switching domain)
 3. **Labels Nodes**: Applies `ib/torset=torset-XX` labels to each node based on the discovered topology
 
-## Installation
+## 4. Installation
 
 ### Basic Installation
 
@@ -34,7 +50,7 @@ helm install torset-labeler ./utilities/aks/torset_labeler/helm -n kube-system \
   --set nodepool.selector="agentpool=mygpupool"
 ```
 
-## Configuration
+## 5. Configuration
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
@@ -57,7 +73,7 @@ image:
   pullPolicy: IfNotPresent
 ```
 
-## How It Works
+## 6. How It Works
 
 ### Architecture
 
@@ -89,7 +105,7 @@ ib/torset=torset-00
 
 Nodes in the same torset share the same InfiniBand switching domain and have optimal network connectivity for collective operations.
 
-## Checking Results
+## 7. Checking Results
 
 View torset labels on all nodes:
 
@@ -103,7 +119,7 @@ View detailed torset assignments:
 kubectl get nodes -o json | jq -r '.items[] | select(.metadata.labels["ib/torset"]) | "\(.metadata.name): \(.metadata.labels["ib/torset"])"'
 ```
 
-## Troubleshooting
+## 8. Troubleshooting
 
 ### Check Job Status
 
@@ -144,7 +160,7 @@ kubectl logs -n kube-system job/torset-labeler
 - Verify the nodepool selector matches available nodes
 - Check node resources and scheduling constraints
 
-## Cleanup
+## 9. Cleanup
 
 To remove the Job and related resources:
 
@@ -158,7 +174,7 @@ To remove torset labels from nodes:
 kubectl label nodes --all ib/torset-
 ```
 
-## Re-running Discovery
+## 10. Re-running Discovery
 
 The Job will complete after labeling nodes. To re-run torset discovery (e.g., after adding new nodes with autoscaling):
 
@@ -170,7 +186,7 @@ The Job will complete after labeling nodes. To re-run torset discovery (e.g., af
 - Labels are always consistent with the current topology
 - Autoscaling events don't result in mixed label states
 
-## Integration with Workloads
+## 11. Integration with Workloads
 
 Once nodes are labeled with torsets, you can use these labels in Pod scheduling:
 
