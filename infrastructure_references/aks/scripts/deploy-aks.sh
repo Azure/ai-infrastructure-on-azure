@@ -104,6 +104,7 @@ function add_nodepool() {
     : "${NODE_POOL_VM_SIZE:?❌ Environment variable NODE_POOL_VM_SIZE must be set}"
     : "${NODE_POOL_NAME:=gpu}"
     : "${NODE_POOL_NODE_COUNT:=2}"
+    : "${NODE_POOL_TAG:=}"
 
     aks_infiniband_support="az feature show \
         --namespace Microsoft.ContainerService \
@@ -117,12 +118,27 @@ function add_nodepool() {
     done
 
     echo "⏳ Adding node pool '${NODE_POOL_NAME}', SKU: '${NODE_POOL_VM_SIZE}', Count: '${NODE_POOL_NODE_COUNT}' to AKS cluster '${CLUSTER_NAME}' in resource group '${AZURE_RESOURCE_GROUP}'!..."
-    az aks nodepool add \
-        --name "${NODE_POOL_NAME}" \
-        --resource-group "${AZURE_RESOURCE_GROUP}" \
-        --cluster-name "${CLUSTER_NAME}" \
-        --node-count "${NODE_POOL_NODE_COUNT}" \
-        --node-vm-size "${NODE_POOL_VM_SIZE}" "$@"
+    
+    # Build the nodepool add command
+    local nodepool_cmd=(
+        az aks nodepool add
+        --name "${NODE_POOL_NAME}"
+        --resource-group "${AZURE_RESOURCE_GROUP}"
+        --cluster-name "${CLUSTER_NAME}"
+        --node-count "${NODE_POOL_NODE_COUNT}"
+        --node-vm-size "${NODE_POOL_VM_SIZE}"
+    )
+    
+    # Add tags if NODE_POOL_TAG is set
+    if [[ -n "${NODE_POOL_TAG}" ]]; then
+        nodepool_cmd+=(--tags "${NODE_POOL_TAG}")
+    fi
+    
+    # Add any additional arguments passed to the function
+    nodepool_cmd+=("$@")
+    
+    # Execute the command
+    "${nodepool_cmd[@]}"
 
     echo "✅ Node pool '${NODE_POOL_NAME}', SKU: '${NODE_POOL_VM_SIZE}', Count: '${NODE_POOL_NODE_COUNT}' added to AKS cluster '${CLUSTER_NAME}' in resource group '${AZURE_RESOURCE_GROUP}'!"
 }
