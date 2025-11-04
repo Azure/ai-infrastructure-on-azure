@@ -48,11 +48,11 @@ export NODE_POOL_VM_SIZE=""
 # export RDMA_DEVICE_PLUGIN=""
 # export CREATE_DEDICATED_VNET="true"          # Set to false to use AKS-generated VNet
 # export VNET_NAME=""                           # Defaults to "${CLUSTER_NAME}-vnet"
-# export VNET_ADDRESS_SPACE="10.10.0.0/16"       # VNet CIDR
+# export VNET_ADDRESS_SPACE="10.16.0.0/12"       # VNet CIDR (higher /12 boundary)
 # export AKS_SUBNET_NAME="aks"                  # Subnet for AKS nodes
-# export AKS_SUBNET_PREFIX="10.10.0.0/21"        # AKS subnet CIDR
+# export AKS_SUBNET_PREFIX="10.16.0.0/16"        # AKS subnet CIDR (default /16)
 # export SERVICE_SUBNET_NAME="service"          # Additional service subnet
-# export SERVICE_SUBNET_PREFIX="10.10.8.0/24"    # Service subnet CIDR
+# export SERVICE_SUBNET_PREFIX="10.17.0.0/16"    # Service subnet CIDR (default /16)
 # export USE_EXISTING_SUBNET_ID=""             # If set, skip VNet creation and use this subnet id
 ```
 
@@ -103,7 +103,7 @@ The `deploy-aks.sh` script supports the following commands:
 CREATE_DEDICATED_VNET=false ./scripts/deploy-aks.sh deploy-aks
 
 # Customize address space and subnets
-VNET_ADDRESS_SPACE=10.20.0.0/16 AKS_SUBNET_PREFIX=10.20.0.0/21 SERVICE_SUBNET_PREFIX=10.20.8.0/24 ./scripts/deploy-aks.sh deploy-aks
+VNET_ADDRESS_SPACE=10.32.0.0/12 AKS_SUBNET_PREFIX=10.32.0.0/16 SERVICE_SUBNET_PREFIX=10.33.0.0/16 ./scripts/deploy-aks.sh deploy-aks
 
 # Install with custom parameters
 ./scripts/deploy-aks.sh deploy-aks --node-vm-size standard_ds4_v2

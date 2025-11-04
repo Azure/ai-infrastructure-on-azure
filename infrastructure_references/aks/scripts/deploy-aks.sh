@@ -22,11 +22,11 @@ fi
 # Virtual Network configuration (optional dedicated VNet for AKS)
 : "${CREATE_DEDICATED_VNET:=true}"  # Set to false to use AKS generated VNet (current behavior)
 : "${VNET_NAME:=${CLUSTER_NAME}-vnet}"                 # Name of the VNet to create/use
-: "${VNET_ADDRESS_SPACE:=10.10.0.0/16}"                 # CIDR for VNet address space
+: "${VNET_ADDRESS_SPACE:=10.16.0.0/12}"                 # CIDR for VNet address space (higher /12 boundary)
 : "${AKS_SUBNET_NAME:=aks}"                            # Subnet name for AKS nodes
-: "${AKS_SUBNET_PREFIX:=10.10.0.0/21}"                  # CIDR for AKS subnet (defaults to /21)
+: "${AKS_SUBNET_PREFIX:=10.16.0.0/16}"                  # CIDR for AKS subnet (defaults to /16 within VNet)
 : "${SERVICE_SUBNET_NAME:=service}"                    # Subnet name for additional services
-: "${SERVICE_SUBNET_PREFIX:=10.10.8.0/24}"              # CIDR for service subnet (defaults to /24)
+: "${SERVICE_SUBNET_PREFIX:=10.17.0.0/16}"              # CIDR for service subnet (defaults to /16 within VNet)
 : "${USE_EXISTING_SUBNET_ID:=}"                        # If set, use this subnet id directly and skip VNet creation
 
 # Versions
@@ -673,11 +673,11 @@ function print_usage() {
     echo "  CREATE_DEDICATED_VNET    Create & use dedicated VNet/subnets for AKS (default: true)"
     echo "  USE_EXISTING_SUBNET_ID   Existing subnet resource ID to use directly (overrides CREATE_DEDICATED_VNET)"
     echo "  VNET_NAME                Name of VNet when CREATE_DEDICATED_VNET=true (default: \"${CLUSTER_NAME}-vnet\")"
-    echo "  VNET_ADDRESS_SPACE       CIDR for VNet address space (default: 10.10.0.0/16)"
+    echo "  VNET_ADDRESS_SPACE       CIDR for VNet address space (default: 10.16.0.0/12)"
     echo "  AKS_SUBNET_NAME          Name of AKS subnet (default: aks)"
-    echo "  AKS_SUBNET_PREFIX        CIDR for AKS subnet (default: 10.10.0.0/21)"
+    echo "  AKS_SUBNET_PREFIX        CIDR for AKS subnet (default: 10.16.0.0/16)"
     echo "  SERVICE_SUBNET_NAME      Name of service subnet (default: service)"
-    echo "  SERVICE_SUBNET_PREFIX    CIDR for service subnet (default: 10.10.8.0/24)"
+    echo "  SERVICE_SUBNET_PREFIX    CIDR for service subnet (default: 10.17.0.0/16)"
     echo ""
     echo "RDMA Device Plugin Options:"
     echo "  sriov-device-plugin      Uses SR-IOV device plugin (resource: rdma/ib)"
