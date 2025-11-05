@@ -4,13 +4,23 @@
 
 # Model configuration
 model:
+  # Predefined model size key. Supported: 175b, 30b, 13b, 1.3b, 857m, 375m, 125m
+  # If set, the helper template will derive the below parameters unless they are explicitly overridden.
+  size: "175b"
   # Model parameters (defaults match GPT-3 175B configuration like SLURM version)
-  numLayers: 96
-  hiddenSize: 12288
-  numAttentionHeads: 96
-  seqLength: 2048
-  tensorModelParallelSize: 8
-  pipelineModelParallelSize: 16
+  numLayers: null
+  hiddenSize: null
+  numAttentionHeads: null
+  seqLength: null
+  tensorModelParallelSize: null
+  pipelineModelParallelSize: null
+
+# Tokenizer configuration
+tokenizer:
+  # Path (relative to storage.mount) to vocab file. If empty, script will fall back to dataset sibling bpe/vocab.json
+  vocabFile: ""
+  # Path (relative to storage.mount) to merges file. If empty, script will fall back to dataset sibling bpe/merges.txt
+  mergeFile: ""
 
 # Container image configuration
 image:
@@ -82,4 +92,4 @@ env:
   # Topology file path
   topoFile: "/etc/ndv5-topo.xml"
   # Log level
-  logLevel: "INFO"
+  logLevel: "ERROR"
