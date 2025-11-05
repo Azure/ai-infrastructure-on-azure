@@ -57,6 +57,10 @@ spec:
               value: "{{ .Values.storage.logsPath }}"
             - name: CHECKPOINT_PATH_DIR
               value: "{{ .Values.storage.checkpointPath }}"
+            - name: VOCAB_FILE
+              value: "{{ .Values.tokenizer.vocabFile }}"
+            - name: MERGE_FILE
+              value: "{{ .Values.tokenizer.mergeFile }}"
             - name: CHUNKS
               value: "{{ .Values.training.chunks }}"
             - name: GLOBAL_BATCH_SIZE
@@ -78,17 +82,17 @@ spec:
             - name: TOPO_FILE
               value: "{{ .Values.env.topoFile }}"
             - name: NUM_LAYERS
-              value: "{{ .Values.model.numLayers | default 96 }}"
+              value: {{ include "megatron-training.param.numLayers" . | quote }}
             - name: HIDDEN_SIZE
-              value: "{{ .Values.model.hiddenSize | default 12288 }}"
+              value: {{ include "megatron-training.param.hiddenSize" . | quote }}
             - name: NUM_ATTENTION_HEADS
-              value: "{{ .Values.model.numAttentionHeads | default 96 }}"
+              value: {{ include "megatron-training.param.numAttentionHeads" . | quote }}
             - name: SEQ_LENGTH
-              value: "{{ .Values.model.seqLength | default 2048 }}"
+              value: {{ include "megatron-training.param.seqLength" . | quote }}
             - name: TENSOR_MODEL_PARALLEL_SIZE
-              value: "{{ .Values.model.tensorModelParallelSize | default 8 }}"
+              value: {{ include "megatron-training.param.tensorModelParallelSize" . | quote }}
             - name: PIPELINE_MODEL_PARALLEL_SIZE
-              value: "{{ .Values.model.pipelineModelParallelSize | default 16 }}"
+              value: {{ include "megatron-training.param.pipelineModelParallelSize" . | quote }}
             - name: RDZV_ID
               value: "{{ $rdzvId }}"
             resources:
@@ -171,6 +175,10 @@ spec:
               value: "{{ .Values.storage.logsPath }}"
             - name: CHECKPOINT_PATH_DIR
               value: "{{ .Values.storage.checkpointPath }}"
+            - name: VOCAB_FILE
+              value: "{{ .Values.tokenizer.vocabFile }}"
+            - name: MERGE_FILE
+              value: "{{ .Values.tokenizer.mergeFile }}"
             - name: CHUNKS
               value: "{{ .Values.training.chunks }}"
             - name: GLOBAL_BATCH_SIZE
@@ -192,17 +200,17 @@ spec:
             - name: TOPO_FILE
               value: "{{ .Values.env.topoFile }}"
             - name: NUM_LAYERS
-              value: "{{ .Values.model.numLayers | default 96 }}"
+              value: {{ include "megatron-training.param.numLayers" . | quote }}
             - name: HIDDEN_SIZE
-              value: "{{ .Values.model.hiddenSize | default 12288 }}"
+              value: {{ include "megatron-training.param.hiddenSize" . | quote }}
             - name: NUM_ATTENTION_HEADS
-              value: "{{ .Values.model.numAttentionHeads | default 96 }}"
+              value: {{ include "megatron-training.param.numAttentionHeads" . | quote }}
             - name: SEQ_LENGTH
-              value: "{{ .Values.model.seqLength | default 2048 }}"
+              value: {{ include "megatron-training.param.seqLength" . | quote }}
             - name: TENSOR_MODEL_PARALLEL_SIZE
-              value: "{{ .Values.model.tensorModelParallelSize | default 8 }}"
+              value: {{ include "megatron-training.param.tensorModelParallelSize" . | quote }}
             - name: PIPELINE_MODEL_PARALLEL_SIZE
-              value: "{{ .Values.model.pipelineModelParallelSize | default 16 }}"
+              value: {{ include "megatron-training.param.pipelineModelParallelSize" . | quote }}
             - name: RDZV_ID
               value: "{{ $rdzvId }}"
             resources:
