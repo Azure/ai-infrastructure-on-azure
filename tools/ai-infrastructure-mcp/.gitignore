@@ -1,0 +1,39 @@
+# Python bytecode / cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+.env/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Logs / local data
+*.log
+logs/
+
+# IDE/editor
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+
+# Coverage / test
+.coverage*
+htmlcov/
+.pytest_cache/
+
+# Local secrets (template real ones instead)
+secrets/
+.env.local
+
+# Misc
+*.bak
