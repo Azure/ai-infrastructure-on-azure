@@ -7,9 +7,10 @@
 3. [AI Training Example Catalog](#3-ai-training-example-catalog)
 4. [Infrastructure Validation Catalog](#4-infrastructure-validation-catalog)
 5. [Utilities Catalog](#5-utilities-catalog)
-6. [Contributing](#6-contributing)
-7. [Trademarks](#7-trademarks)
-8. [Contributors](#8-contributors)
+6. [AI Infrastructure MCP Server](#6-ai-infrastructure-mcp-server)
+7. [Contributing](#7-contributing)
+8. [Trademarks](#8-trademarks)
+9. [Contributors](#9-contributors)
 
 ## 1. Overview
 
@@ -58,7 +59,18 @@ For each scenario and architecture, the repository will include storage recommen
 2. Torset Labeler - Discovers and labels nodes with torset (InfiniBand switching domain) information using SHARP topology discovery
    - [AKS version](./utilities/aks/torset_labeler/helm/README.md)
 
-## 6. Contributing
+## 6. AI Infrastructure MCP Server
+
+The [AI Infrastructure MCP Server](./tools/ai-infrastructure-mcp/README.md) is a Model Context Protocol (MCP) server that provides tools for managing and monitoring Slurm-based HPC clusters. It enables AI assistants like GitHub Copilot to interact with cluster infrastructure through a standardized protocol, offering capabilities such as:
+
+- **Slurm job management** - Query job status, accounting data, and cluster information
+- **System monitoring** - Check systemd services and logs across cluster nodes
+- **File operations** - Read and search files on the cluster
+- **Azure VM metadata** - Retrieve physical hostnames and VMSS information
+
+Currently targeting Slurm clusters with SSH-based connectivity. See the [full documentation](./tools/ai-infrastructure-mcp/README.md) for setup and usage details.
+
+## 7. Contributing
 
 This project welcomes contributions and suggestions. Most contributions require you to agree to a
 Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
@@ -72,7 +84,7 @@ This project has adopted the [Microsoft Open Source Code of Conduct](https://ope
 For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
 contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
 
-## 7. Trademarks
+## 8. Trademarks
 
 This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft
 trademarks or logos is subject to and must follow
