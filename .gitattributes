@@ -1,0 +1,2 @@
+# Ensure shell scripts always use Linux line endings (LF)
+*.sh text eol=lf

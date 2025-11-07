@@ -30,7 +30,7 @@ The references that have been used to build this example are:
 
 ## 2. Creating Azure CycleCloud Workspace for Slurm Environment
 
-The guide requires an Azure CycleCloud Workspace for Slrum environment. The documentation [available in Microsoft Learn](https://learn.microsoft.com/en-us/azure/cyclecloud/overview-ccws?view=cyclecloud-8) guides through the deployment process.
+The guide requires an Azure CycleCloud Workspace for Slurm environment. The documentation [available in Microsoft Learn](https://learn.microsoft.com/en-us/azure/cyclecloud/overview-ccws?view=cyclecloud-8) guides through the deployment process.
 
 This can be done through infrastructure as code [following the infrastructure reference example](../../../infrastructure_references/azure_cyclecloud_workspace_for_slurm/README.md) where the Azure environment suggested for the following example should contain:
 
