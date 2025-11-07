@@ -27,7 +27,7 @@ For each scenario and architecture, the repository will include storage recommen
 ## 2. Infrastructure References Catalog
 
 1. [Azure CycleCloud Slurm Workspace AI Cluster](./infrastructure_references/azure_cyclecloud_workspace_for_slurm/README.md) - Prototypes for the creation of Azure CycleCloud Slurm Workspace AI Clusters using CLI deployment
-2. [Azure Kubernetes Service Cluster](./infrastructure_references/aks/README.md) - Deployment script for AKS cluster 
+2. [Azure Kubernetes Service Cluster](./infrastructure_references/aks/README.md) - Deployment script for AKS cluster
 
 ## 3. AI Training Example Catalog
 

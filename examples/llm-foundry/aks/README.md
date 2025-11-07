@@ -5,11 +5,11 @@
 1. [Introduction](#1-introduction)
 2. [Prerequisites and AKS Environment Setup](#2-prerequisites-and-aks-environment-setup)
 3. [Deployment Steps](#3-deployment-steps)
-   
+
    3.1. [Shared Storage Configuration](#31-shared-storage-configuration)
-   
+
    3.2. [Dataset Preparation](#32-dataset-preparation)
-   
+
    3.3. [Model Training](#33-model-training)
 
 ## 1. Introduction
@@ -28,7 +28,7 @@ The implementation leverages several key technologies:
 Before proceeding with the training deployment, ensure your AKS cluster meets the following requirements:
 
 - **PyTorch Operator** installed for distributed training coordination
-- **Blob Storage CSI Driver** enabled for data storage integration  
+- **Blob Storage CSI Driver** enabled for data storage integration
 - **GPU-enabled node pools** with appropriate VM SKUs (e.g., Standard_NC24ads_A100_v4)
 - **RDMA networking** configured for high-performance inter-node communication
 
@@ -42,7 +42,7 @@ Deploy shared storage infrastructure to provide persistent, scalable storage acc
 
 #### Option 1: Azure Managed Lustre File System (AMLFS)
 
-AMLFS delivers high-throughput, low-latency storage optimized for large-scale training workloads. 
+AMLFS delivers high-throughput, low-latency storage optimized for large-scale training workloads.
 
 AMLFS offers different performance tiers with bandwidth scaling per TiB of storage. The tier and size can be tuned for your cluster requirements. This example uses the 125 MB/s/TiB tier with 16TiB total storage capacity.
 
@@ -75,7 +75,7 @@ kubectl get pvc shared-storage-pvc
 
 # Verify storage class and capacity
 kubectl describe pvc shared-storage-pvc
-``` 
+```
 
 ### 3.2. Dataset Preparation
 
@@ -105,10 +105,12 @@ Execute distributed model training using the PyTorch Operator. The training proc
 #### Storage Strategy:
 
 The training implementation uses a dual-storage approach:
+
 - **Remote storage** (`data_remote`): Blob storage containing the complete dataset
 - **Local storage** (`data_local`): Fast local disk (typically `/tmp` on ephemeral OS disk) for caching
 
 This design enables asynchronous data streaming to local node storage, minimizing I/O latency and maximizing GPU utilization. For enhanced performance, consider:
+
 - **Local NVMe provisioner** for dedicated high-speed local storage
 - **Azure Container Storage** (when available) to aggregate multiple NVMe disks across nodes
 
@@ -160,5 +162,3 @@ helm install llm-training examples/llm-foundry/aks/helm/llm-training \
   --set "yamlUpdates.save_num_checkpoints_to_keep=10" \
   --set "yamlUpdates.fsdp_config\.state_dict_type=sharded"
 ```
-
-
