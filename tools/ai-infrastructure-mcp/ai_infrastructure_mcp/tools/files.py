@@ -1,7 +1,6 @@
 """File access tools for cluster nodes."""
 
 import shlex
-import re
 from typing import Dict, Any, Union
 from ai_infrastructure_mcp.ssh_config import run_login_command
 

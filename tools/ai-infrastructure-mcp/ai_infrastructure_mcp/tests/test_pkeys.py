@@ -1,4 +1,3 @@
-import os
 import pytest
 
 from ai_infrastructure_mcp.tools.pkeys import get_infiniband_pkeys, _parse_parallel_ssh_output

@@ -1,6 +1,5 @@
 import pytest
 import ai_infrastructure_mcp.tools.systemd as systemd
-import ai_infrastructure_mcp.tools.command_wrapper as command_wrapper
 
 """Tests for systemd command wrappers (systemctl and journalctl).
 
@@ -256,6 +255,8 @@ def test_systemctl_empty_argument_list(monkeypatch):
     import ai_infrastructure_mcp.tools.command_wrapper as cw
     monkeypatch.setattr(cw, 'run_login_command', fake_run)
     result = systemd.systemctl(['h1'], [])
+    assert result['success'] is True
+    assert result['raw_output'] == "mock output for systemctl"
 
 
 def test_journalctl_empty_argument_list(monkeypatch):
@@ -266,6 +267,8 @@ def test_journalctl_empty_argument_list(monkeypatch):
     import ai_infrastructure_mcp.tools.command_wrapper as cw
     monkeypatch.setattr(cw, 'run_login_command', fake_run)
     result = systemd.journalctl(['h1'], [])
+    assert result['success'] is True
+    assert result['raw_output'] == "mock output for journalctl"
 
 
 def test_systemctl_arguments_with_spaces(monkeypatch):

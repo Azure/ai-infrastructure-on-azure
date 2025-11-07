@@ -18,7 +18,6 @@ from .tools.azure_vm import get_vmss_id as _get_vmss_instance_name_impl
 
 from typing import List, Dict, Any, Optional
 import argparse
-import os
 
 def build_server() -> FastMCP:
     server = FastMCP(name="ai-infrastructure-mcp")
