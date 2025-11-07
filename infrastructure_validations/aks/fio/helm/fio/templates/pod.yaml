@@ -25,14 +25,18 @@ spec:
         {{- end }}
         echo "fio test completed. Sleeping for debugging ({{ .Values.sleepDuration }}s)..." && sleep {{ .Values.sleepDuration }}
     volumeMounts:
-    - name: blob-storage
+    - name: test-storage
       mountPath: {{ .Values.pod.mountPath }}
     {{- if .Values.resources }}
     resources:
       {{- toYaml .Values.resources | nindent 6 }}
     {{- end }}
   volumes:
-  - name: blob-storage
+  - name: test-storage
     persistentVolumeClaim:
+      {{- if eq .Values.storage.type "existing-pvc" }}
+      claimName: {{ .Values.storage.existingPvcName }}
+      {{- else }}
       claimName: {{ .Release.Name }}-pvc
+      {{- end }}
   restartPolicy: {{ .Values.pod.restartPolicy }}

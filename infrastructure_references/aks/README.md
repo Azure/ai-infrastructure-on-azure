@@ -303,23 +303,23 @@ Ephemeral disk storage uses local NVMe or temp disk on the node for high-perform
 **Example VM Series with Local NVMe:**
 - NDv5 series (e.g., Standard_ND96isr_H100_v5)
 
-### Deploying Storage with Helm
+### Testing Storage Performance
 
-After cluster creation with Azure Container Storage enabled, deploy the ephemeral disk storage Helm chart:
+After cluster creation with Azure Container Storage enabled, you can test storage performance using the FIO test tool:
 
 ```bash
-# Deploy with default settings
-helm install ephemeral-storage ../../storage_references/aks/azure_container_storage/helm/ephemeral-disk-storage
+# Test with Azure Container Storage
+helm install fio-test infrastructure_validations/aks/fio/helm/fio \
+  --set storage.type=azure-container-storage
 
-# Deploy with custom PVC name and size
-helm install ephemeral-storage ../../storage_references/aks/azure_container_storage/helm/ephemeral-disk-storage \
-  --set storage.pvcName="my-ephemeral-pvc" \
-  --set storage.size="200Gi"
+# Monitor the test
+kubectl logs -f fio-test-fio
+
+# Clean up
+helm uninstall fio-test
 ```
 
-The Helm chart creates:
-- A StorageClass configured for ephemeral disk storage
-- A PersistentVolumeClaim for your workloads
+See the [FIO testing documentation](../../infrastructure_validations/aks/fio/README.md) for more test examples and configuration options.
 
 ### Configuration Variables
 
