@@ -156,7 +156,7 @@ INSTALL_AMLFS=false ./scripts/deploy-aks.sh all
 
 ### Azure Container Storage Configuration
 
-- **`ENABLE_AZURE_CONTAINER_STORAGE`** - Enable Azure Container Storage with ephemeral disk during cluster creation (default: "true")
+- **`ENABLE_AZURE_CONTAINER_STORAGE`** - Enable Azure Container Storage during cluster creation (default: "true")
   - Set to "false" to disable Azure Container Storage
 
 ## 6. RDMA Device Plugin Configuration
@@ -267,11 +267,11 @@ USE_EXISTING_SUBNET_ID="/subscriptions/<subid>/resourceGroups/<rg>/providers/Mic
 
 ## 8. Azure Container Storage Support
 
-Azure Container Storage is a cloud-based volume management service built natively for containers. The deployment script enables Azure Container Storage with ephemeral disk by default, which uses local NVMe or temp disks for high-performance, low-latency storage.
+Azure Container Storage is a cloud-based volume management service built natively for containers. The deployment script enables Azure Container Storage by default, which uses local NVMe or temp disks (ephemeral disk) for high-performance, low-latency storage.
 
 ### Enabling Azure Container Storage
 
-Azure Container Storage with ephemeral disk is enabled by default during cluster creation. The script uses the `--enable-azure-container-storage ephemeralDisk` flag.
+Azure Container Storage is enabled by default during cluster creation using the `--enable-azure-container-storage` flag.
 
 #### Default Behavior (Enabled)
 
@@ -323,7 +323,7 @@ The Helm chart creates:
 
 ### Configuration Variables
 
-- **`ENABLE_AZURE_CONTAINER_STORAGE`** - Enable Azure Container Storage with ephemeral disk (default: `true`)
+- **`ENABLE_AZURE_CONTAINER_STORAGE`** - Enable Azure Container Storage (default: `true`)
   - Set to `false` to disable during cluster creation
 
 ### Additional Resources
