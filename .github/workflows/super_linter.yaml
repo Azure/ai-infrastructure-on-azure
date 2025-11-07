@@ -66,6 +66,8 @@ jobs:
         with:
           branch: ${{ github.event.pull_request.head.ref || github.head_ref || github.ref }}
           commit_message: "super-linter: fix linting issues [skip ci]"
-          skip-checks: true
+          skip_dirty_check: true
+          skip_fetch: true
+          skip_checkout: true
           commit_user_name: super-linter
           commit_user_email: super-linter@super-linter.dev
