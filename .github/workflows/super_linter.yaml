@@ -53,7 +53,7 @@ jobs:
           VALIDATE_MARKDOWN: false # Many pre-existing markdown issues
           VALIDATE_EDITORCONFIG: false # Deprecated config key warning from super-linter
           # Disable Black in favor of Pyink to avoid formatter conflicts
-          FIX_PYTHON_BLACK: false
+          VALIDATE_PYTHON_BLACK: false
           # Filter out Helm chart templates from remaining YAML checks
           FILTER_REGEX_EXCLUDE: ".*helm.*templates/.*\\.yaml$"
 
