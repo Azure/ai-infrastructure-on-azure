@@ -13,8 +13,8 @@ This directory contains Helm charts for deploying ReadWriteMany storage options 
 
 ## 2. Available Storage Options
 
-* **Blob Shared Storage** (`blob-shared-storage`) - Cost-effective storage using Azure Blob with BlobFuse
-* **AMLFS Shared Storage** (`amlfs-shared-storage`) - High-performance storage using Azure Managed Lustre File System
+- **Blob Shared Storage** (`blob-shared-storage`) - Cost-effective storage using Azure Blob with BlobFuse
+- **AMLFS Shared Storage** (`amlfs-shared-storage`) - High-performance storage using Azure Managed Lustre File System
 
 ## 3. Blob Shared Storage
 
@@ -37,7 +37,6 @@ helm install shared-storage ./blob-shared-storage \
   --set-json 'storage.mountOptions=["-o allow_other","--use-attr-cache=true","--cancel-list-on-mount-seconds=10","-o attr_timeout=120","-o entry_timeout=120","-o negative_timeout=120","--log-level=LOG_WARNING","--file-cache-timeout-in-seconds=120","--block-cache","--block-cache-block-size=32","--block-cache-parallelism=80"]'
 ```
 
-
 ## 4. AMLFS Shared Storage
 
 Provides high-throughput, low-latency shared storage using Azure Managed Lustre File System. AMLFS is optimized for large-scale, performance-critical workloads that require fast I/O operations.
@@ -47,11 +46,11 @@ Provides high-throughput, low-latency shared storage using Azure Managed Lustre 
 AMLFS offers different performance tiers with varying throughput and storage requirements:
 
 | SKU                         | Throughput per TiB | Storage Minimum | Storage Maximum | Increment |
-|-----------------------------|--------------------|-----------------|-----------------|-----------|
-| `AMLFS-Durable-Premium-40`  |            40 MB/s |          48 TiB |        12.5 PiB |    48 TiB |
-| `AMLFS-Durable-Premium-125` |           125 MB/s |          16 TiB |           4 PiB |    16 TiB |
-| `AMLFS-Durable-Premium-250` |           250 MB/s |           8 TiB |           2 PiB |     8 TiB |
-| `AMLFS-Durable-Premium-500` |           500 MB/s |           4 TiB |           1 PiB |     4 TiB |
+| --------------------------- | ------------------ | --------------- | --------------- | --------- |
+| `AMLFS-Durable-Premium-40`  | 40 MB/s            | 48 TiB          | 12.5 PiB        | 48 TiB    |
+| `AMLFS-Durable-Premium-125` | 125 MB/s           | 16 TiB          | 4 PiB           | 16 TiB    |
+| `AMLFS-Durable-Premium-250` | 250 MB/s           | 8 TiB           | 2 PiB           | 8 TiB     |
+| `AMLFS-Durable-Premium-500` | 500 MB/s           | 4 TiB           | 1 PiB           | 4 TiB     |
 
 For detailed information about throughput configurations, see the [Azure Managed Lustre documentation](https://learn.microsoft.com/en-us/azure/azure-managed-lustre/create-file-system-portal#throughput-configurations).
 

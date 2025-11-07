@@ -28,21 +28,25 @@ This directory contains the Dockerfile for building a Megatron-LM container imag
 ## 3. Included Components
 
 ### Base Image
+
 - **NVIDIA PyTorch**: 25.03-py3 with CUDA 12.4+ support
 - **Python**: 3.10+ with optimized PyTorch installation
 
 ### Training Frameworks
+
 - **Megatron-LM**: Latest stable version with GPT training support
 - **NeMo Framework Launcher**: 24.12 for advanced model configurations
 - **Transformer Engine**: For optimized attention mechanisms
 
 ### Networking & Performance
+
 - **Mellanox DOCA**: 2.9.1 for InfiniBand optimization
 - **SHARP**: Scalable Hierarchical Aggregation and Reduction Protocol
 - **UCX**: Unified Communication X for high-performance networking
 - **NCCL**: Optimized collective communications
 
 ### System Tools
+
 - **Build tools**: GCC, Make, Autotools for compilation
 - **Compression**: zstd for dataset decompression
 - **Topology files**: NDv5 InfiniBand topology for Azure HPC VMs
@@ -74,6 +78,7 @@ ghcr.io/azure/ai-infrastructure-on-azure/megatron-lm:latest
 ## 5. Image Capabilities
 
 ### Supported Training
+
 - **GPT models**: 125M to 175B+ parameters
 - **Distributed training**: Tensor and pipeline parallelism
 - **Mixed precision**: FP16 and BF16 training
@@ -81,12 +86,14 @@ ghcr.io/azure/ai-infrastructure-on-azure/megatron-lm:latest
 - **ZeRO optimization**: Distributed optimizer states
 
 ### Dataset Support
+
 - **SlimPajama**: 627B token cleaned dataset
 - **Custom datasets**: JSON Lines format support
 - **Data preprocessing**: Tokenization and binary format conversion
 - **Streaming**: Efficient data loading from remote storage
 
 ### Hardware Optimization
+
 - **Multi-GPU**: Up to 8 GPUs per node
 - **Multi-node**: Unlimited node scaling
 - **RDMA networking**: InfiniBand optimization
@@ -95,6 +102,7 @@ ghcr.io/azure/ai-infrastructure-on-azure/megatron-lm:latest
 ## 6. Health Checks
 
 The image includes health checks to verify:
+
 - CUDA availability and GPU detection
 - PyTorch installation and GPU access
 - Basic import functionality for all frameworks
@@ -102,18 +110,21 @@ The image includes health checks to verify:
 ## 7. Usage Examples
 
 ### Basic Training
+
 ```bash
 docker run --gpus all ghcr.io/azure/ai-infrastructure-on-azure/megatron-lm:latest \
   python /megatron-lm/pretrain_gpt.py --help
 ```
 
 ### Environment Check
+
 ```bash
 docker run --gpus all ghcr.io/azure/ai-infrastructure-on-azure/megatron-lm:latest \
   python -c "import torch; print(f'GPUs: {torch.cuda.device_count()}')"
 ```
 
 ### Interactive Session
+
 ```bash
 docker run -it --gpus all ghcr.io/azure/ai-infrastructure-on-azure/megatron-lm:latest bash
 ```
@@ -123,7 +134,7 @@ docker run -it --gpus all ghcr.io/azure/ai-infrastructure-on-azure/megatron-lm:l
 The following environment variables are pre-configured:
 
 - **LAUNCHER_VERSION**: 24.12
-- **NEMO_VERSION**: 24.05  
+- **NEMO_VERSION**: 24.05
 - **MEGATRON_LM_VERSION**: 878d65f
 
 ## 9. Working Directory
@@ -133,6 +144,7 @@ The container's working directory is set to `/megatron-lm` for easy access to tr
 ## 10. Security
 
 The image is configured for secure operation in Kubernetes environments:
+
 - Non-root user capability (when not requiring privileged access)
 - Minimal attack surface with only required packages
 - Regular security updates via automated builds

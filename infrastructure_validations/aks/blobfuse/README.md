@@ -28,11 +28,13 @@ FIO is a versatile tool for testing I/O performance. This setup allows you to te
 ## 3. Quick Start
 
 1. **Deploy the Helm chart (runs default random write test):**
+
    ```bash
    helm install fio-test ./helm/fio
    ```
 
 2. **Monitor the test:**
+
    ```bash
    kubectl logs -f fio-test-pod
    ```
@@ -45,6 +47,7 @@ FIO is a versatile tool for testing I/O performance. This setup allows you to te
 ## 4. Configuration
 
 The Helm chart creates:
+
 - A StorageClass for blob storage with optimized mount options
 - A PersistentVolumeClaim for the test volume
 - A Pod running FIO tests against the mounted blob storage
@@ -52,6 +55,7 @@ The Helm chart creates:
 ### Default Mount Options
 
 The default blobfuse mount options are optimized for performance:
+
 - `allow_other`: Allow other users to access the mount
 - `use-attr-cache=true`: Enable attribute caching
 - `cancel-list-on-mount-seconds=10`: Cancel long-running lists on mount
@@ -63,6 +67,7 @@ The default blobfuse mount options are optimized for performance:
 ### Customization
 
 You can customize the test by modifying the values in the Helm chart:
+
 - Storage class parameters (SKU, mount options)
 - FIO test parameters (block size, I/O pattern, duration)
 - Container resources and limits
@@ -79,11 +84,13 @@ The `examples/` directory contains pre-configured FIO test scenarios:
 The `examples/` directory contains pre-configured test scenarios. To run a specific example:
 
 **Option 1: Run with default values (random write test)**
+
 ```bash
 helm install fio-test ./helm/fio
 ```
 
 **Option 2: Use a specific example configuration**
+
 ```bash
 # Run the block cache sequential write test (4M block writes with block caching)
 helm install block-cache-test ./helm/fio -f helm/fio/examples/block-cache-sequential-write.yaml
@@ -93,6 +100,7 @@ helm install file-cache-test ./helm/fio -f helm/fio/examples/file-cache-sequenti
 ```
 
 **Option 3: Override specific values for custom tests**
+
 ```bash
 # Run a custom sequential write test
 helm install custom-test ./helm/fio \

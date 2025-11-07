@@ -22,21 +22,22 @@ helm install aznhc-test ./helm/aznhc --set nodes=4
 
 ### Configuration Options
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `nodes` | Number of nodes to test | `2` |
-| `gpuResource` | GPU resource name | `nvidia.com/gpu` |
-| `rdmaResource` | RDMA resource name | `rdma/ib` |
-| `image.repository` | Container image repository | `ghcr.io/azure/ai-infrastructure-on-azure/aznhc` |
-| `image.tag` | Container image tag | `latest` |
-| `image.pullPolicy` | Image pull policy | `IfNotPresent` |
-| `nhcConfig` | Node Health Check configuration | See values.yaml |
+| Parameter          | Description                     | Default                                          |
+| ------------------ | ------------------------------- | ------------------------------------------------ |
+| `nodes`            | Number of nodes to test         | `2`                                              |
+| `gpuResource`      | GPU resource name               | `nvidia.com/gpu`                                 |
+| `rdmaResource`     | RDMA resource name              | `rdma/ib`                                        |
+| `image.repository` | Container image repository      | `ghcr.io/azure/ai-infrastructure-on-azure/aznhc` |
+| `image.tag`        | Container image tag             | `latest`                                         |
+| `image.pullPolicy` | Image pull policy               | `IfNotPresent`                                   |
+| `nhcConfig`        | Node Health Check configuration | See values.yaml                                  |
 
 #### Node Health Check Configuration
 
 The `nhcConfig` parameter contains the complete test configuration that gets written to the container. You can customize which tests to run by modifying this configuration in your values file.
 
 The default configuration includes:
+
 - **Hardware checks**: CPU, memory, swap, InfiniBand ports, Ethernet interfaces
 - **GPU checks**: GPU count, health monitoring, bandwidth, ECC errors, clock throttling, NCCL tests
 - **InfiniBand checks**: Bandwidth with GPU Direct RDMA, link flapping detection
@@ -62,6 +63,7 @@ nhcConfig: |
 ```
 
 Then install with:
+
 ```bash
 helm install aznhc-test ./helm/aznhc -f custom-values.yaml
 ```
@@ -69,22 +71,26 @@ helm install aznhc-test ./helm/aznhc -f custom-values.yaml
 ### Monitoring the Health Checks
 
 Check job status:
+
 ```bash
 kubectl get job
 kubectl describe job aznhc-test
 ```
 
 View all health check results:
+
 ```bash
 kubectl logs -l task=aznhc-test
 ```
 
 **Check for failures across all nodes:**
+
 ```bash
 kubectl logs -l task=aznhc-test | grep -i fail
 ```
 
 Monitor job completion:
+
 ```bash
 kubectl wait --for=condition=complete --timeout=600s job/aznhc-test
 ```

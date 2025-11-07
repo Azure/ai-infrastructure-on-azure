@@ -3,7 +3,7 @@ pipeline:
   fullDataset: true
   sampleFiles: 100
   dataDirectory: "slimpajama"
-  
+
   # Step-specific configurations
   download:
     parallelism: 4
@@ -13,7 +13,7 @@ pipeline:
       requests:
         cpu: "2"
         memory: "16Gi"
-        
+
   extract:
     parallelism: 4
     image: "nvcr.io/nvidia/nemo:24.05"
@@ -22,7 +22,7 @@ pipeline:
       requests:
         cpu: "4"
         memory: "16Gi"
-        
+
   concatenate:
     parallelism: 4
     image: "nvcr.io/nvidia/nemo:24.05"
@@ -31,7 +31,7 @@ pipeline:
       requests:
         cpu: "4"
         memory: "256Gi"
-        
+
   preprocess:
     parallelism: 4
     image: "nvcr.io/nvidia/nemo:24.05"

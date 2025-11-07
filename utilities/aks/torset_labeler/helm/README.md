@@ -52,14 +52,14 @@ helm install torset-labeler ./utilities/aks/torset_labeler/helm -n kube-system \
 
 ## 5. Configuration
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `nodepool.selector` | Label selector for nodes to process | `agentpool=gpu` |
-| `image.repository` | Container image with SHARP tools | `mcr.microsoft.com/aznhc/aznhc-nv` |
-| `image.tag` | Image tag | `1.2.0` |
-| `image.pullPolicy` | Image pull policy | `IfNotPresent` |
-| `kubectl.repository` | kubectl image | `mcr.microsoft.com/oss/kubernetes/kubectl` |
-| `kubectl.tag` | kubectl version | `v1.26.3` |
+| Parameter            | Description                         | Default                                    |
+| -------------------- | ----------------------------------- | ------------------------------------------ |
+| `nodepool.selector`  | Label selector for nodes to process | `agentpool=gpu`                            |
+| `image.repository`   | Container image with SHARP tools    | `mcr.microsoft.com/aznhc/aznhc-nv`         |
+| `image.tag`          | Image tag                           | `1.2.0`                                    |
+| `image.pullPolicy`   | Image pull policy                   | `IfNotPresent`                             |
+| `kubectl.repository` | kubectl image                       | `mcr.microsoft.com/oss/kubernetes/kubectl` |
+| `kubectl.tag`        | kubectl version                     | `v1.26.3`                                  |
 
 ## Example: values.yaml
 
@@ -146,6 +146,7 @@ kubectl logs -n kube-system job/torset-labeler
 ### Common Issues
 
 **No nodes found with HCA GUID annotations**
+
 - Ensure `node-labeler` chart is installed and running
 - Check that nodes have `ib/hca-guids` annotations:
   ```bash
@@ -153,10 +154,12 @@ kubectl logs -n kube-system job/torset-labeler
   ```
 
 **SHARP command not found**
+
 - Verify the container image has SHARP tools installed
 - Check that the Job is scheduled on a node with InfiniBand hardware
 
 **Job fails to schedule**
+
 - Verify the nodepool selector matches available nodes
 - Check node resources and scheduling constraints
 
@@ -182,6 +185,7 @@ The Job will complete after labeling nodes. To re-run torset discovery (e.g., af
 2. Reinstall: `helm install torset-labeler ./utilities/aks/torset_labeler/helm -n kube-system`
 
 **Important:** The job automatically removes all existing torset labels from the target nodepool before performing discovery. This ensures:
+
 - Stale labels from removed nodes are cleaned up
 - Labels are always consistent with the current topology
 - Autoscaling events don't result in mixed label states
@@ -199,13 +203,13 @@ spec:
   affinity:
     podAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
-      - labelSelector:
-          matchExpressions:
-          - key: app
-            operator: In
-            values:
-            - my-app
-        topologyKey: ib/torset
+        - labelSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - my-app
+          topologyKey: ib/torset
 ```
 
 This ensures all pods in the workload are scheduled within the same torset for optimal InfiniBand performance.
