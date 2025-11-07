@@ -45,8 +45,7 @@ fi
 : "${INSTALL_AMLFS_ROLES:=true}" # Set to false to skip AMLFS role assignment
 
 # Azure Container Storage Configuration
-: "${ENABLE_AZURE_CONTAINER_STORAGE:=false}" # Set to true to enable Azure Container Storage
-: "${AZURE_CONTAINER_STORAGE_TYPE:=}" # Options: azureDisk, ephemeralDisk, elasticSan (leave empty to use default)
+: "${ENABLE_AZURE_CONTAINER_STORAGE:=true}" # Set to false to disable Azure Container Storage
 
 : "${NETWORK_OPERATOR_NS:=network-operator}"
 : "${GPU_OPERATOR_NS:=gpu-operator}"
@@ -176,11 +175,7 @@ function deploy_aks() {
 
     # Add Azure Container Storage support if enabled
     if [[ "${ENABLE_AZURE_CONTAINER_STORAGE}" == "true" ]]; then
-        if [[ -n "${AZURE_CONTAINER_STORAGE_TYPE}" ]]; then
-            aks_create_cmd+=(--enable-azure-container-storage "${AZURE_CONTAINER_STORAGE_TYPE}")
-        else
-            aks_create_cmd+=(--enable-azure-container-storage)
-        fi
+        aks_create_cmd+=(--enable-azure-container-storage ephemeralDisk)
     fi
 
     # Execute the command
@@ -699,9 +694,7 @@ function print_usage() {
     echo "  INSTALL_AMLFS            Install AMLFS CSI driver (default: true)"
     echo "  INSTALL_AMLFS_ROLES      Install AMLFS roles for kubelet identity (default: true)"
     echo "                           Note: Both INSTALL_AMLFS and INSTALL_AMLFS_ROLES must be true for role assignment"
-    echo "  ENABLE_AZURE_CONTAINER_STORAGE Enable Azure Container Storage (default: false)"
-    echo "  AZURE_CONTAINER_STORAGE_TYPE   Storage pool type for Azure Container Storage"
-    echo "                           Options: azureDisk, ephemeralDisk, elasticSan (leave empty for default)"
+    echo "  ENABLE_AZURE_CONTAINER_STORAGE Enable Azure Container Storage with ephemeral disk (default: true)"
     echo "  CREATE_DEDICATED_VNET    Create & use dedicated VNet/subnets for AKS (default: true)"
     echo "  USE_EXISTING_SUBNET_ID   Existing subnet resource ID to use directly (overrides CREATE_DEDICATED_VNET)"
     echo "  VNET_NAME                Name of VNet when CREATE_DEDICATED_VNET=true (default: \"${CLUSTER_NAME}-vnet\")"

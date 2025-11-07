@@ -1,136 +1,113 @@
-# Azure Container Storage for AKS
+# Azure Container Storage for AKS - Ephemeral Disk
 
 ## Overview
 
-Azure Container Storage is a cloud-based volume management, deployment, and orchestration service built natively for containers. It integrates with Kubernetes, providing persistent storage options optimized for containerized workloads.
-
-This directory contains examples and documentation for using Azure Container Storage with AKS clusters.
+Azure Container Storage is a cloud-based volume management service built natively for containers. This directory contains a Helm chart for deploying Azure Container Storage with ephemeral disk storage, which uses local NVMe or temp disks on nodes for high-performance, low-latency storage.
 
 ## Prerequisites
 
-- AKS cluster with Azure Container Storage enabled
+- AKS cluster with Azure Container Storage enabled with ephemeral disk
 - Azure CLI version that supports `--enable-azure-container-storage` flag
 - kubectl configured to access your AKS cluster
 
 ## Enabling Azure Container Storage
 
-Azure Container Storage can be enabled during AKS cluster creation using the deployment script:
-
-### Default Configuration
-
-Enable Azure Container Storage with default settings:
+Azure Container Storage with ephemeral disk is enabled by default during AKS cluster creation using the deployment script:
 
 ```bash
 export AZURE_REGION="eastus"
 export NODE_POOL_VM_SIZE="Standard_ND96isr_H100_v5"
-export ENABLE_AZURE_CONTAINER_STORAGE="true"
 
 ./infrastructure_references/aks/scripts/deploy-aks.sh deploy-aks
 ```
 
-### Specify Storage Pool Type
-
-Enable Azure Container Storage with a specific storage pool type:
+To disable Azure Container Storage during cluster creation:
 
 ```bash
-export AZURE_REGION="eastus"
-export NODE_POOL_VM_SIZE="Standard_ND96isr_H100_v5"
-export ENABLE_AZURE_CONTAINER_STORAGE="true"
-export AZURE_CONTAINER_STORAGE_TYPE="ephemeralDisk"
-
+export ENABLE_AZURE_CONTAINER_STORAGE="false"
 ./infrastructure_references/aks/scripts/deploy-aks.sh deploy-aks
 ```
 
-## Storage Pool Types
-
-Azure Container Storage supports multiple storage pool types:
-
-### 1. ephemeralDisk
+## Ephemeral Disk Storage
 
 Uses local NVMe or temp disk on the node for high-performance, ephemeral storage.
 
 **Best for:**
-- Temporary data and scratch space
+- AI/ML training scratch space on NDv5 series VMs
 - High-performance workloads requiring low latency
-- AI/ML training with NDv5 series VMs
+- Temporary data and caching
 
 **Characteristics:**
 - Highest performance (lowest latency, highest IOPS)
 - Data is ephemeral (lost when pod is deleted or node is recycled)
 - No additional cost beyond the VM
+- Ideal for NDv5 series VMs with local NVMe SSDs
 
 **Example VM Series:**
 - NDv5 series (e.g., Standard_ND96isr_H100_v5) - includes local NVMe SSDs
 
-### 2. azureDisk
+## Deploying the Helm Chart
 
-Uses Azure Managed Disks for persistent block storage.
-
-**Best for:**
-- General-purpose persistent storage
-- Databases and stateful applications
-- Workloads requiring data persistence
-
-**Characteristics:**
-- Persistent storage (data survives pod/node lifecycle)
-- Supports snapshots and backups
-- ReadWriteOnce access mode
-- Additional cost for managed disks
-
-### 3. elasticSan
-
-Uses Azure Elastic SAN for high-performance, scalable block storage.
-
-**Best for:**
-- Large-scale mission-critical workloads
-- High-performance databases
-- Environments requiring massive scale and IOPS
-
-**Characteristics:**
-- Highest scale and performance tier
-- Persistent storage with enterprise features
-- Shared storage pools across multiple clusters
-- Higher cost for premium features
-
-## Examples
-
-### Local NVMe with NDv5 VMs
-
-The `examples/local-nvme-ndv5.yaml` file demonstrates using ephemeral disk storage with NDv5 series VMs:
+### Basic Deployment
 
 ```bash
-# Deploy the example
-kubectl apply -f storage_references/aks/azure_container_storage/examples/local-nvme-ndv5.yaml
-
-# Verify the PVC is bound
-kubectl get pvc ephemeraldisk-pvc
-
-# Check the pod status
-kubectl get pod fio-test-ephemeral
+helm install ephemeral-storage storage_references/aks/azure_container_storage/helm/ephemeral-disk-storage
 ```
 
-This example includes:
-- A StorageClass configured for ephemeral disk storage
-- A PersistentVolumeClaim requesting 100Gi
-- A sample pod using the storage for testing
+### Custom Configuration
 
-## Environment Variables
+Create a custom values file or use `--set` flags:
 
-When using the deployment script, the following environment variables control Azure Container Storage:
+```bash
+helm install ephemeral-storage storage_references/aks/azure_container_storage/helm/ephemeral-disk-storage \
+  --set storage.pvcName="my-ephemeral-pvc" \
+  --set storage.size="200Gi"
+```
 
-- **`ENABLE_AZURE_CONTAINER_STORAGE`** - Enable Azure Container Storage (default: `false`)
-  - Set to `true` to enable during cluster creation
-  
-- **`AZURE_CONTAINER_STORAGE_TYPE`** - Storage pool type (default: empty/default)
-  - Options: `azureDisk`, `ephemeralDisk`, `elasticSan`
-  - Leave empty to use Azure's default configuration
+### Verify Deployment
 
-## Additional Resources
+```bash
+# Check the storage class
+kubectl get storageclass acstor-ephemeraldisk-nvme
 
-- [Azure Container Storage Documentation](https://learn.microsoft.com/en-us/azure/storage/container-storage/)
-- [Install Azure Container Storage on AKS](https://learn.microsoft.com/en-us/azure/storage/container-storage/install-container-storage-aks)
-- [Use Container Storage with Local Disk](https://learn.microsoft.com/en-us/azure/storage/container-storage/use-container-storage-with-local-disk)
-- [NDv5 Series VMs](https://learn.microsoft.com/en-us/azure/virtual-machines/ndv5-series)
+# Check the PVC
+kubectl get pvc ephemeraldisk-pvc
+
+# Describe the PVC to see details
+kubectl describe pvc ephemeraldisk-pvc
+```
+
+## Using in Your Workloads
+
+Reference the PVC in your pod specifications:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-workload
+spec:
+  containers:
+    - name: app
+      image: myapp:latest
+      volumeMounts:
+        - name: ephemeral-volume
+          mountPath: /mnt/ephemeral
+  volumes:
+    - name: ephemeral-volume
+      persistentVolumeClaim:
+        claimName: ephemeraldisk-pvc
+```
+
+## Configuration Options
+
+See `helm/ephemeral-disk-storage/values.yaml` for all configuration options:
+
+- **storage.className**: StorageClass name (default: `acstor-ephemeraldisk-nvme`)
+- **storage.pvcName**: PVC name (default: `ephemeraldisk-pvc`)
+- **storage.size**: Storage size request (default: `100Gi`)
+- **storage.accessModes**: Access modes (default: `ReadWriteOnce`)
+- **storage.volumeBindingMode**: Volume binding mode (default: `WaitForFirstConsumer`)
 
 ## Performance Considerations
 
@@ -140,6 +117,13 @@ When using ephemeral disk storage with NDv5 VMs:
 2. **Data Locality**: Storage is local to the node, providing best performance but no data persistence across node changes
 3. **Capacity Planning**: Plan storage requests based on available local disk capacity on your VM SKU
 4. **Workload Suitability**: Ideal for AI/ML training scratch space, caching layers, and temporary data processing
+
+## Additional Resources
+
+- [Azure Container Storage Documentation](https://learn.microsoft.com/en-us/azure/storage/container-storage/)
+- [Install Azure Container Storage on AKS](https://learn.microsoft.com/en-us/azure/storage/container-storage/install-container-storage-aks)
+- [Use Container Storage with Local Disk](https://learn.microsoft.com/en-us/azure/storage/container-storage/use-container-storage-with-local-disk)
+- [NDv5 Series VMs](https://learn.microsoft.com/en-us/azure/virtual-machines/ndv5-series)
 
 ## Troubleshooting
 
@@ -167,3 +151,4 @@ kubectl describe node <node-name> | grep -A 5 "Capacity"
 # Verify local disk mounts
 kubectl debug node/<node-name> -it --image=busybox -- df -h
 ```
+

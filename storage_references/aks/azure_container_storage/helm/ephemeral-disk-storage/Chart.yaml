@@ -1,0 +1,6 @@
+apiVersion: v2
+name: ephemeral-disk-storage
+description: A Helm chart for Azure Container Storage with ephemeral disk for high-performance local NVMe storage
+type: application
+version: 0.1.0
+appVersion: "1.0"

@@ -156,11 +156,8 @@ INSTALL_AMLFS=false ./scripts/deploy-aks.sh all
 
 ### Azure Container Storage Configuration
 
-- **`ENABLE_AZURE_CONTAINER_STORAGE`** - Enable Azure Container Storage during cluster creation (default: "false")
-  - Set to "true" to enable Azure Container Storage
-- **`AZURE_CONTAINER_STORAGE_TYPE`** - Storage pool type for Azure Container Storage (default: empty/default)
-  - Options: "azureDisk", "ephemeralDisk", "elasticSan"
-  - Leave empty to use Azure's default configuration
+- **`ENABLE_AZURE_CONTAINER_STORAGE`** - Enable Azure Container Storage with ephemeral disk during cluster creation (default: "true")
+  - Set to "false" to disable Azure Container Storage
 
 ## 6. RDMA Device Plugin Configuration
 
@@ -270,67 +267,64 @@ USE_EXISTING_SUBNET_ID="/subscriptions/<subid>/resourceGroups/<rg>/providers/Mic
 
 ## 8. Azure Container Storage Support
 
-Azure Container Storage is a cloud-based volume management service built natively for containers. It provides persistent storage options optimized for containerized workloads on AKS.
+Azure Container Storage is a cloud-based volume management service built natively for containers. The deployment script enables Azure Container Storage with ephemeral disk by default, which uses local NVMe or temp disks for high-performance, low-latency storage.
 
 ### Enabling Azure Container Storage
 
-Azure Container Storage is enabled during cluster creation using the `--enable-azure-container-storage` flag. The deployment script supports this through environment variables.
+Azure Container Storage with ephemeral disk is enabled by default during cluster creation. The script uses the `--enable-azure-container-storage ephemeralDisk` flag.
 
-#### Enable with Default Settings
-
-```bash
-export ENABLE_AZURE_CONTAINER_STORAGE="true"
-./scripts/deploy-aks.sh deploy-aks
-```
-
-#### Enable with Specific Storage Pool Type
+#### Default Behavior (Enabled)
 
 ```bash
-export ENABLE_AZURE_CONTAINER_STORAGE="true"
-export AZURE_CONTAINER_STORAGE_TYPE="ephemeralDisk"
-./scripts/deploy-aks.sh deploy-aks
-```
-
-### Storage Pool Types
-
-Azure Container Storage supports three storage pool types:
-
-1. **`ephemeralDisk`** - Uses local NVMe or temp disk for high-performance ephemeral storage
-   - Ideal for AI/ML training scratch space on NDv5 series VMs
-   - Lowest latency, highest IOPS
-   - Data is ephemeral (not persistent across node changes)
-
-2. **`azureDisk`** - Uses Azure Managed Disks for persistent block storage
-   - General-purpose persistent storage
-   - Suitable for databases and stateful applications
-
-3. **`elasticSan`** - Uses Azure Elastic SAN for high-performance, scalable block storage
-   - Enterprise-grade storage with massive scale
-   - Shared storage pools across clusters
-
-### Example: Local NVMe with NDv5 VMs
-
-For NDv5 series VMs (e.g., Standard_ND96isr_H100_v5) with local NVMe SSDs:
-
-```bash
-# Create cluster with ephemeral disk storage
 export AZURE_REGION="eastus"
 export NODE_POOL_VM_SIZE="Standard_ND96isr_H100_v5"
-export ENABLE_AZURE_CONTAINER_STORAGE="true"
-export AZURE_CONTAINER_STORAGE_TYPE="ephemeralDisk"
 
-./scripts/deploy-aks.sh all
+./scripts/deploy-aks.sh deploy-aks
 ```
 
-After cluster creation, you can use the example configurations in `../../storage_references/aks/azure_container_storage/examples/` to create storage classes and persistent volume claims.
+#### Disable Azure Container Storage
 
-See the [Azure Container Storage documentation](../../storage_references/aks/azure_container_storage/README.md) for detailed examples and usage patterns.
+To disable Azure Container Storage during cluster creation:
+
+```bash
+export ENABLE_AZURE_CONTAINER_STORAGE="false"
+./scripts/deploy-aks.sh deploy-aks
+```
+
+### Ephemeral Disk Storage
+
+Ephemeral disk storage uses local NVMe or temp disk on the node for high-performance workloads:
+
+- **Ideal for**: AI/ML training scratch space on NDv5 series VMs
+- **Performance**: Lowest latency, highest IOPS
+- **Data persistence**: Ephemeral (data lost when pod is deleted or node is recycled)
+- **Cost**: No additional cost beyond the VM
+
+**Example VM Series with Local NVMe:**
+- NDv5 series (e.g., Standard_ND96isr_H100_v5)
+
+### Deploying Storage with Helm
+
+After cluster creation with Azure Container Storage enabled, deploy the ephemeral disk storage Helm chart:
+
+```bash
+# Deploy with default settings
+helm install ephemeral-storage ../../storage_references/aks/azure_container_storage/helm/ephemeral-disk-storage
+
+# Deploy with custom PVC name and size
+helm install ephemeral-storage ../../storage_references/aks/azure_container_storage/helm/ephemeral-disk-storage \
+  --set storage.pvcName="my-ephemeral-pvc" \
+  --set storage.size="200Gi"
+```
+
+The Helm chart creates:
+- A StorageClass configured for ephemeral disk storage
+- A PersistentVolumeClaim for your workloads
 
 ### Configuration Variables
 
-- **`ENABLE_AZURE_CONTAINER_STORAGE`** - Enable Azure Container Storage (default: `false`)
-- **`AZURE_CONTAINER_STORAGE_TYPE`** - Storage pool type (default: empty/default)
-  - Options: `azureDisk`, `ephemeralDisk`, `elasticSan`
+- **`ENABLE_AZURE_CONTAINER_STORAGE`** - Enable Azure Container Storage with ephemeral disk (default: `true`)
+  - Set to `false` to disable during cluster creation
 
 ### Additional Resources
 
