@@ -11,6 +11,7 @@
 ## 1. Overview
 
 This chart deploys a DaemonSet that labels and annotates each node with:
+
 - **Labels**: KVP-derived host information from `/var/lib/hyperv/.kvp_pool_3` (e.g., `hyperv/PhysicalHostName`)
 - **Labels**: InfiniBand PKey (`ib/pkey`) when RDMA devices are present
 - **Annotations**: HCA (Host Channel Adapter) GUIDs (`ib/hca-guids`) as a comma-separated list when InfiniBand devices are detected
@@ -21,7 +22,6 @@ The HCA GUID annotations are used by the [Torset Labeler](../torset_labeler/helm
 
 - Cluster-admin permissions to install cluster-scoped RBAC.
 - Nodes with InfiniBand hardware will have HCA GUID annotations automatically collected.
-
 
 ## 3. Installation
 

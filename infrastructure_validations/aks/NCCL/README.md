@@ -33,19 +33,19 @@ helm install nccl-test infrastructure_validations/aks/NCCL/helm/nccl-test \
 
 ### Configuration Options
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `nodes` | Number of worker nodes | `2` |
-| `gpusPerNode` | Number of GPUs per worker node | `8` |
-| `gpuResource` | GPU resource name | `nvidia.com/gpu` |
-| `rdmaResource` | RDMA resource name | `rdma/ib` |
-| `image.repository` | Container image repository | `ghcr.io/azure/ai-infrastructure-on-azure/nccl-test` |
-| `image.tag` | Container image tag | `latest` |
-| `image.pullPolicy` | Image pull policy | `IfNotPresent` |
-| `ncclTest.testArgs` | Arguments for NCCL test | `"-b 1K -e 16G -f 2 -g 1 -c 0"` |
-| `ncclTest.env.*` | NCCL environment variables | See values.yaml |
-| `affinity.required` | Required pod affinity topology keys | `[{topologyKey: agentpool}]` |
-| `affinity.preferred` | Preferred pod affinity topology keys | `[]` |
+| Parameter            | Description                          | Default                                              |
+| -------------------- | ------------------------------------ | ---------------------------------------------------- |
+| `nodes`              | Number of worker nodes               | `2`                                                  |
+| `gpusPerNode`        | Number of GPUs per worker node       | `8`                                                  |
+| `gpuResource`        | GPU resource name                    | `nvidia.com/gpu`                                     |
+| `rdmaResource`       | RDMA resource name                   | `rdma/ib`                                            |
+| `image.repository`   | Container image repository           | `ghcr.io/azure/ai-infrastructure-on-azure/nccl-test` |
+| `image.tag`          | Container image tag                  | `latest`                                             |
+| `image.pullPolicy`   | Image pull policy                    | `IfNotPresent`                                       |
+| `ncclTest.testArgs`  | Arguments for NCCL test              | `"-b 1K -e 16G -f 2 -g 1 -c 0"`                      |
+| `ncclTest.env.*`     | NCCL environment variables           | See values.yaml                                      |
+| `affinity.required`  | Required pod affinity topology keys  | `[{topologyKey: agentpool}]`                         |
+| `affinity.preferred` | Preferred pod affinity topology keys | `[]`                                                 |
 
 #### NCCL Test Parameters
 
@@ -101,12 +101,12 @@ affinity:
 ```
 
 Then install:
+
 ```bash
 helm install nccl-test infrastructure_validations/aks/NCCL/helm/nccl-test -f custom-affinity.yaml
 ```
 
 **Note:** If torset labels (`ib/torset`) are not present on nodes, using them in `required` will prevent pods from scheduling. Use `preferred` instead for graceful degradation.
-
 
 #### Using Custom Values Files
 
@@ -122,10 +122,11 @@ ncclTest:
   testArgs: "-b 16G -e 16G -f 2 -g 1 -c 0 -N 10"
   env:
     NCCL_DEBUG: "INFO"
-    NCCL_COLLNET_ENABLE: "0"  # Disable SHARP
+    NCCL_COLLNET_ENABLE: "0" # Disable SHARP
 ```
 
 Then install with:
+
 ```bash
 helm install nccl-test infrastructure_validations/aks/NCCL/helm/nccl-test -f custom-values.yaml
 ```
@@ -133,12 +134,14 @@ helm install nccl-test infrastructure_validations/aks/NCCL/helm/nccl-test -f cus
 ### Monitoring the Test
 
 Check job status:
+
 ```bash
 kubectl get mpijob
 kubectl describe mpijob nccl-test
 ```
 
 View test results:
+
 ```bash
 # Check launcher logs for results
 kubectl logs job/nccl-test-launcher
