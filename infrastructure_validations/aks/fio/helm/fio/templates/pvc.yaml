@@ -38,9 +38,7 @@ spec:
   resources:
     requests:
       storage: {{ .Values.storage.size }}
-  {{- if eq .Values.storage.type "blobfuse" }}
-  storageClassName: {{ include "fio.fullname" . }}-blob-storage
-  {{- else if eq .Values.storage.type "azure-container-storage" }}
+  {{- if eq .Values.storage.type "azure-container-storage" }}
   storageClassName: {{ .Values.storage.azureContainerStorage.storageClassName }}
   {{- else if eq .Values.storage.type "localpv" }}
   storageClassName: {{ include "fio.fullname" . }}-local

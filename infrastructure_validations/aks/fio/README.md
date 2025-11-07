@@ -13,10 +13,9 @@
 
 This Helm chart provides FIO (Flexible I/O Tester) for testing storage performance on Azure Kubernetes Service (AKS). It supports multiple storage types:
 
-- **Blobfuse**: Azure Blob Storage mounted via blobfuse
 - **Azure Container Storage**: High-performance ephemeral disk storage
 - **LocalPV**: Local persistent volumes on nodes
-- **Existing PVC**: Use an existing PersistentVolumeClaim
+- **Existing PVC**: Use an existing PersistentVolumeClaim (for blobfuse, Lustre, or other shared storage)
 
 FIO is useful for:
 - Validating storage performance for AI/ML workloads
@@ -30,32 +29,11 @@ FIO is useful for:
 - kubectl access to the cluster
 - Helm 3.x
 - Depending on storage type:
-  - **Blobfuse**: Blob CSI driver enabled (default on AKS)
   - **Azure Container Storage**: Cluster created with `--enable-azure-container-storage`
   - **LocalPV**: Nodes with local disk storage
+  - **Existing PVC**: Pre-created PVC (e.g., blobfuse or Lustre storage)
 
 ## 3. Storage Types
-
-### Blobfuse (Azure Blob Storage)
-
-Creates a StorageClass and PVC for Azure Blob Storage with blobfuse mount. Good for large datasets and shared storage.
-
-**Configuration:**
-```yaml
-storage:
-  type: "blobfuse"
-  size: "10Gi"
-  blobfuse:
-    skuName: "Standard_LRS"
-    mountOptions:
-      - "-o allow_other"
-      - "--use-attr-cache=true"
-      - "--cancel-list-on-mount-seconds=10"
-      - "-o attr_timeout=120"
-      - "-o entry_timeout=120"
-      - "-o negative_timeout=120"
-      - "--log-level=LOG_WARNING"
-```
 
 ### Azure Container Storage
 
@@ -91,9 +69,9 @@ storage:
             - your-node-name
 ```
 
-### Existing PVC (Shared Storage)
+### Existing PVC (Blobfuse, Lustre, or Shared Storage)
 
-Use an existing PVC (e.g., from Lustre or shared blobfuse storage). Useful for testing with pre-provisioned storage.
+Use an existing PVC for testing with pre-provisioned storage like blobfuse or Lustre. This is the recommended approach for testing blobfuse performance.
 
 **Configuration:**
 ```yaml
@@ -102,27 +80,22 @@ storage:
   existingPvcName: "my-shared-pvc"
 ```
 
+**Note**: For blobfuse testing, create a blobfuse PVC using the [blob-shared-storage Helm chart](../../../storage_references/aks/shared_storage/helm/blob-shared-storage) first, then reference it here.
+
 ## 4. Quick Start
 
-### Default Test (Blobfuse)
+### Default Test (Azure Container Storage)
 
 ```bash
 helm install fio-test infrastructure_validations/aks/fio/helm/fio
 ```
 
-### Test with Azure Container Storage
-
-```bash
-helm install fio-test infrastructure_validations/aks/fio/helm/fio \
-  --set storage.type=azure-container-storage
-```
-
-### Test with Existing PVC
+### Test with Existing PVC (e.g., Blobfuse)
 
 ```bash
 helm install fio-test infrastructure_validations/aks/fio/helm/fio \
   --set storage.type=existing-pvc \
-  --set storage.existingPvcName=my-lustre-pvc
+  --set storage.existingPvcName=my-blobfuse-pvc
 ```
 
 ### Monitor the Test
@@ -154,7 +127,7 @@ helm install iops-test infrastructure_validations/aks/fio/helm/fio \
 
 ```bash
 helm install seq-test infrastructure_validations/aks/fio/helm/fio \
-  --set storage.type=blobfuse \
+  --set storage.type=azure-container-storage \
   --set fio.readWrite=write \
   --set fio.blockSize=4M \
   --set fio.size=5G \
@@ -166,107 +139,56 @@ helm install seq-test infrastructure_validations/aks/fio/helm/fio \
 
 ### Blobfuse Examples
 
-These examples are optimized for Azure Blob Storage testing.
+To test blobfuse, first create a blobfuse PVC using the blob-shared-storage Helm chart, then use it with FIO.
+
+#### Create Blobfuse Storage
+
+See the [blob shared storage documentation](../../../storage_references/aks/shared_storage/README.md) for examples of creating blobfuse storage with different mount options.
 
 #### Block Cache Sequential Write
 
-Test large block sequential writes using blobfuse block cache. Simulates ML training checkpoint writes.
+Test large block sequential writes using blobfuse block cache. First create the storage, then run FIO:
 
-```yaml
-# Save as block-cache-test-values.yaml
-storage:
-  type: "blobfuse"
-  size: "10Gi"
-  blobfuse:
-    skuName: "Standard_LRS"
-    mountOptions:
-      - "-o allow_other"
-      - "--use-attr-cache=true"
-      - "--cancel-list-on-mount-seconds=10"
-      - "-o attr_timeout=120"
-      - "-o entry_timeout=120"
-      - "-o negative_timeout=120"
-      - "--log-level=LOG_WARNING"
-      - "--block-cache"
-      - "--block-cache-block-size=32"
-
-fio:
-  testName: "sequential-write-test"
-  filename: "/mnt/test/testfile.img"
-  size: "10G"
-  blockSize: "4M"
-  readWrite: "write"
-  ioEngine: "libaio"
-  direct: 1
-  numJobs: 1
-  runtime: 0
-  timeBased: false
-  additionalOptions: "--group_reporting"
-
-resources:
-  limits:
-    cpu: "2"
-    memory: "8Gi"
-  requests:
-    cpu: "1"
-    memory: "4Gi"
-```
-
-Run with:
 ```bash
-helm install block-cache-test infrastructure_validations/aks/fio/helm/fio \
-  -f block-cache-test-values.yaml
+# Create blobfuse PVC with block cache mount options
+helm install blob-storage storage_references/aks/shared_storage/helm/blob-shared-storage \
+  --set pvc.name="fio-blobfuse-pvc" \
+  --set storage.size=10Gi \
+  --set-json 'storage.mountOptions=["-o allow_other","--use-attr-cache=true","--cancel-list-on-mount-seconds=10","-o attr_timeout=120","-o entry_timeout=120","-o negative_timeout=120","--log-level=LOG_WARNING","--block-cache","--block-cache-block-size=32"]'
+
+# Run FIO test against the blobfuse PVC
+helm install fio-test infrastructure_validations/aks/fio/helm/fio \
+  --set storage.type=existing-pvc \
+  --set storage.existingPvcName=fio-blobfuse-pvc \
+  --set fio.testName=sequential-write-test \
+  --set fio.blockSize=4M \
+  --set fio.readWrite=write \
+  --set fio.size=10G \
+  --set fio.timeBased=false \
+  --set fio.additionalOptions="--group_reporting"
 ```
 
 #### File Cache Sequential Write
 
-Test large block sequential writes using blobfuse file cache. Alternative caching strategy for sequential workloads.
+Test large block sequential writes using blobfuse file cache:
 
-```yaml
-# Save as file-cache-test-values.yaml
-storage:
-  type: "blobfuse"
-  size: "10Gi"
-  blobfuse:
-    skuName: "Standard_LRS"
-    mountOptions:
-      - "-o allow_other"
-      - "--use-attr-cache=true"
-      - "--cancel-list-on-mount-seconds=10"
-      - "-o attr_timeout=120"
-      - "-o entry_timeout=120"
-      - "-o negative_timeout=120"
-      - "--log-level=LOG_WARNING"
-      - "--file-cache-timeout=600"
-      - "--tmp-path=/tmp/blobfuse"
-      - "--lazy-write"
-
-fio:
-  testName: "sequential-write-test"
-  filename: "/mnt/test/testfile.img"
-  size: "10G"
-  blockSize: "4M"
-  readWrite: "write"
-  ioEngine: "libaio"
-  direct: 1
-  numJobs: 1
-  runtime: 0
-  timeBased: false
-  additionalOptions: "--group_reporting"
-
-resources:
-  limits:
-    cpu: "2"
-    memory: "8Gi"
-  requests:
-    cpu: "1"
-    memory: "4Gi"
-```
-
-Run with:
 ```bash
-helm install file-cache-test infrastructure_validations/aks/fio/helm/fio \
-  -f file-cache-test-values.yaml
+# Create blobfuse PVC with file cache mount options
+helm install blob-storage storage_references/aks/shared_storage/helm/blob-shared-storage \
+  --set pvc.name="fio-blobfuse-pvc" \
+  --set storage.size=10Gi \
+  --set-json 'storage.mountOptions=["-o allow_other","--use-attr-cache=true","--cancel-list-on-mount-seconds=10","-o attr_timeout=120","-o entry_timeout=120","-o negative_timeout=120","--log-level=LOG_WARNING","--file-cache-timeout=600","--tmp-path=/tmp/blobfuse","--lazy-write"]'
+
+# Run FIO test against the blobfuse PVC
+helm install fio-test infrastructure_validations/aks/fio/helm/fio \
+  --set storage.type=existing-pvc \
+  --set storage.existingPvcName=fio-blobfuse-pvc \
+  --set fio.testName=sequential-write-test \
+  --set fio.blockSize=4M \
+  --set fio.readWrite=write \
+  --set fio.size=10G \
+  --set fio.timeBased=false \
+  --set fio.additionalOptions="--group_reporting"
 ```
 
 ### Azure Container Storage Examples

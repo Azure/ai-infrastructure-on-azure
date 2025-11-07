@@ -3,32 +3,18 @@
 
 # Storage configuration
 storage:
-  # Storage type: blobfuse, azure-container-storage, localpv, existing-pvc
-  # - blobfuse: Creates StorageClass and PVC for Azure Blob with blobfuse
+  # Storage type: azure-container-storage, localpv, existing-pvc
   # - azure-container-storage: Creates StorageClass and PVC for Azure Container Storage
   # - localpv: Uses local PersistentVolume
   # - existing-pvc: Use an existing PVC (specify existingPvcName)
-  type: "blobfuse"
+  #   Use this for testing with blobfuse, Lustre, or other shared storage
+  type: "azure-container-storage"
   
   # For existing-pvc type, specify the PVC name
   existingPvcName: ""
   
   # Storage size for the test volume (not used for existing-pvc)
   size: "10Gi"
-  
-  # Blobfuse-specific configuration
-  blobfuse:
-    # Azure storage account SKU
-    skuName: "Standard_LRS"
-    # Mount options for blobfuse
-    mountOptions:
-      - "-o allow_other"
-      - "--use-attr-cache=true"
-      - "--cancel-list-on-mount-seconds=10"
-      - "-o attr_timeout=120"
-      - "-o entry_timeout=120"
-      - "-o negative_timeout=120"
-      - "--log-level=LOG_WARNING"
   
   # Azure Container Storage configuration
   azureContainerStorage:
