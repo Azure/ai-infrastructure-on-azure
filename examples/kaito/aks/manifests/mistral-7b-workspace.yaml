@@ -1,0 +1,25 @@
+---
+apiVersion: kaito.sh/v1alpha1
+kind: Workspace
+metadata:
+  name: mistral-7b-inference
+spec:
+  # GPU instance type - Single A100 GPU
+  instanceType: Standard_NC24ads_A100_v4
+
+  # Inference configuration
+  inference:
+    # Preset model configuration
+    preset:
+      # Mistral 7B Instruct v0.2 model
+      name: mistral-7b-instruct
+
+    # Number of replicas for load balancing
+    replicas: 1
+
+  # Optional: Resource requirements
+  resources:
+    requests:
+      nvidia.com/gpu: 1
+    limits:
+      nvidia.com/gpu: 1

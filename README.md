@@ -29,7 +29,7 @@ For each scenario and architecture, the repository will include storage recommen
 1. [Azure CycleCloud Slurm Workspace AI Cluster](./infrastructure_references/azure_cyclecloud_workspace_for_slurm/README.md) - Prototypes for the creation of Azure CycleCloud Slurm Workspace AI Clusters using CLI deployment
 2. [Azure Kubernetes Service Cluster](./infrastructure_references/aks/README.md) - Deployment script for AKS cluster 
 
-## 3. AI Training Example Catalog
+## 3. AI Training and Inference Example Catalog
 
 1. MegatronLM GPT3-175B with Slimpajama 627B dataset - Example of an end-to-end training workflow based on MegatronLM, including data pre-processing from Slimpajama 627B dataset
    - [Slurm version](./examples/megatron-lm/GPT3-175B/slurm/README.md)
@@ -37,6 +37,8 @@ For each scenario and architecture, the repository will include storage recommen
 2. LLM Foundry MPT Training - Example of an end-to-end training workflow of Mosaic Pretrained Transformer (MPT) model on [C4](https://huggingface.co/datasets/allenai/c4) dataset, based on LLM Foundry
    - [Slurm version](./examples/llm-foundry/slurm/README.md)
    - [AKS version](./examples/llm-foundry/aks/README.md)
+3. KAITO Inference - Example demonstrating model inference deployment using Kubernetes AI Toolchain Operator (KAITO) with support for multiple LLM models
+   - [AKS version](./examples/kaito/aks/README.md)
 
 ## 4. Infrastructure Validation Catalog
 

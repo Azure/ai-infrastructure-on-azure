@@ -1,0 +1,25 @@
+---
+apiVersion: kaito.sh/v1alpha1
+kind: Workspace
+metadata:
+  name: llama3-8b-inference
+spec:
+  # GPU instance type - Single A100 GPU
+  instanceType: Standard_NC24ads_A100_v4
+
+  # Inference configuration
+  inference:
+    # Preset model configuration
+    preset:
+      # Meta Llama 3 8B Instruct model
+      name: llama-3-8b-instruct
+
+    # Number of replicas for load balancing
+    replicas: 1
+
+  # Optional: Resource requirements
+  resources:
+    requests:
+      nvidia.com/gpu: 1
+    limits:
+      nvidia.com/gpu: 1

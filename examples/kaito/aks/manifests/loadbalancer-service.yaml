@@ -1,0 +1,21 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kaito-inference-lb
+  labels:
+    app: kaito-inference
+spec:
+  type: LoadBalancer
+  # Optional: Specify internal load balancer
+  # annotations:
+  #   service.beta.kubernetes.io/azure-load-balancer-internal: "true"
+  ports:
+    - port: 80
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    # This selector should match your workspace pods
+    # Update the workspace name accordingly
+    kaito.sh/workspace: phi2-inference

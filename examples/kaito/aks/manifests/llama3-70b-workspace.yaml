@@ -1,0 +1,25 @@
+---
+apiVersion: kaito.sh/v1alpha1
+kind: Workspace
+metadata:
+  name: llama3-70b-inference
+spec:
+  # GPU instance type - 4x A100 GPUs for 70B model
+  instanceType: Standard_NC96ads_A100_v4
+
+  # Inference configuration
+  inference:
+    # Preset model configuration
+    preset:
+      # Meta Llama 3 70B Instruct model
+      name: llama-3-70b-instruct
+
+    # Number of replicas
+    replicas: 1
+
+  # Resource requirements for large model
+  resources:
+    requests:
+      nvidia.com/gpu: 4
+    limits:
+      nvidia.com/gpu: 4
