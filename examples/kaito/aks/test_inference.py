@@ -41,15 +41,14 @@ def test_completion(endpoint_url, model_name, prompt, max_tokens=256):
     try:
         response = requests.post(
             url,
-            headers={"Content-Type": "application/json"},
-            data=json.dumps(payload),
+            json=payload,
             timeout=60
         )
         response.raise_for_status()
-        
+
         result = response.json()
         return result['choices'][0]['text']
-    
+
     except requests.exceptions.RequestException as e:
         print(f"Error calling completion endpoint: {e}")
         if hasattr(e, 'response') and e.response is not None:
@@ -83,15 +82,14 @@ def test_chat(endpoint_url, model_name, messages, max_tokens=512):
     try:
         response = requests.post(
             url,
-            headers={"Content-Type": "application/json"},
-            data=json.dumps(payload),
+            json=payload,
             timeout=60
         )
         response.raise_for_status()
-        
+
         result = response.json()
         return result['choices'][0]['message']['content']
-    
+
     except requests.exceptions.RequestException as e:
         print(f"Error calling chat endpoint: {e}")
         if hasattr(e, 'response') and e.response is not None:
