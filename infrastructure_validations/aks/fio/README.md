@@ -18,6 +18,7 @@ This Helm chart provides FIO (Flexible I/O Tester) for testing storage performan
 - **Existing PVC**: Use an existing PersistentVolumeClaim (for blobfuse, Lustre, or other shared storage)
 
 FIO is useful for:
+
 - Validating storage performance for AI/ML workloads
 - Testing different I/O patterns (sequential, random, mixed)
 - Benchmarking storage performance with various configurations
@@ -40,6 +41,7 @@ FIO is useful for:
 Uses Azure Container Storage with ephemeral disk for high-performance local NVMe storage. Ideal for scratch space and temporary data.
 
 **Configuration:**
+
 ```yaml
 storage:
   type: "azure-container-storage"
@@ -53,6 +55,7 @@ storage:
 Uses local persistent volumes on the node. Provides direct access to local disks for maximum performance.
 
 **Configuration:**
+
 ```yaml
 storage:
   type: "localpv"
@@ -62,11 +65,11 @@ storage:
     nodeAffinity:
       required:
         nodeSelectorTerms:
-        - matchExpressions:
-          - key: kubernetes.io/hostname
-            operator: In
-            values:
-            - your-node-name
+          - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                  - your-node-name
 ```
 
 ### Existing PVC (Blobfuse, Lustre, or Shared Storage)
@@ -74,6 +77,7 @@ storage:
 Use an existing PVC for testing with pre-provisioned storage like blobfuse or Lustre. This is the recommended approach for testing blobfuse performance.
 
 **Configuration:**
+
 ```yaml
 storage:
   type: "existing-pvc"
@@ -285,6 +289,7 @@ helm install debug-test infrastructure_validations/aks/fio/helm/fio \
 ```
 
 Then exec into the pod:
+
 ```bash
 kubectl exec -it fio-test-fio -- /bin/sh
 ```

@@ -1,3 +1,4 @@
+---
 apiVersion: v2
 name: fio
 description: FIO performance testing for various storage types on AKS

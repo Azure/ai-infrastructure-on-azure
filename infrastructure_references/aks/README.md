@@ -24,7 +24,7 @@ This document provides a guide to set up an Azure Kubernetes Service (AKS) clust
 - Helm [installed](https://helm.sh/docs/intro/install/) for managing Kubernetes applications.
 - jq [installed](https://jqlang.github.io/jq/download) for processing JSON.
 - Git [installed](https://git-scm.com/downloads) for cloning repositories (required for AMLFS installation).
-- Kustomize [installed](https://github.com/kubernetes-sigs/kustomize/releases) for managing Kubernetes configurations (required for PyTorch Operator installation). 
+- Kustomize [installed](https://github.com/kubernetes-sigs/kustomize/releases) for managing Kubernetes configurations (required for PyTorch Operator installation).
 
 ## 3. Setup
 
@@ -264,7 +264,6 @@ USE_EXISTING_SUBNET_ID="/subscriptions/<subid>/resourceGroups/<rg>/providers/Mic
 - **Branch**: `dynamic-provisioning-preview`
 - **Repository**: `https://github.com/kubernetes-sigs/azurelustre-csi-driver.git`
 
-
 ## 8. Azure Container Storage Support
 
 Azure Container Storage is a cloud-based volume management service built natively for containers. The deployment script enables Azure Container Storage by default, which uses local NVMe or temp disks (ephemeral disk) for high-performance, low-latency storage.
@@ -301,6 +300,7 @@ Ephemeral disk storage uses local NVMe or temp disk on the node for high-perform
 - **Cost**: No additional cost beyond the VM
 
 **Example VM Series with Local NVMe:**
+
 - NDv5 series (e.g., Standard_ND96isr_H100_v5)
 
 ### Testing Storage Performance
@@ -331,7 +331,6 @@ See the [FIO testing documentation](../../infrastructure_validations/aks/fio/REA
 - [Azure Container Storage Documentation](https://learn.microsoft.com/en-us/azure/storage/container-storage/)
 - [Install Azure Container Storage on AKS](https://learn.microsoft.com/en-us/azure/storage/container-storage/install-container-storage-aks)
 - [Use Container Storage with Local Disk](https://learn.microsoft.com/en-us/azure/storage/container-storage/use-container-storage-with-local-disk)
-
 
 ## 9. Monitoring
 

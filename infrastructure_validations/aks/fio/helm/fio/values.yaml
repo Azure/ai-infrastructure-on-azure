@@ -1,26 +1,28 @@
+---
 # Default values for fio
 # This is a YAML-formatted file.
 
 # Storage configuration
 storage:
   # Storage type: azure-container-storage, localpv, existing-pvc
-  # - azure-container-storage: Creates StorageClass and PVC for Azure Container Storage
+  # - azure-container-storage: Creates StorageClass and PVC for
+  #   Azure Container Storage
   # - localpv: Uses local PersistentVolume
   # - existing-pvc: Use an existing PVC (specify existingPvcName)
   #   Use this for testing with blobfuse, Lustre, or other shared storage
   type: "azure-container-storage"
-  
+
   # For existing-pvc type, specify the PVC name
   existingPvcName: ""
-  
+
   # Storage size for the test volume (not used for existing-pvc)
   size: "10Gi"
-  
+
   # Azure Container Storage configuration
   azureContainerStorage:
     # Storage class name for Azure Container Storage
     storageClassName: "acstor-ephemeraldisk-nvme"
-  
+
   # LocalPV configuration
   localpv:
     # Local path on the node
@@ -29,11 +31,11 @@ storage:
     nodeAffinity:
       required:
         nodeSelectorTerms:
-        - matchExpressions:
-          - key: kubernetes.io/hostname
-            operator: In
-            values:
-            - node1  # Update with your node name
+          - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                  - node1  # Update with your node name
 
 # Pod configuration
 pod:
