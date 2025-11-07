@@ -1,0 +1,62 @@
+# Azure Container Storage - Local NVMe Example for NDv5 VMs
+# 
+# This example demonstrates how to use Azure Container Storage with local NVMe disks
+# on NDv5 series VMs which have high-performance local NVMe storage.
+#
+# Prerequisites:
+# 1. AKS cluster created with --enable-azure-container-storage ephemeralDisk flag
+# 2. Node pool with NDv5 series VMs (e.g., Standard_ND96isr_H100_v5)
+#
+# NDv5 series VMs include local NVMe SSDs that provide:
+# - High IOPS and throughput
+# - Low latency storage
+# - Ideal for scratch space, temporary data, and caching
+#
+# For more information:
+# - https://learn.microsoft.com/en-us/azure/storage/container-storage/use-container-storage-with-local-disk
+# - https://learn.microsoft.com/en-us/azure/storage/container-storage/install-container-storage-aks
+
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: acstor-ephemeraldisk-nvme
+provisioner: containerstorage.csi.azure.com
+parameters:
+  pool: ephemeraldisk
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: false
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ephemeraldisk-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: acstor-ephemeraldisk-nvme
+  resources:
+    requests:
+      storage: 100Gi
+---
+# Example pod using the ephemeral disk PVC
+apiVersion: v1
+kind: Pod
+metadata:
+  name: fio-test-ephemeral
+spec:
+  nodeSelector:
+    kubernetes.io/os: linux
+  containers:
+    - name: fio
+      image: docker.io/nixery/shell/fio
+      command:
+        - sleep
+        - "3600"
+      volumeMounts:
+        - name: ephemeral-volume
+          mountPath: /mnt/acstor
+  volumes:
+    - name: ephemeral-volume
+      persistentVolumeClaim:
+        claimName: ephemeraldisk-pvc

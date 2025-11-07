@@ -9,7 +9,8 @@
 5. [Environment Variables](#5-environment-variables)
 6. [RDMA Device Plugin Configuration](#6-rdma-device-plugin-configuration)
 7. [Azure Managed Lustre File System (AMLFS) Support](#7-azure-managed-lustre-file-system-amlfs-support)
-8. [Monitoring](#8-monitoring)
+8. [Azure Container Storage Support](#8-azure-container-storage-support)
+9. [Monitoring](#9-monitoring)
 
 ## 1. Overview
 
@@ -153,6 +154,14 @@ INSTALL_AMLFS=false ./scripts/deploy-aks.sh all
 - **`INSTALL_AMLFS`** - Install Azure Managed Lustre File System CSI driver (default: "true")
   - Set to "false" to skip AMLFS installation in the 'all' command
 
+### Azure Container Storage Configuration
+
+- **`ENABLE_AZURE_CONTAINER_STORAGE`** - Enable Azure Container Storage during cluster creation (default: "false")
+  - Set to "true" to enable Azure Container Storage
+- **`AZURE_CONTAINER_STORAGE_TYPE`** - Storage pool type for Azure Container Storage (default: empty/default)
+  - Options: "azureDisk", "ephemeralDisk", "elasticSan"
+  - Leave empty to use Azure's default configuration
+
 ## 6. RDMA Device Plugin Configuration
 
 The script supports two types of RDMA device plugins for InfiniBand networking:
@@ -259,7 +268,78 @@ USE_EXISTING_SUBNET_ID="/subscriptions/<subid>/resourceGroups/<rg>/providers/Mic
 - **Repository**: `https://github.com/kubernetes-sigs/azurelustre-csi-driver.git`
 
 
-## 8. Monitoring
+## 8. Azure Container Storage Support
+
+Azure Container Storage is a cloud-based volume management service built natively for containers. It provides persistent storage options optimized for containerized workloads on AKS.
+
+### Enabling Azure Container Storage
+
+Azure Container Storage is enabled during cluster creation using the `--enable-azure-container-storage` flag. The deployment script supports this through environment variables.
+
+#### Enable with Default Settings
+
+```bash
+export ENABLE_AZURE_CONTAINER_STORAGE="true"
+./scripts/deploy-aks.sh deploy-aks
+```
+
+#### Enable with Specific Storage Pool Type
+
+```bash
+export ENABLE_AZURE_CONTAINER_STORAGE="true"
+export AZURE_CONTAINER_STORAGE_TYPE="ephemeralDisk"
+./scripts/deploy-aks.sh deploy-aks
+```
+
+### Storage Pool Types
+
+Azure Container Storage supports three storage pool types:
+
+1. **`ephemeralDisk`** - Uses local NVMe or temp disk for high-performance ephemeral storage
+   - Ideal for AI/ML training scratch space on NDv5 series VMs
+   - Lowest latency, highest IOPS
+   - Data is ephemeral (not persistent across node changes)
+
+2. **`azureDisk`** - Uses Azure Managed Disks for persistent block storage
+   - General-purpose persistent storage
+   - Suitable for databases and stateful applications
+
+3. **`elasticSan`** - Uses Azure Elastic SAN for high-performance, scalable block storage
+   - Enterprise-grade storage with massive scale
+   - Shared storage pools across clusters
+
+### Example: Local NVMe with NDv5 VMs
+
+For NDv5 series VMs (e.g., Standard_ND96isr_H100_v5) with local NVMe SSDs:
+
+```bash
+# Create cluster with ephemeral disk storage
+export AZURE_REGION="eastus"
+export NODE_POOL_VM_SIZE="Standard_ND96isr_H100_v5"
+export ENABLE_AZURE_CONTAINER_STORAGE="true"
+export AZURE_CONTAINER_STORAGE_TYPE="ephemeralDisk"
+
+./scripts/deploy-aks.sh all
+```
+
+After cluster creation, you can use the example configurations in `../../storage_references/aks/azure_container_storage/examples/` to create storage classes and persistent volume claims.
+
+See the [Azure Container Storage documentation](../../storage_references/aks/azure_container_storage/README.md) for detailed examples and usage patterns.
+
+### Configuration Variables
+
+- **`ENABLE_AZURE_CONTAINER_STORAGE`** - Enable Azure Container Storage (default: `false`)
+- **`AZURE_CONTAINER_STORAGE_TYPE`** - Storage pool type (default: empty/default)
+  - Options: `azureDisk`, `ephemeralDisk`, `elasticSan`
+
+### Additional Resources
+
+- [Azure Container Storage Documentation](https://learn.microsoft.com/en-us/azure/storage/container-storage/)
+- [Install Azure Container Storage on AKS](https://learn.microsoft.com/en-us/azure/storage/container-storage/install-container-storage-aks)
+- [Use Container Storage with Local Disk](https://learn.microsoft.com/en-us/azure/storage/container-storage/use-container-storage-with-local-disk)
+
+
+## 9. Monitoring
 
 ### Installation
 
