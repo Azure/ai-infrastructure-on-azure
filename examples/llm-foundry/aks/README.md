@@ -84,7 +84,7 @@ Prepare and preprocess the training dataset using the C4 corpus. This step downl
 To download the full data:
 
 ```bash
-helm install dataset-prep helm/dataset-download \
+helm install dataset-prep examples/llm-foundry/aks/helm/dataset-download \
   --set storage.pvcName="shared-storage-pvc" \
   --set dataset.outputPath="my-copy-c4"
 ```
@@ -92,7 +92,7 @@ helm install dataset-prep helm/dataset-download \
 Download the small data set for testing:
 
 ```bash
-helm install dataset-prep helm/dataset-download \
+helm install dataset-prep examples/llm-foundry/aks/helm/dataset-download \
   --set storage.pvcName="shared-storage-pvc" \
   --set dataset.outputPath="my-copy-c4" \
   --set dataset.splits="{train_small,val_small}"
@@ -133,7 +133,7 @@ This design enables asynchronous data streaming to local node storage, minimizin
 Execute a lightweight training run using the MPT-125M model and the small dataset for validation and testing:
 
 ```bash
-helm install llm-training helm/llm-training \
+helm install llm-training examples/llm-foundry/aks/helm/llm-training \
   --set image.tag=latest \
   --set model.config="mpt-125m" \
   --set storage.pvcName="shared-storage-pvc" \
@@ -148,7 +148,7 @@ helm install llm-training helm/llm-training \
 Deploy a MPT 30B training configuration with checkpointing enabled and the full dataset:
 
 ```bash
-helm install llm-training helm/llm-training \
+helm install llm-training examples/llm-foundry/aks/helm/llm-training \
   --set image.tag=latest \
   --set model.config="mpt-30b" \
   --set training.nodes=16 \

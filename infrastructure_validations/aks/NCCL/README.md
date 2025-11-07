@@ -14,19 +14,19 @@ NCCL Allreduce is a quick test for the IB network and this example has a contain
 
 ```bash
 # Install with default values (2 nodes, 8 GPUs per node)
-helm install nccl-test ./helm/nccl-test
+helm install nccl-test infrastructure_validations/aks/NCCL/helm/nccl-test
 
 # Install with custom number of nodes
-helm install nccl-test ./helm/nccl-test --set nodes=4
+helm install nccl-test infrastructure_validations/aks/NCCL/helm/nccl-test --set nodes=4
 
 # Install with custom configuration
-helm install nccl-test ./helm/nccl-test \
+helm install nccl-test infrastructure_validations/aks/NCCL/helm/nccl-test \
   --set nodes=2 \
   --set gpusPerNode=8 \
   --set ncclTest.testArgs="-b 16G -e 16G -f 2 -g 1 -c 0 -N 10"
 
 # Install with shared RDMA resources
-helm install nccl-test ./helm/nccl-test \
+helm install nccl-test infrastructure_validations/aks/NCCL/helm/nccl-test \
   --set rdmaResource="rdma/shared_ib" \
   --set nodes=4
 ```
@@ -70,7 +70,7 @@ The `affinity` parameter controls where worker pods are scheduled to ensure opti
 1. **Require same torset (InfiniBand domain)** - Use this when torset labels are present and you want guaranteed co-location within the same IB switching domain:
 
 ```bash
-helm install nccl-test ./helm/nccl-test \
+helm install nccl-test infrastructure_validations/aks/NCCL/helm/nccl-test \
   --set nodes=16 \
   --set affinity.required[0].topologyKey=agentpool \
   --set affinity.required[1].topologyKey=ib/torset
@@ -79,7 +79,7 @@ helm install nccl-test ./helm/nccl-test \
 2. **Prefer same torset (best effort)** - Use this when torset labels may not be present on all nodes:
 
 ```bash
-helm install nccl-test ./helm/nccl-test \
+helm install nccl-test infrastructure_validations/aks/NCCL/helm/nccl-test \
   --set nodes=16 \
   --set affinity.preferred[0].topologyKey=ib/torset \
   --set affinity.preferred[0].weight=100
@@ -102,7 +102,7 @@ affinity:
 
 Then install:
 ```bash
-helm install nccl-test ./helm/nccl-test -f custom-affinity.yaml
+helm install nccl-test infrastructure_validations/aks/NCCL/helm/nccl-test -f custom-affinity.yaml
 ```
 
 **Note:** If torset labels (`ib/torset`) are not present on nodes, using them in `required` will prevent pods from scheduling. Use `preferred` instead for graceful degradation.
@@ -127,7 +127,7 @@ ncclTest:
 
 Then install with:
 ```bash
-helm install nccl-test ./helm/nccl-test -f custom-values.yaml
+helm install nccl-test infrastructure_validations/aks/NCCL/helm/nccl-test -f custom-values.yaml
 ```
 
 ### Monitoring the Test
@@ -164,7 +164,7 @@ Published image: `ghcr.io/azure/ai-infrastructure-on-azure/nccl-test:latest`
 The instructions below show how to build and push to an Azure Container Registry, `$ACR_NAME`:
 
 ```bash
-cd docker/
+cd infrastructure_validations/aks/NCCL/docker/
 az acr login -n $ACR_NAME
 docker build -t $ACR_NAME.azurecr.io/nccl-test:dev .
 docker push $ACR_NAME.azurecr.io/nccl-test:dev
@@ -173,7 +173,7 @@ docker push $ACR_NAME.azurecr.io/nccl-test:dev
 Set the `image` values to use a custom image with the Helm chart:
 
 ```bash
-helm install nccl-test ./helm/nccl-test \
+helm install nccl-test infrastructure_validations/aks/NCCL/helm/nccl-test \
   --set image.repository=$ACR_NAME.azurecr.io/nccl-test \
   --set image.tag=dev \
   --set image.pullPolicy=Never

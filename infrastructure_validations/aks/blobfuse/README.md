@@ -29,7 +29,7 @@ FIO is a versatile tool for testing I/O performance. This setup allows you to te
 
 1. **Deploy the Helm chart (runs default random write test):**
    ```bash
-   helm install fio-test ./helm/fio
+   helm install fio-test infrastructure_validations/aks/blobfuse/helm/fio
    ```
 
 2. **Monitor the test:**
@@ -80,22 +80,22 @@ The `examples/` directory contains pre-configured test scenarios. To run a speci
 
 **Option 1: Run with default values (random write test)**
 ```bash
-helm install fio-test ./helm/fio
+helm install fio-test infrastructure_validations/aks/blobfuse/helm/fio
 ```
 
 **Option 2: Use a specific example configuration**
 ```bash
 # Run the block cache sequential write test (4M block writes with block caching)
-helm install block-cache-test ./helm/fio -f helm/fio/examples/block-cache-sequential-write.yaml
+helm install block-cache-test infrastructure_validations/aks/blobfuse/helm/fio -f infrastructure_validations/aks/blobfuse/helm/fio/examples/block-cache-sequential-write.yaml
 
 # Run the file cache sequential write test (4M block writes with file caching)
-helm install file-cache-test ./helm/fio -f helm/fio/examples/file-cache-sequential-write.yaml
+helm install file-cache-test infrastructure_validations/aks/blobfuse/helm/fio -f infrastructure_validations/aks/blobfuse/helm/fio/examples/file-cache-sequential-write.yaml
 ```
 
 **Option 3: Override specific values for custom tests**
 ```bash
 # Run a custom sequential write test
-helm install custom-test ./helm/fio \
+helm install custom-test infrastructure_validations/aks/blobfuse/helm/fio \
   --set fio.readWrite=write \
   --set fio.blockSize=4M \
   --set fio.size=5G \
@@ -103,7 +103,7 @@ helm install custom-test ./helm/fio \
   --set storage.size=10Gi
 
 # Run a custom random test with higher IOPS
-helm install iops-test ./helm/fio \
+helm install iops-test infrastructure_validations/aks/blobfuse/helm/fio \
   --set fio.readWrite=randwrite \
   --set fio.blockSize=4k \
   --set fio.numJobs=4 \

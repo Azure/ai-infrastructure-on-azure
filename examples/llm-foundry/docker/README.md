@@ -30,7 +30,7 @@ The container image is based on `mosaicml/llm-foundry:2.6.0_cu124-latest` and in
 If you need to build a custom version with modifications, follow these instructions:
 
 ```bash
-cd docker/
+cd examples/llm-foundry/docker/
 az acr login -n $ACR_NAME  # Optional: for pushing to Azure Container Registry
 docker build -t llm-foundry:dev .
 ```
