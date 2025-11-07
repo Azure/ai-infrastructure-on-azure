@@ -128,6 +128,7 @@ INSTALL_AMLFS=false ./scripts/deploy-aks.sh all
 - **`SYSTEM_POOL_VM_SIZE`** - VM size for system node pool (default: empty, AKS selects appropriate size)
 - **`NODE_POOL_NAME`** - Node pool name (default: "gpu")
 - **`NODE_POOL_NODE_COUNT`** - Number of nodes in pool (default: 2)
+- **`NODE_POOL_TAG`** - Tags to apply to the node pool (default: empty)
 
 ### Operator Version Variables
 
