@@ -8,12 +8,12 @@ spec:
   nodeAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
       nodeSelectorTerms:
-      - matchExpressions:
-        # This node label is added by NFD.
-        - key: feature.node.kubernetes.io/pci-15b3.present
-          operator: In
-          values:
-          - "true"
+        - matchExpressions:
+            # This node label is added by NFD.
+            - key: feature.node.kubernetes.io/pci-15b3.present
+              operator: In
+              values:
+                - "true"
 
   ofedDriver:
     repository: nvcr.io/nvidia/mellanox
@@ -23,10 +23,10 @@ spec:
     version: 25.04-0.6.1.0-2
 
     env:
-    # TODO: Temporary fix to avoid race condition where the kernel module fails to load.
-    # Refer: https://github.com/Mellanox/doca-driver-build/issues/52
-    - name: OFED_BLACKLIST_MODULES_FILE
-      value: "/host/etc/modprobe.d/blacklist-ofed-modules.conf"
+      # TODO: Temporary fix to avoid race condition where the kernel module fails to load.
+      # Refer: https://github.com/Mellanox/doca-driver-build/issues/52
+      - name: OFED_BLACKLIST_MODULES_FILE
+        value: "/host/etc/modprobe.d/blacklist-ofed-modules.conf"
 
     forcePrecompiled: false
     upgradePolicy:

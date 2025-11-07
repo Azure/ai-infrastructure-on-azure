@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
+import json
 import os
 import sys
-import json
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
 
 def log(message):
     """Simple logging function"""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{timestamp}] {message}", flush=True)
+
 
 def run_command(command):
     """Run a shell command"""
@@ -16,6 +18,7 @@ def run_command(command):
     result = os.system(command)
     if result != 0:
         raise RuntimeError(f"Command failed with exit code {result}: {command}")
+
 
 class TorsetTool:
 
@@ -34,9 +37,9 @@ class TorsetTool:
         """Read GUIDs from JSON input (from k8s annotations)"""
         data = json.loads(self.guids_json)
         for item in data:
-            node_name = item['name']
-            guids_str = item['guids']
-            guids = guids_str.split(',')
+            node_name = item["name"]
+            guids_str = item["guids"]
+            guids = guids_str.split(",")
             for guid in guids:
                 guid = guid.strip()
                 if guid:
@@ -44,7 +47,7 @@ class TorsetTool:
         log(f"Collected {len(self.guid_to_host_map)} GUIDs from {len(data)} nodes")
 
     def write_guids_to_file(self):
-        with open(self.guids_file, 'w') as f:
+        with open(self.guids_file, "w") as f:
             for guid in self.guid_to_host_map.keys():
                 f.write(f"{guid}\n")
         log(f"GUIDs written to {self.guids_file}")
@@ -65,11 +68,11 @@ class TorsetTool:
         if not Path(self.topo_file).exists():
             raise FileNotFoundError(f"Topology file {self.topo_file} not found")
         guids_per_switch = []
-        with open(self.topo_file, 'r') as f:
+        with open(self.topo_file, "r") as f:
             for line in f:
-                if 'Nodes=' not in line:
+                if "Nodes=" not in line:
                     continue
-                guids_per_switch.append(line.strip().split(' ')[1].split('=')[1])
+                guids_per_switch.append(line.strip().split(" ")[1].split("=")[1])
         self.device_guids_per_switch = guids_per_switch
         log(f"Grouped {len(guids_per_switch)} switches from topology file")
 
@@ -96,29 +99,30 @@ class TorsetTool:
     def write_hosts_by_torset(self):
         for torset, hosts in self.torsets.items():
             output_file = f"{self.output_dir}/{torset}_hosts.txt"
-            with open(output_file, 'w') as f:
+            with open(output_file, "w") as f:
                 for host in hosts:
                     f.write(f"{host}\n")
         log(f"Wrote hosts by torset to {self.output_dir}")
-        
+
     def write_torset_mapping(self):
         """Write node-to-torset mapping as JSON for kubectl to consume"""
         mapping_file = f"{self.output_dir}/torset_mapping.json"
-        with open(mapping_file, 'w') as f:
+        with open(mapping_file, "w") as f:
             json.dump(self.host_to_torset_map, f, indent=2)
         log(f"Wrote torset mapping to {mapping_file}")
+
 
 def main():
     if len(sys.argv) != 4:
         print("Usage: torset_tool.py <guids_json> <sharp_cmd_path> <output_dir>")
         sys.exit(1)
-    
+
     guids_json = sys.argv[1]
     sharp_cmd_path = sys.argv[2]
     output_dir = sys.argv[3]
-    
+
     Path(output_dir).mkdir(exist_ok=True, parents=True)
-    
+
     log("Starting torset discovery")
     torset_tool = TorsetTool(Path(output_dir), guids_json, Path(sharp_cmd_path))
 
@@ -134,5 +138,6 @@ def main():
     torset_tool.write_torset_mapping()
     log("Torset discovery completed successfully")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

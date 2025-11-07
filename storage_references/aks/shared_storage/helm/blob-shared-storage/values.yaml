@@ -16,7 +16,7 @@ storage:
   reclaimPolicy: "Delete"
   # Volume binding mode
   volumeBindingMode: "Immediate"
-  
+
   # Blobfuse mount options
   mountOptions:
     - "-o allow_other"
@@ -31,5 +31,5 @@ storage:
 # Global annotations that will be applied to all resources
 annotations: {}
 
-# Global labels that will be applied to all resources  
+# Global labels that will be applied to all resources
 labels: {}

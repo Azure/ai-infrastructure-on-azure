@@ -9,7 +9,7 @@ fio:
   ioEngine: "libaio"
   direct: 1
   numJobs: 1
-  runtime: 0  # Size-based test, not time-based
+  runtime: 0 # Size-based test, not time-based
   timeBased: false
   additionalOptions: "--group_reporting"
 

@@ -5,11 +5,11 @@
 1. [Introduction](#1-introduction)
 2. [Prerequisites and AKS Environment Setup](#2-prerequisites-and-aks-environment-setup)
 3. [Deployment Steps](#3-deployment-steps)
-   
+
    3.1. [Shared Storage Configuration](#31-shared-storage-configuration)
-   
+
    3.2. [Dataset Preparation](#32-dataset-preparation)
-   
+
    3.3. [Model Training](#33-model-training)
 
 ## 1. Introduction
@@ -28,7 +28,7 @@ The implementation leverages several key technologies:
 Before proceeding with the training deployment, ensure your AKS cluster meets the following requirements:
 
 - **PyTorch Operator** installed for distributed training coordination
-- **Blob Storage CSI Driver** or **Azure Managed Lustre CSI Driver** enabled for data storage integration  
+- **Blob Storage CSI Driver** or **Azure Managed Lustre CSI Driver** enabled for data storage integration
 - **GPU-enabled node pools** with appropriate VM SKUs (e.g., Standard_ND96isr_H100_v5, Standard_ND96isr_H200_v5)
 - **RDMA networking** configured for high-performance inter-node communication
 - **Sufficient storage** - The 175B model checkpoints require approximately 2.3 TiB of storage
@@ -79,7 +79,7 @@ kubectl get pvc shared-storage-pvc
 
 # Verify storage class and capacity
 kubectl describe pvc shared-storage-pvc
-``` 
+```
 
 ### 3.2. Dataset Preparation
 
@@ -102,13 +102,13 @@ This creates a smaller dataset suitable for testing, with typical file sizes:
 
 **Sample Dataset File Sizes (Reference)**
 
-| Directory | Files | Size | Description |
-|-----------|-------|------|-------------|
-| `slimpajama/downloaded` | 100 | 1.5G | Original compressed .zst files |
-| `slimpajama/extracted` | 100 | 4.2G | Extracted .jsonl files |
-| `slimpajama/concatenated` | 1 | 4.2G | Combined training file |
-| `slimpajama/bpe` | 2 | 1.4M | Byte-pair encoding files |
-| `slimpajama/preprocessed` | 1 | 2.0G | Final Megatron binary format |
+| Directory                 | Files | Size | Description                    |
+| ------------------------- | ----- | ---- | ------------------------------ |
+| `slimpajama/downloaded`   | 100   | 1.5G | Original compressed .zst files |
+| `slimpajama/extracted`    | 100   | 4.2G | Extracted .jsonl files         |
+| `slimpajama/concatenated` | 1     | 4.2G | Combined training file         |
+| `slimpajama/bpe`          | 2     | 1.4M | Byte-pair encoding files       |
+| `slimpajama/preprocessed` | 1     | 2.0G | Final Megatron binary format   |
 
 #### Full Dataset Preparation
 
@@ -170,7 +170,7 @@ Execute distributed model training using the PyTorch Operator. The training proc
 The chart supports several predefined model configurations:
 
 - **175b**: 96 layers, 12288 hidden size, 96 attention heads (full GPT-3 175B)
-- **30b**: 48 layers, 7168 hidden size, 56 attention heads  
+- **30b**: 48 layers, 7168 hidden size, 56 attention heads
 - **13b**: 40 layers, 5120 hidden size, 40 attention heads
 - **1.3b**: 24 layers, 2048 hidden size, 16 attention heads
 - **857m**: 24 layers, 1024 hidden size, 16 attention heads
