@@ -35,7 +35,7 @@ storage:
               - key: kubernetes.io/hostname
                 operator: In
                 values:
-                  - node1  # Update with your node name
+                  - node1 # Update with your node name
 
 # Pod configuration
 pod:
