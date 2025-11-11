@@ -23,7 +23,7 @@ __all__ = ["build_server"]
 
 
 def __getattr__(name: str) -> Any:  # pragma: no cover - trivial
-	if name == "build_server":
-		# Lazy import to avoid runpy warning when executing server module
-		return import_module("ai_infrastructure_mcp.server").build_server  # type: ignore[attr-defined]
-	raise AttributeError(f"module 'ai_infrastructure_mcp' has no attribute {name!r}")
+    if name == "build_server":
+        # Lazy import to avoid runpy warning when executing server module
+        return import_module("ai_infrastructure_mcp.server").build_server  # type: ignore[attr-defined]
+    raise AttributeError(f"module 'ai_infrastructure_mcp' has no attribute {name!r}")

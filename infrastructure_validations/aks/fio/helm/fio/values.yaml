@@ -1,21 +1,21 @@
+---
 # Default values for fio
 # This is a YAML-formatted file.
 
 # Storage configuration
 storage:
-  # Storage size for the test volume
+  # Storage type: azure-container-storage, existing-pvc
+  # - azure-container-storage: Creates StorageClass and PVC for
+  #   Azure Container Storage
+  # - existing-pvc: Use an existing PVC (specify existingPvcName)
+  #   Use this for testing with blobfuse, Lustre, or other shared storage
+  type: "azure-container-storage"
+
+  # For existing-pvc type, specify the PVC name
+  existingPvcName: ""
+
+  # Storage size for the test volume (not used for existing-pvc)
   size: "10Gi"
-  # Azure storage account SKU
-  skuName: "Standard_LRS"
-  # Mount options for blobfuse
-  mountOptions:
-    - "-o allow_other"
-    - "--use-attr-cache=true"
-    - "--cancel-list-on-mount-seconds=10"
-    - "-o attr_timeout=120"
-    - "-o entry_timeout=120"
-    - "-o negative_timeout=120"
-    - "--log-level=LOG_WARNING"
 
 # Pod configuration
 pod:
@@ -23,17 +23,17 @@ pod:
   image: "alpine:3.19"
   # Container name
   containerName: "fio"
-  # Mount path for blob storage
-  mountPath: "/mnt/blob"
+  # Mount path for storage
+  mountPath: "/mnt/test"
   # Restart policy
   restartPolicy: "Never"
 
 # FIO test configuration
 fio:
   # Test name
-  testName: "blob-fio-test"
+  testName: "fio-test"
   # Test file name
-  filename: "/mnt/blob/datafile"
+  filename: "/mnt/test/datafile"
   # File size for the test
   size: "1G"
   # Block size
@@ -46,6 +46,8 @@ fio:
   direct: 1
   # Number of jobs
   numJobs: 1
+  # I/O depth
+  ioDepth: 1
   # Runtime in seconds (0 for size-based test)
   runtime: 60
   # Time-based test

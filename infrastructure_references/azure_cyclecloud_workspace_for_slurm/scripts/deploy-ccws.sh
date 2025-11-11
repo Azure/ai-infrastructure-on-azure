@@ -173,7 +173,7 @@ ADMIN_USERNAME="hpcadmin"
 SCHEDULER_SKU="Standard_D4as_v5"
 LOGIN_SKU="Standard_D2as_v5"
 HTC_SKU=""
-HPC_SKU="" 
+HPC_SKU=""
 GPU_SKU=""
 WORKSPACE_REF="${WORKSPACE_REF:-main}" # allow pre-set env var to override default
 WORKSPACE_COMMIT=""
@@ -213,55 +213,204 @@ DB_GENERATE_NAME="false"
 # Parse args
 while [[ $# -gt 0 ]]; do
 	case "$1" in
-		--subscription-id) SUBSCRIPTION_ID="$2"; shift 2;;
-		--resource-group) RESOURCE_GROUP="$2"; shift 2;;
-		--location) LOCATION="$2"; shift 2;;
-		--ssh-public-key-file) SSH_KEY_FILE="$2"; shift 2;;
-		--admin-password) ADMIN_PASSWORD="$2"; shift 2;;
-		--admin-username) ADMIN_USERNAME="$2"; shift 2;;
-		--htc-sku) HTC_SKU="$2"; shift 2;;
-		--htc-az) HTC_AZ="$2"; shift 2;;
-		--hpc-sku) HPC_SKU="$2"; shift 2;;
-		--hpc-az) HPC_AZ="$2"; shift 2;;
-		--gpu-sku) GPU_SKU="$2"; shift 2;;
-		--gpu-az) GPU_AZ="$2"; shift 2;;
-		--scheduler-sku) SCHEDULER_SKU="$2"; shift 2;;
-		--login-sku) LOGIN_SKU="$2"; shift 2;;
-		--workspace-ref) WORKSPACE_REF="$2"; shift 2;;
-		--workspace-commit) WORKSPACE_COMMIT="$2"; shift 2;;
-		--workspace-dir) WORKSPACE_DIR="$2"; shift 2;;
-		--output-file) OUTPUT_FILE="$2"; shift 2;;
-		--anf-sku) ANF_SKU="$2"; shift 2;;
-		--anf-size) ANF_SIZE="$2"; shift 2;;
-		--anf-az) ANF_AZ="$2"; shift 2;;
-		--amlfs-sku) AMLFS_SKU="$2"; shift 2;;
-		--amlfs-size) AMLFS_SIZE="$2"; shift 2;;
-		--amlfs-az) AMLFS_AZ="$2"; shift 2;;
-		--network-address-space) NETWORK_ADDRESS_SPACE="$2"; shift 2;;
-		--bastion) NETWORK_BASTION="true"; shift 1;;
-		--htc-use-spot) HTC_USE_SPOT="true"; shift 1;;
-		--open-ondemand) OOD_ENABLED="true"; shift 1;;
-		--ood-sku) OOD_SKU="$2"; shift 2;;
-		--ood-user-domain) OOD_USER_DOMAIN="$2"; shift 2;;
-		--ood-fqdn) OOD_FQDN="$2"; shift 2;;
-		--ood-auto-register) OOD_AUTO_REGISTER="true"; shift 1;;
-		--ood-app-id) OOD_APP_ID="$2"; shift 2;;
-		--ood-managed-identity-id) OOD_MANAGED_IDENTITY_ID="$2"; shift 2;;
-		--htc-max-nodes) HTC_MAX_NODES="$2"; shift 2;;
-		--hpc-max-nodes) HPC_MAX_NODES="$2"; shift 2;;
-		--gpu-max-nodes) GPU_MAX_NODES="$2"; shift 2;;
-		--db-name) DB_NAME="$2"; shift 2;;
-		--db-user) DB_USERNAME="$2"; shift 2;;
-		--db-password) DB_PASSWORD="$2"; shift 2;;
-		--db-id) DB_ID="$2"; shift 2;;
-		--create-accounting-mysql) CREATE_ACCOUNTING_MYSQL="true"; shift 1;;
-		--db-generate-name) DB_GENERATE_NAME="true"; shift 1;;
-		--specify-az) SPECIFY_AZ="true"; shift 1;;
-		--no-az) echo "[WARN] --no-az deprecated; use --specify-az for prompting zones (invert semantics)." >&2; SPECIFY_AZ="true"; shift 1;;
-		--accept-marketplace) ACCEPT_MARKETPLACE="true"; shift 1;;
-		--deploy) DO_DEPLOY="true"; shift 1;;
-		--help|-h) usage; exit 0;;
-		*) echo "Unknown argument: $1" >&2; usage; exit 1;;
+	--subscription-id)
+		SUBSCRIPTION_ID="$2"
+		shift 2
+		;;
+	--resource-group)
+		RESOURCE_GROUP="$2"
+		shift 2
+		;;
+	--location)
+		LOCATION="$2"
+		shift 2
+		;;
+	--ssh-public-key-file)
+		SSH_KEY_FILE="$2"
+		shift 2
+		;;
+	--admin-password)
+		ADMIN_PASSWORD="$2"
+		shift 2
+		;;
+	--admin-username)
+		ADMIN_USERNAME="$2"
+		shift 2
+		;;
+	--htc-sku)
+		HTC_SKU="$2"
+		shift 2
+		;;
+	--htc-az)
+		HTC_AZ="$2"
+		shift 2
+		;;
+	--hpc-sku)
+		HPC_SKU="$2"
+		shift 2
+		;;
+	--hpc-az)
+		HPC_AZ="$2"
+		shift 2
+		;;
+	--gpu-sku)
+		GPU_SKU="$2"
+		shift 2
+		;;
+	--gpu-az)
+		GPU_AZ="$2"
+		shift 2
+		;;
+	--scheduler-sku)
+		SCHEDULER_SKU="$2"
+		shift 2
+		;;
+	--login-sku)
+		LOGIN_SKU="$2"
+		shift 2
+		;;
+	--workspace-ref)
+		WORKSPACE_REF="$2"
+		shift 2
+		;;
+	--workspace-commit)
+		WORKSPACE_COMMIT="$2"
+		shift 2
+		;;
+	--workspace-dir)
+		WORKSPACE_DIR="$2"
+		shift 2
+		;;
+	--output-file)
+		OUTPUT_FILE="$2"
+		shift 2
+		;;
+	--anf-sku)
+		ANF_SKU="$2"
+		shift 2
+		;;
+	--anf-size)
+		ANF_SIZE="$2"
+		shift 2
+		;;
+	--anf-az)
+		ANF_AZ="$2"
+		shift 2
+		;;
+	--amlfs-sku)
+		AMLFS_SKU="$2"
+		shift 2
+		;;
+	--amlfs-size)
+		AMLFS_SIZE="$2"
+		shift 2
+		;;
+	--amlfs-az)
+		AMLFS_AZ="$2"
+		shift 2
+		;;
+	--network-address-space)
+		NETWORK_ADDRESS_SPACE="$2"
+		shift 2
+		;;
+	--bastion)
+		NETWORK_BASTION="true"
+		shift 1
+		;;
+	--htc-use-spot)
+		HTC_USE_SPOT="true"
+		shift 1
+		;;
+	--open-ondemand)
+		OOD_ENABLED="true"
+		shift 1
+		;;
+	--ood-sku)
+		OOD_SKU="$2"
+		shift 2
+		;;
+	--ood-user-domain)
+		OOD_USER_DOMAIN="$2"
+		shift 2
+		;;
+	--ood-fqdn)
+		OOD_FQDN="$2"
+		shift 2
+		;;
+	--ood-auto-register)
+		OOD_AUTO_REGISTER="true"
+		shift 1
+		;;
+	--ood-app-id)
+		OOD_APP_ID="$2"
+		shift 2
+		;;
+	--ood-managed-identity-id)
+		OOD_MANAGED_IDENTITY_ID="$2"
+		shift 2
+		;;
+	--htc-max-nodes)
+		HTC_MAX_NODES="$2"
+		shift 2
+		;;
+	--hpc-max-nodes)
+		HPC_MAX_NODES="$2"
+		shift 2
+		;;
+	--gpu-max-nodes)
+		GPU_MAX_NODES="$2"
+		shift 2
+		;;
+	--db-name)
+		DB_NAME="$2"
+		shift 2
+		;;
+	--db-user)
+		DB_USERNAME="$2"
+		shift 2
+		;;
+	--db-password)
+		DB_PASSWORD="$2"
+		shift 2
+		;;
+	--db-id)
+		DB_ID="$2"
+		shift 2
+		;;
+	--create-accounting-mysql)
+		CREATE_ACCOUNTING_MYSQL="true"
+		shift 1
+		;;
+	--db-generate-name)
+		DB_GENERATE_NAME="true"
+		shift 1
+		;;
+	--specify-az)
+		SPECIFY_AZ="true"
+		shift 1
+		;;
+	--no-az)
+		echo "[WARN] --no-az deprecated; use --specify-az for prompting zones (invert semantics)." >&2
+		SPECIFY_AZ="true"
+		shift 1
+		;;
+	--accept-marketplace)
+		ACCEPT_MARKETPLACE="true"
+		shift 1
+		;;
+	--deploy)
+		DO_DEPLOY="true"
+		shift 1
+		;;
+	--help | -h)
+		usage
+		exit 0
+		;;
+	*)
+		echo "Unknown argument: $1" >&2
+		usage
+		exit 1
+		;;
 	esac
 done
 
@@ -270,13 +419,17 @@ missing=()
 for var in "${required[@]}"; do
 	if [[ -z "${!var:-}" ]]; then missing+=("$var"); fi
 done
-if (( ${#missing[@]} )); then
+if ((${#missing[@]})); then
 	echo "Missing required arguments: ${missing[*]}" >&2
-	usage; exit 1
+	usage
+	exit 1
 fi
 
-if [[ ! -f "$SSH_KEY_FILE" ]]; then echo "SSH key file not found: $SSH_KEY_FILE" >&2; exit 1; fi
-SSH_PUBLIC_KEY="$(tr -d '\n' < "$SSH_KEY_FILE")"
+if [[ ! -f "$SSH_KEY_FILE" ]]; then
+	echo "SSH key file not found: $SSH_KEY_FILE" >&2
+	exit 1
+fi
+SSH_PUBLIC_KEY="$(tr -d '\n' <"$SSH_KEY_FILE")"
 # Generate database name if requested
 if [[ "$DB_GENERATE_NAME" == "true" ]]; then
 	if [[ "$CREATE_ACCOUNTING_MYSQL" != "true" ]]; then
@@ -332,7 +485,6 @@ validate_sku() {
 	fi
 }
 
-
 if [[ -z "$NETWORK_ADDRESS_SPACE" || "$NETWORK_ADDRESS_SPACE" != */* ]]; then
 	echo "[ERROR] --network-address-space must be a CIDR string. Provided: $NETWORK_ADDRESS_SPACE" >&2
 	exit 1
@@ -349,7 +501,7 @@ validate_max_nodes() {
 		echo "[ERROR] ${label} max nodes must be a positive integer. Provided: $val" >&2
 		return 1
 	fi
-	if (( val < 1 )); then
+	if ((val < 1)); then
 		echo "[ERROR] ${label} max nodes must be >= 1. Provided: $val" >&2
 		return 1
 	fi
@@ -531,45 +683,56 @@ region_has_zone_support() {
 	fi
 }
 
-
 # Generate a random lowercase alphanumeric name with prefix
 generate_random_name() {
-    local prefix="ccw"
-    local rand=""
-    if command -v openssl >/dev/null 2>&1; then
-        rand="$(openssl rand -hex 4)"
-    else
-        rand="$(tr -dc 'a-z0-9' </dev/urandom | head -c 8 || echo "$RANDOM")"
-    fi
-    echo "${prefix}-${rand}"
+	local prefix="ccw"
+	local rand=""
+	if command -v openssl >/dev/null 2>&1; then
+		rand="$(openssl rand -hex 4)"
+	else
+		rand="$(tr -dc 'a-z0-9' </dev/urandom | head -c 8 || echo "$RANDOM")"
+	fi
+	echo "${prefix}-${rand}"
 }
 
 prompt_zone() {
 	local label="$1" sku="$2" current="$3" zones="$4"
 	local region="$LOCATION"
-	if [[ -n "$current" ]]; then echo "[INFO] $label array $sku availability zone set through commandline to: $current" >&2; echo "$current"; return 0; fi
-	
+	if [[ -n "$current" ]]; then
+		echo "[INFO] $label array $sku availability zone set through commandline to: $current" >&2
+		echo "$current"
+		return 0
+	fi
+
 	read -r -p "Select availability zone (e.g. 1) for $label SKU '$sku' or press Enter for none: " sel
 	if [[ -n "$sel" ]]; then
 		if [[ -n "$zones" ]]; then
 			if echo "$zones" | tr '\t' ' ' | tr ' ' '\n' | grep -Fx "$sel" >/dev/null 2>&1; then
-				echo "$sel"; return 0
+				echo "$sel"
+				return 0
 			else
 				echo "[WARN] '$sel' is not in discovered zones list; proceeding anyway." >&2
-				echo "$sel"; return 0
+				echo "$sel"
+				return 0
 			fi
 		else
-			echo "$sel"; return 0
+			echo "$sel"
+			return 0
 		fi
 	else
-		echo ""; return 0
+		echo ""
+		return 0
 	fi
 }
 
 # Manual zone prompt for storage (ANF / AMLFS) without auto-discovery
 prompt_zone_manual() {
 	local label="$1" current="$2"
-	if [[ -n "$current" ]]; then echo "[INFO] $label availability zone preset: $current" >&2; echo "$current"; return 0; fi
+	if [[ -n "$current" ]]; then
+		echo "[INFO] $label availability zone preset: $current" >&2
+		echo "$current"
+		return 0
+	fi
 	echo "[INFO] ${label}: availability zone not auto-discovered. Typical zonal regions use 1,2,3. Leave blank for none." >&2
 	read -r -p "Enter availability zone for ${label} (blank for none): " sel
 	if [[ -n "$sel" ]]; then echo "$sel"; else echo ""; fi
@@ -624,7 +787,11 @@ if [[ "$SPECIFY_AZ" == "true" ]]; then
 		AMLFS_AZ="$(prompt_zone_manual AMLFS "${AMLFS_AZ:-}")"
 	else
 		echo "[INFO] Region $LOCATION appears to have no zone-capable VM SKUs (or discovery unavailable); skipping AZ prompts." >&2
-		HTC_AZ=""; HPC_AZ=""; GPU_AZ=""; ANF_AZ=""; AMLFS_AZ=""
+		HTC_AZ=""
+		HPC_AZ=""
+		GPU_AZ=""
+		ANF_AZ=""
+		AMLFS_AZ=""
 	fi
 else
 	# SPECIFY_AZ not true
@@ -633,19 +800,23 @@ else
 		exit 1
 	else
 		echo "[INFO] --specify-az not provided and no AZs specified; proceeding with no AZ enforcement (availabilityZone arrays will be empty)." >&2
-		HTC_AZ=""; HPC_AZ=""; GPU_AZ=""; ANF_AZ=""; AMLFS_AZ=""
+		HTC_AZ=""
+		HPC_AZ=""
+		GPU_AZ=""
+		ANF_AZ=""
+		AMLFS_AZ=""
 	fi
 fi
 
 # Default AMLFS zone to 1 if none provided
 if [[ -z "${AMLFS_AZ}" ]]; then
 	echo "[INFO] AMLFS zone not specified; defaulting to '1'." >&2
-    if region_has_zone_support; then
-        AMLFS_AZ="1"
-    else
-        echo "[INFO] Region $LOCATION appears to have no zone-capable VM SKUs (or discovery unavailable); skipping AMLFS AZ default." >&2
-        AMLFS_AZ=""
-    fi
+	if region_has_zone_support; then
+		AMLFS_AZ="1"
+	else
+		echo "[INFO] Region $LOCATION appears to have no zone-capable VM SKUs (or discovery unavailable); skipping AMLFS AZ default." >&2
+		AMLFS_AZ=""
+	fi
 fi
 
 # Prepare JSON fragments for optional availability zone (renamed to availabilityZone)
@@ -657,26 +828,36 @@ if [[ -n "${AMLFS_AZ}" ]]; then AMLFS_ZONES_JSON="\"availabilityZone\": [\"${AML
 
 # Validate ANF inputs
 if ! [[ "$ANF_SIZE" =~ ^[0-9]+$ ]]; then
-	echo "[ERROR] --anf-size must be an integer (TiB). Provided: $ANF_SIZE" >&2; exit 1
+	echo "[ERROR] --anf-size must be an integer (TiB). Provided: $ANF_SIZE" >&2
+	exit 1
 fi
-if (( ANF_SIZE < 1 )); then
-	echo "[ERROR] --anf-size must be >= 1 TiB. Provided: $ANF_SIZE" >&2; exit 1
+if ((ANF_SIZE < 1)); then
+	echo "[ERROR] --anf-size must be >= 1 TiB. Provided: $ANF_SIZE" >&2
+	exit 1
 fi
 case "$ANF_SKU" in
-	Standard|Premium|Ultra) ;; 
-	*) echo "[ERROR] --anf-sku must be one of Standard|Premium|Ultra. Provided: $ANF_SKU" >&2; exit 1;;
+Standard | Premium | Ultra) ;;
+*)
+	echo "[ERROR] --anf-sku must be one of Standard|Premium|Ultra. Provided: $ANF_SKU" >&2
+	exit 1
+	;;
 esac
 
 # Validate AMLFS inputs
 if ! [[ "$AMLFS_SIZE" =~ ^[0-9]+$ ]]; then
-	echo "[ERROR] --amlfs-size must be an integer (TiB). Provided: $AMLFS_SIZE" >&2; exit 1
+	echo "[ERROR] --amlfs-size must be an integer (TiB). Provided: $AMLFS_SIZE" >&2
+	exit 1
 fi
-if (( AMLFS_SIZE < 4 )); then
-	echo "[ERROR] --amlfs-size must be >= 4 TiB. Provided: $AMLFS_SIZE" >&2; exit 1
+if ((AMLFS_SIZE < 4)); then
+	echo "[ERROR] --amlfs-size must be >= 4 TiB. Provided: $AMLFS_SIZE" >&2
+	exit 1
 fi
 case "$AMLFS_SKU" in
-	AMLFS-Durable-Premium-40|AMLFS-Durable-Premium-125|AMLFS-Durable-Premium-250|AMLFS-Durable-Premium-500) ;;
-	*) echo "[ERROR] --amlfs-sku must be one of AMLFS-Durable-Premium-40|AMLFS-Durable-Premium-125|AMLFS-Durable-Premium-250|AMLFS-Durable-Premium-500. Provided: $AMLFS_SKU" >&2; exit 1;;
+AMLFS-Durable-Premium-40 | AMLFS-Durable-Premium-125 | AMLFS-Durable-Premium-250 | AMLFS-Durable-Premium-500) ;;
+*)
+	echo "[ERROR] --amlfs-sku must be one of AMLFS-Durable-Premium-40|AMLFS-Durable-Premium-125|AMLFS-Durable-Premium-250|AMLFS-Durable-Premium-500. Provided: $AMLFS_SKU" >&2
+	exit 1
+	;;
 esac
 
 # Validate Open OnDemand requirements
@@ -730,13 +911,20 @@ if [[ -n "$WORKSPACE_COMMIT" ]]; then
 	echo "[INFO] Workspace commit override specified: $WORKSPACE_COMMIT"
 	# Verify commit exists
 	if git rev-parse --verify "$WORKSPACE_COMMIT^{commit}" >/dev/null 2>&1; then
-		git checkout "$WORKSPACE_COMMIT" || { echo "[ERROR] Failed to checkout commit $WORKSPACE_COMMIT" >&2; exit 1; }
+		git checkout "$WORKSPACE_COMMIT" || {
+			echo "[ERROR] Failed to checkout commit $WORKSPACE_COMMIT" >&2
+			exit 1
+		}
 		echo "[INFO] Checked out commit $WORKSPACE_COMMIT (detached HEAD)"
 	else
-		echo "[ERROR] Commit $WORKSPACE_COMMIT not found in repository" >&2; exit 1
+		echo "[ERROR] Commit $WORKSPACE_COMMIT not found in repository" >&2
+		exit 1
 	fi
 else
-	git checkout "$WORKSPACE_REF" || { echo "[ERROR] Failed to checkout ref $WORKSPACE_REF" >&2; exit 1; }
+	git checkout "$WORKSPACE_REF" || {
+		echo "[ERROR] Failed to checkout ref $WORKSPACE_REF" >&2
+		exit 1
+	}
 fi
 
 echo "[INFO] Generating output.json at $OUTPUT_FILE"
@@ -758,7 +946,7 @@ else
 	OOD_JSON='"ood": { "value": { "type": "disabled" } },'
 fi
 
-cat > "$OUTPUT_FILE" <<EOF
+cat >"$OUTPUT_FILE" <<EOF
 {
 	"\$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
 	"contentVersion": "1.0.0.0",
@@ -831,7 +1019,7 @@ echo "Bastion Enabled:        ${NETWORK_BASTION}"
 echo "HTC Max Nodes:          ${HTC_MAX_NODES}"
 echo "HPC Max Nodes:          ${HPC_MAX_NODES}"
 echo "GPU Max Nodes:          ${GPU_MAX_NODES}"
-echo "Deployment Name (preview): ${RANDOM_NAME}" 
+echo "Deployment Name (preview): ${RANDOM_NAME}"
 echo "Admin Password Persisted:  false (must pass via CLI parameter)"
 echo "Output Parameters File: ${OUTPUT_FILE}"
 echo "Template Path:          ${WORKSPACE_DIR}/bicep/mainTemplate.bicep"
@@ -861,14 +1049,14 @@ if [[ "$DO_DEPLOY" != "true" ]]; then
 	echo "[INFO] Verify this commit contains required hotfixes before proceeding." >&2
 	read -r -p "Confirm deployment of ${COMMIT_DISPLAY}? (y/N): " REPLY
 	case "$REPLY" in
-		[yY])
-			echo "[INFO] User confirmed interactive deployment."
-			DO_DEPLOY="true"
-			;;
-		*)
-			echo "[INFO] User did not confirm deployment (response: '$REPLY'). Exiting now."
-			exit 0
-			;;
+	[yY])
+		echo "[INFO] User confirmed interactive deployment."
+		DO_DEPLOY="true"
+		;;
+	*)
+		echo "[INFO] User did not confirm deployment (response: '$REPLY'). Exiting now."
+		exit 0
+		;;
 	esac
 fi
 
@@ -877,12 +1065,17 @@ if [[ "$DO_DEPLOY" == "true" ]]; then
 	az account set --subscription "$SUBSCRIPTION_ID" 2>/dev/null || echo "[WARN] Unable to set subscription (login required)."
 	echo "[INFO] Performing az deployment sub create"
 	if [[ "$DB_ENABLED" == "true" ]]; then
-		az deployment sub create --name "$RANDOM_NAME" --location "$LOCATION" --template-file "$WORKSPACE_DIR/bicep/mainTemplate.bicep" --parameters @"$OUTPUT_FILE" adminPassword="$ADMIN_PASSWORD" databaseAdminPassword="$DB_PASSWORD" --debug || { echo "[ERROR] Deployment failed" >&2; exit 1; }
+		az deployment sub create --name "$RANDOM_NAME" --location "$LOCATION" --template-file "$WORKSPACE_DIR/bicep/mainTemplate.bicep" --parameters @"$OUTPUT_FILE" adminPassword="$ADMIN_PASSWORD" databaseAdminPassword="$DB_PASSWORD" --debug || {
+			echo "[ERROR] Deployment failed" >&2
+			exit 1
+		}
 	else
-		az deployment sub create --name "$RANDOM_NAME" --location "$LOCATION" --template-file "$WORKSPACE_DIR/bicep/mainTemplate.bicep" --parameters @"$OUTPUT_FILE" adminPassword="$ADMIN_PASSWORD" databaseAdminPassword="" --debug || { echo "[ERROR] Deployment failed" >&2; exit 1; }
+		az deployment sub create --name "$RANDOM_NAME" --location "$LOCATION" --template-file "$WORKSPACE_DIR/bicep/mainTemplate.bicep" --parameters @"$OUTPUT_FILE" adminPassword="$ADMIN_PASSWORD" databaseAdminPassword="" --debug || {
+			echo "[ERROR] Deployment failed" >&2
+			exit 1
+		}
 	fi
 	echo "[INFO] Deployment finished successfully"
 fi
-
 
 exit 0

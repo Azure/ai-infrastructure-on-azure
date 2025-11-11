@@ -1,12 +1,14 @@
 import os
-import paramiko
 from typing import Any, Dict
+
+import paramiko
 
 # Environment variable names for cluster SSH access
 ENV_CLUSTER_HOST = "CLUSTER_HOST"
 ENV_CLUSTER_USER = "CLUSTER_USER"
 ENV_CLUSTER_PRIVATE_KEY = "CLUSTER_PRIVATE_KEY"
 ENV_CLUSTER_PORT = "CLUSTER_PORT"
+
 
 class SSHConfigError(Exception):
     pass
@@ -25,9 +27,13 @@ def load_ssh_config() -> Dict[str, Any]:
     host = os.getenv(ENV_CLUSTER_HOST)
     user = os.getenv(ENV_CLUSTER_USER)
     if not host:
-        raise SSHConfigError(f"Missing required environment variable: {ENV_CLUSTER_HOST}")
+        raise SSHConfigError(
+            f"Missing required environment variable: {ENV_CLUSTER_HOST}"
+        )
     if not user:
-        raise SSHConfigError(f"Missing required environment variable: {ENV_CLUSTER_USER}")
+        raise SSHConfigError(
+            f"Missing required environment variable: {ENV_CLUSTER_USER}"
+        )
 
     port_val = os.getenv(ENV_CLUSTER_PORT, "22")
     try:

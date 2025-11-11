@@ -1,4 +1,5 @@
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
+
 from ai_infrastructure_mcp.tools.command_wrapper import run_simple_command
 
 
@@ -17,14 +18,16 @@ def sacct(args: Optional[List[str]] = None) -> Dict[str, Any]:
     if args:
         processed_args = list(args)  # shallow copy
         lowered = [a.lower() for a in processed_args]
-        has_state = any(a in ('-s', '--state') for a in lowered)
+        has_state = any(a in ("-s", "--state") for a in lowered)
         # Account for forms like '--state=RUNNING'
         if not has_state:
-            has_state = any(a.startswith('--state=') for a in lowered)
-        has_end = any(a in ('-e', '--endtime') for a in lowered) or any(a.startswith('--endtime=') for a in lowered)
+            has_state = any(a.startswith("--state=") for a in lowered)
+        has_end = any(a in ("-e", "--endtime") for a in lowered) or any(
+            a.startswith("--endtime=") for a in lowered
+        )
         if has_state and not has_end:
             # Append explicit endtime=now
-            processed_args.append('--endtime=now')
+            processed_args.append("--endtime=now")
     return run_simple_command("sacct", processed_args or args)
 
 

@@ -1,0 +1,24 @@
+{{- if ne .Values.storage.type "existing-pvc" }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-pvc
+  labels:
+    {{- include "fio.labels" . | nindent 4 }}
+  annotations:
+    {{- if eq .Values.storage.type "azure-container-storage" }}
+    localdisk.csi.acstor.io/accept-ephemeral-storage: "true"
+    {{- end }}
+    {{- with .Values.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.storage.size }}
+  {{- if eq .Values.storage.type "azure-container-storage" }}
+  storageClassName: {{ include "fio.fullname" . }}-acstor
+  {{- end }}
+{{- end }}

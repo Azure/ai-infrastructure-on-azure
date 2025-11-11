@@ -1,3 +1,4 @@
+---
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 # Remove the MPIJob CRD to avoid conflict with MPI Operator

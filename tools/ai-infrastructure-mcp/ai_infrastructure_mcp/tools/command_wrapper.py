@@ -1,9 +1,10 @@
-from typing import List, Dict, Any, Optional
-import shlex
 import re
+import shlex
+from typing import Any, Dict, List, Optional
+
 from ai_infrastructure_mcp.ssh_config import run_login_command
 
-_HOST_RE = re.compile(r'^[A-Za-z0-9._-]+$')
+_HOST_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 
 
 def _validate_hosts(hosts: List[str]) -> List[str]:
@@ -34,14 +35,14 @@ def parse_parallel_ssh_output(output: str) -> Dict[str, List[str]]:
         ls = line.strip()
         if not ls:
             continue
-        if ls.startswith('[') and 'SUCCESS' in ls:
+        if ls.startswith("[") and "SUCCESS" in ls:
             parts = ls.split()
             if parts:
                 host = parts[-1]
                 current_host = host
                 result.setdefault(host, [])
             continue
-        if current_host and not ls.startswith('['):
+        if current_host and not ls.startswith("["):
             result[current_host].append(ls)
     return result
 
@@ -69,16 +70,14 @@ def run_parallel_ssh(hosts: List[str], cmd_parts: List[str]) -> Dict[str, Any]:
     if not cmd_parts:
         raise ValueError("cmd_parts must not be empty")
     for part in cmd_parts:
-        if any(c in part for c in ['\n', '\r']):
+        if any(c in part for c in ["\n", "\r"]):
             raise ValueError("invalid newline in argument")
     inner_cmd = " ".join(shlex.quote(p) for p in cmd_parts)
     full_cmd = build_parallel_ssh_command(hosts, inner_cmd)
     try:
         raw = run_login_command(full_cmd)
         parsed = parse_parallel_ssh_output(raw)
-        host_entries = [
-            {"host": h, "lines": v} for h, v in parsed.items()
-        ]
+        host_entries = [{"host": h, "lines": v} for h, v in parsed.items()]
         return {
             "version": 1,
             "success": True,
@@ -100,13 +99,15 @@ def run_parallel_ssh(hosts: List[str], cmd_parts: List[str]) -> Dict[str, Any]:
         }
 
 
-def run_simple_command(command: str, args: Optional[List[str]] = None) -> Dict[str, Any]:
+def run_simple_command(
+    command: str, args: Optional[List[str]] = None
+) -> Dict[str, Any]:
     """Helper to run a command with a raw list of args.
-    
+
     Args:
         command: The base command to run (e.g., 'sacct', 'systemctl')
         args: Optional list of command-line arguments
-        
+
     Returns:
         Standardized dict with version, success, command, raw_output, error fields
     """
@@ -117,6 +118,18 @@ def run_simple_command(command: str, args: Optional[List[str]] = None) -> Dict[s
     cmd = " ".join(shlex.quote(p) for p in cmd_parts)
     try:
         raw = run_login_command(cmd)
-        return {"version": 1, "success": True, "command": cmd, "raw_output": raw, "error": None}
+        return {
+            "version": 1,
+            "success": True,
+            "command": cmd,
+            "raw_output": raw,
+            "error": None,
+        }
     except Exception as e:
-        return {"version": 1, "success": False, "command": cmd, "raw_output": "", "error": str(e)}
+        return {
+            "version": 1,
+            "success": False,
+            "command": cmd,
+            "raw_output": "",
+            "error": str(e),
+        }

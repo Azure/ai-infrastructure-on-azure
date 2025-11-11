@@ -1,11 +1,17 @@
-from typing import List, Dict, Any
 from datetime import datetime, timezone
-from .command_wrapper import build_parallel_ssh_command, parse_parallel_ssh_output, _validate_hosts
+from typing import Any, Dict, List
+
 from ai_infrastructure_mcp.ssh_config import run_login_command
+
+from .command_wrapper import (
+    _validate_hosts,
+    build_parallel_ssh_command,
+    parse_parallel_ssh_output,
+)
 
 # Command to extract the physical hostname for an Azure VM.
 # Made robust to handle edge cases:
-# - Check if file exists first  
+# - Check if file exists first
 # - Simplified approach using grep and cut instead of complex sed
 _INNER_PHYSICAL_HOST_CMD = 'test -f /var/lib/hyperv/.kvp_pool_3 && tr -d "\\0" < /var/lib/hyperv/.kvp_pool_3 | grep -o "Qualified[^V]*VirtualMachineDynamic" | sed "s/Qualified//;s/VirtualMachineDynamic//" | head -1 || echo ""'
 
@@ -29,12 +35,12 @@ def get_physical_hostnames(hosts: List[str]) -> Dict[str, Any]:
     """
     _validate_hosts(hosts)
     full_cmd = build_parallel_ssh_command(hosts, _INNER_PHYSICAL_HOST_CMD)
-    
+
     try:
         raw = run_login_command(full_cmd)
         parsed = parse_parallel_ssh_output(raw)
         host_entries = []
-        
+
         for h, lines in parsed.items():
             # Expect either one (possibly empty) line; join just in case multiple lines produced
             physical = "".join(lines).strip()
@@ -43,11 +49,15 @@ def get_physical_hostnames(hosts: List[str]) -> Dict[str, Any]:
                 "physical_hostname": physical,
             }
             # If the result contains error indicators, note them
-            if "permission denied" in physical.lower() or physical.startswith("test:") or physical.startswith("tr:"):
+            if (
+                "permission denied" in physical.lower()
+                or physical.startswith("test:")
+                or physical.startswith("tr:")
+            ):
                 entry["error"] = physical
                 entry["physical_hostname"] = ""
             host_entries.append(entry)
-            
+
         ts = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         return {
             "version": 1,
@@ -61,7 +71,9 @@ def get_physical_hostnames(hosts: List[str]) -> Dict[str, Any]:
         return {
             "version": 1,
             "timestamp": ts,
-            "hosts": [{"host": h, "physical_hostname": "", "error": str(e)} for h in hosts],
+            "hosts": [
+                {"host": h, "physical_hostname": "", "error": str(e)} for h in hosts
+            ],
             "summary": {"queried": 0, "error": str(e)},
         }
 
@@ -81,12 +93,12 @@ def get_vmss_id(hosts: List[str]) -> Dict[str, Any]:
     """
     _validate_hosts(hosts)
     full_cmd = build_parallel_ssh_command(hosts, _INNER_VMSS_ID_CMD)
-    
+
     try:
         raw = run_login_command(full_cmd)
         parsed = parse_parallel_ssh_output(raw)
         host_entries = []
-        
+
         for h, lines in parsed.items():
             # Expect either one (possibly empty) line; join just in case multiple lines produced
             vmss_id = "".join(lines).strip()
@@ -95,11 +107,19 @@ def get_vmss_id(hosts: List[str]) -> Dict[str, Any]:
                 "vmss_id": vmss_id,
             }
             # If the result contains error indicators, note them
-            if "curl:" in vmss_id.lower() or "jq:" in vmss_id.lower() or vmss_id == "null":
-                entry["error"] = vmss_id if vmss_id != "null" else "Failed to retrieve VMSS ID from metadata service"
+            if (
+                "curl:" in vmss_id.lower()
+                or "jq:" in vmss_id.lower()
+                or vmss_id == "null"
+            ):
+                entry["error"] = (
+                    vmss_id
+                    if vmss_id != "null"
+                    else "Failed to retrieve VMSS ID from metadata service"
+                )
                 entry["vmss_id"] = ""
             host_entries.append(entry)
-            
+
         ts = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         return {
             "version": 1,
