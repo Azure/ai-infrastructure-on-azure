@@ -60,6 +60,14 @@ function check_prereqs() {
     done
 }
 
+# install_k8s_extension installs or upgrades the k8s-extension for Azure CLI.
+# This is required for Azure Container Storage and other k8s extensions.
+function install_k8s_extension() {
+    echo "⏳ Installing/upgrading k8s-extension for Azure CLI..."
+    az extension add --upgrade --name k8s-extension
+    echo "✅ k8s-extension installed/upgraded successfully."
+}
+
 # ensure_vnet_and_subnets creates (or reuses) a Virtual Network and required subnets when
 # CREATE_DEDICATED_VNET is true. Sets AKS_SUBNET_ID for cluster creation.
 function ensure_vnet_and_subnets() {
@@ -175,6 +183,8 @@ function deploy_aks() {
 
     # Add Azure Container Storage support if enabled
     if [[ "${ENABLE_AZURE_CONTAINER_STORAGE}" == "true" ]]; then
+        # Install k8s-extension before enabling Azure Container Storage
+        install_k8s_extension
         aks_create_cmd+=(--enable-azure-container-storage)
     fi
 
@@ -695,6 +705,7 @@ function print_usage() {
     echo "  INSTALL_AMLFS_ROLES      Install AMLFS roles for kubelet identity (default: true)"
     echo "                           Note: Both INSTALL_AMLFS and INSTALL_AMLFS_ROLES must be true for role assignment"
     echo "  ENABLE_AZURE_CONTAINER_STORAGE Enable Azure Container Storage (default: true)"
+    echo "                           Note: Automatically installs k8s-extension Azure CLI extension when enabled"
     echo "  CREATE_DEDICATED_VNET    Create & use dedicated VNet/subnets for AKS (default: true)"
     echo "  USE_EXISTING_SUBNET_ID   Existing subnet resource ID to use directly (overrides CREATE_DEDICATED_VNET)"
     echo "  VNET_NAME                Name of VNet when CREATE_DEDICATED_VNET=true (default: \"${CLUSTER_NAME}-vnet\")"

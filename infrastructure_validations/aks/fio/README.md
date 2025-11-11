@@ -14,7 +14,6 @@
 This Helm chart provides FIO (Flexible I/O Tester) for testing storage performance on Azure Kubernetes Service (AKS). It supports multiple storage types:
 
 - **Azure Container Storage**: High-performance ephemeral disk storage
-- **LocalPV**: Local persistent volumes on nodes
 - **Existing PVC**: Use an existing PersistentVolumeClaim (for blobfuse, Lustre, or other shared storage)
 
 FIO is useful for:
@@ -31,14 +30,13 @@ FIO is useful for:
 - Helm 3.x
 - Depending on storage type:
   - **Azure Container Storage**: Cluster created with `--enable-azure-container-storage`
-  - **LocalPV**: Nodes with local disk storage
   - **Existing PVC**: Pre-created PVC (e.g., blobfuse or Lustre storage)
 
 ## 3. Storage Types
 
 ### Azure Container Storage
 
-Uses Azure Container Storage with ephemeral disk for high-performance local NVMe storage. Ideal for scratch space and temporary data.
+Uses Azure Container Storage v2.x with ephemeral disk for high-performance local NVMe storage. Ideal for scratch space and temporary data.
 
 **Configuration:**
 
@@ -46,31 +44,9 @@ Uses Azure Container Storage with ephemeral disk for high-performance local NVMe
 storage:
   type: "azure-container-storage"
   size: "100Gi"
-  azureContainerStorage:
-    storageClassName: "acstor-ephemeraldisk-nvme"
 ```
 
-### LocalPV
-
-Uses local persistent volumes on the node. Provides direct access to local disks for maximum performance.
-
-**Configuration:**
-
-```yaml
-storage:
-  type: "localpv"
-  size: "100Gi"
-  localpv:
-    path: "/mnt/disks/ssd0"
-    nodeAffinity:
-      required:
-        nodeSelectorTerms:
-          - matchExpressions:
-              - key: kubernetes.io/hostname
-                operator: In
-                values:
-                  - your-node-name
-```
+**Note**: The Helm chart automatically creates the required StorageClass for Azure Container Storage v2.x.
 
 ### Existing PVC (Blobfuse, Lustre, or Shared Storage)
 
@@ -307,16 +283,10 @@ kubectl exec -it fio-test-fio -- /bin/sh
 ### Azure Container Storage
 
 - Best for ephemeral data and scratch space
-- Provides lowest latency on NDv5 series VMs
+- Provides lowest latency with local NVMe storage
 - Data is lost when pod is deleted
 - No additional cost beyond the VM
-
-### LocalPV
-
-- Maximum performance for node-local data
-- Requires node affinity configuration
-- Not portable across nodes
-- Good for node-specific caching
+- Automatically configured by the Helm chart (no manual StorageClass needed)
 
 ### Shared Storage (Lustre)
 

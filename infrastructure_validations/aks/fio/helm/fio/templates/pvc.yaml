@@ -1,37 +1,17 @@
 {{- if ne .Values.storage.type "existing-pvc" }}
-{{- if eq .Values.storage.type "localpv" }}
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: {{ .Release.Name }}-local-pv
-  labels:
-    {{- include "fio.labels" . | nindent 4 }}
-spec:
-  capacity:
-    storage: {{ .Values.storage.size }}
-  volumeMode: Filesystem
-  accessModes:
-  - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Delete
-  storageClassName: {{ include "fio.fullname" . }}-local
-  local:
-    path: {{ .Values.storage.localpv.path }}
-  {{- with .Values.storage.localpv.nodeAffinity }}
-  nodeAffinity:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
----
-{{- end }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: {{ .Release.Name }}-pvc
   labels:
     {{- include "fio.labels" . | nindent 4 }}
-  {{- with .Values.annotations }}
   annotations:
+    {{- if eq .Values.storage.type "azure-container-storage" }}
+    localdisk.csi.acstor.io/accept-ephemeral-storage: "true"
+    {{- end }}
+    {{- with .Values.annotations }}
     {{- toYaml . | nindent 4 }}
-  {{- end }}
+    {{- end }}
 spec:
   accessModes:
     - ReadWriteOnce
@@ -39,8 +19,6 @@ spec:
     requests:
       storage: {{ .Values.storage.size }}
   {{- if eq .Values.storage.type "azure-container-storage" }}
-  storageClassName: {{ .Values.storage.azureContainerStorage.storageClassName }}
-  {{- else if eq .Values.storage.type "localpv" }}
-  storageClassName: {{ include "fio.fullname" . }}-local
+  storageClassName: {{ include "fio.fullname" . }}-acstor
   {{- end }}
 {{- end }}

@@ -19,9 +19,9 @@ spec:
         apk add --no-cache fio && \
         echo "Running fio test..." && \
         {{- if .Values.fio.timeBased }}
-        fio --name={{ .Values.fio.testName }} --filename={{ .Values.fio.filename }} --size={{ .Values.fio.size }} --bs={{ .Values.fio.blockSize }} --rw={{ .Values.fio.readWrite }} --ioengine={{ .Values.fio.ioEngine }} --direct={{ .Values.fio.direct }} --numjobs={{ .Values.fio.numJobs }} --runtime={{ .Values.fio.runtime }} --time_based {{ .Values.fio.additionalOptions }} && \
+        fio --name={{ .Values.fio.testName }} --filename={{ .Values.fio.filename }} --size={{ .Values.fio.size }} --bs={{ .Values.fio.blockSize }} --rw={{ .Values.fio.readWrite }} --ioengine={{ .Values.fio.ioEngine }} --direct={{ .Values.fio.direct }} --numjobs={{ .Values.fio.numJobs }} --iodepth={{ .Values.fio.ioDepth }} --runtime={{ .Values.fio.runtime }} --time_based {{ .Values.fio.additionalOptions }} && \
         {{- else }}
-        fio --name={{ .Values.fio.testName }} --filename={{ .Values.fio.filename }} --size={{ .Values.fio.size }} --bs={{ .Values.fio.blockSize }} --rw={{ .Values.fio.readWrite }} --ioengine={{ .Values.fio.ioEngine }} --direct={{ .Values.fio.direct }} --numjobs={{ .Values.fio.numJobs }} {{ .Values.fio.additionalOptions }} && \
+        fio --name={{ .Values.fio.testName }} --filename={{ .Values.fio.filename }} --size={{ .Values.fio.size }} --bs={{ .Values.fio.blockSize }} --rw={{ .Values.fio.readWrite }} --ioengine={{ .Values.fio.ioEngine }} --direct={{ .Values.fio.direct }} --numjobs={{ .Values.fio.numJobs }} --iodepth={{ .Values.fio.ioDepth }} {{ .Values.fio.additionalOptions }} && \
         {{- end }}
         echo "fio test completed. Sleeping for debugging ({{ .Values.sleepDuration }}s)..." && sleep {{ .Values.sleepDuration }}
     volumeMounts:

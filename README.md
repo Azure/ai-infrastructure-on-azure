@@ -49,8 +49,8 @@ For each scenario and architecture, the repository will include storage recommen
    - [AKS version](./infrastructure_validations/aks/NHC/README.md)
 3. Thermal Test - GPU thermal stress testing and monitoring
    - [Slurm version](./infrastructure_validations/slurm/thermal_test/README.md)
-4. FIO Storage Performance Testing - I/O performance testing with Azure Blob Storage and blobfuse
-   - [AKS version](./infrastructure_validations/aks/blobfuse/README.md)
+4. FIO Storage Performance Testing - I/O performance testing with Azure Container Storage, blobfuse, and other storage types
+   - [AKS version](./infrastructure_validations/aks/fio/README.md)
 
 ## 5. Utilities Catalog
 
