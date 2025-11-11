@@ -21,7 +21,7 @@ storage:
 job:
   # Time-to-live after job finishes (completed or failed)
   # Job, Pod, and PVC will be automatically deleted after this time
-  ttlSecondsAfterFinished: 3600  # 1 hour
+  ttlSecondsAfterFinished: 3600 # 1 hour
 
 # Pod configuration
 pod:
