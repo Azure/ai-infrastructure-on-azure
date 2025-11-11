@@ -4,10 +4,17 @@
 
 1. [Overview](#1-overview)
 2. [Prerequisites](#2-prerequisites)
-3. [Define the environment variables](#3-define-the-environment-variables)
-4. [Create a MySQL Flexible server](#4-create-a-mysql-flexible-server)
-5. [Create the parameters file](#5-create-the-parameters-file)
-6. [Deploy the Azure CycleCloud Slurm Workspace environment](#6-deploy-the-azure-cyclecloud-slurm-workspace-environment)
+3. [Deployment with deploy-ccws.sh](#3-deployment-with-deploy-ccwssh)
+   1. [Basic Usage](#31-basic-usage)
+   2. [Selecting Availability Zones](#32-selecting-availability-zones)
+   3. [Example With Marketplace Acceptance and Automatic Deployment](#33-example-with-marketplace-acceptance-and-automatic-deployment)
+   4. [Generated Artifacts](#34-generated-artifacts)
+   5. [Optional Parameters](#35-optional-parameters)
+   6. [Script Reference (Docstring Style)](#36-script-reference-docstring-style)
+   7. [Non-Interactive Deployment](#37-non-interactive-deployment)
+   8. [Re-Running / Modifying](#38-re-running--modifying)
+   9. [Troubleshooting](#39-troubleshooting)
+   10. [Manual Deployment (Optional)](#310-manual-deployment-optional)
 
 ## 1. Overview
 
@@ -26,83 +33,510 @@ In order to deploy the infrastructure described in this section of the guide in 
 - User Access Administrator on the Subscription
 - Be sure that `az account show` is displaying the right subscription. In case, fix the subscription with `az account set --subscription "your-subscription-name"`
 
-## 3. Define the environment variables
+## 3. Deployment with `deploy-ccws.sh`
 
-In order to customize the templates according to your specific configuration needs, you can manually edit a copy of the templates.
-There are however a series of parameters that can be passed defining some environment variables and using `envsubst`.
+Instead of manually editing and generating a parameters JSON file, this repository provides an automation helper script: `scripts/deploy-ccws.sh`. The script:
 
-### Large AI Training Cluster
+* Clones the official Azure CycleCloud Workspace for Slurm repository at a chosen ref/commit.
+  
+> [!WARNING]
+> This guide intentionally uses a **specific commit SHA** of the Azure CycleCloud Workspace for Slurm repository to pull in hotfixes that may not yet be part of the latest tagged release. Pinning the commit ensures reproducible deployments and avoids regressions from upstream changes. If user switches to `--workspace-ref main` without a `--workspace-commit` override user may pick up newer code paths that have not been validated in this environment. Always re-run validation (storage mounts, Slurm job submission, NCCL tests) after changing the commit. Default **workspace reference** in the current repository is the `main` branch of the Azure CycleCloud Workspace for Slurm repository. 
 
-In order to define the deployment parameters in `large-ai-training-cluster-parameters-deploy.json` the following environment variables are required.
+* User can specify a specific `commit-id` or `branch` for checkout. 
+* Builds an `output.json` parameters file for the Bicep template.
+* Optionally prompts for availability zones only if the region supports zonal SKUs.
+* Can immediately deploy the environment (or let user review first).
+
+
+### 3.1. Basic Usage
 
 ```bash
-export LOCATION="your-azure-region"              # Azure region for resource deployment (e.g., eastus, westus2)
-export USERNAME="your-admin-username"            # Administrator username for Azure CycleCloud UI
-export PASSWORD="your-admin-password"            # Administrator password for Azure CycleCloud UI
-export SSH_PUBLIC_KEY="your-ssh-public-key"      # Public SSH key for secure access to all cluster nodes and Azure CycleCloud VM
-export RESOURCE_GROUP_NAME="your-resource-group" # Azure resource group name for deployment
-export NETWORK_RANGE="10.0.0.0/21"               # Address space for the virtual network in CIDR notation (if template creates a new VNET)
-export DB_PASSWORD="your-db-password"            # MySQL Database administrator password (if required by the template)
-export DB_USERNAME="your-db-username"            # MySQL Database administrator username (if required by the template)
-export DB_NAME="your-database-name"              # Name of the MySQL database (if required by the template)
-export ANF_SKU="Premium"                         # SKU for Azure NetApp Files
-export ANF_SIZE=4                                # Size for Azure NetApp Files (Standard | Premium | Ultra)
-export AMLFS_SKU="AMLFS-Durable-Premium-500"     # SKU for AMLFS (AMLFS-Durable-Premium-40 | AMLFS-Durable-Premium-125 | AMLFS-Durable-Premium-250 | AMLFS-Durable-Premium-500)
-export AMLFS_SIZE=128                            # Size for Azure Managed Lustre
-export GPU_SKU="Standard_ND96isr_H100_v5"        # GPU Node SKU
-export GPU_NODE_COUNT=64                         # Number of GPU nodes at maximum scale
+./scripts/deploy-ccws.sh \
+  --subscription-id <sub-id> \
+  --resource-group <rg-name> \
+  --location <region> \
+  --ssh-public-key-file ~/.ssh/id_rsa.pub \
+  --admin-password 'YourP@ssw0rd!' \
+  --htc-sku Standard_F2s_v2 \
+  --hpc-sku Standard_HB176rs_v4 \
+  --gpu-sku Standard_ND96amsr_A100_v4 \
+  --specify-az
+```
+
+User will be interactively prompted for availability zones only if:
+
+1. User supplied `--specify-az`, and
+2. The region contains at least one zonal-capable VM SKU (auto-detected via `az vm list-skus`).
+3. If availability zones are specified using the CLI commands for each partition and for storage, it will not prompt for them.
+
+If the region does not support zones (or `az`/`jq` are missing), the script will fall back silently to non-zonal deployment and produce empty `availabilityZone` arrays.
+
+### 3.2. Selecting Availability Zones
+
+Choosing an Availability Zone impacts both **storage latency** and **overall workload performance**:
+
+* Co-locate compute partitions (HTC/HPC/GPU) with shared storage (ANF / AMLFS) in the **same zone** whenever possible to minimize cross-zone latency.
+* Cross-zone access can introduce higher I/O latency for metadata-heavy or small-block operations.
+
+When prompted, press Enter to skip (no zone) or provide a number like `1`. For ANF and AMLFS, the script uses manual prompts because their zone capabilities are not derived from the VM SKU query. If user skips, the deployment uses region-level (non-zonal) placement. AMLFS will default to zone `1`.
+
+### 3.3. Example With Marketplace Acceptance and Automatic Deployment
+
+```bash
+./scripts/deploy-ccws.sh \
+  --subscription-id <sub-id> \
+  --resource-group <rg-name> \
+  --location eastus \
+  --ssh-public-key-file ~/.ssh/id_rsa.pub \
+  --admin-password 'YourP@ssw0rd!' \
+  --htc-sku Standard_F2s_v2 \
+  --hpc-sku Standard_HB176rs_v4 \
+  --gpu-sku Standard_ND96amsr_A100_v4 \
+  --anf-sku Premium --anf-size 2 \
+  --amlfs-sku AMLFS-Durable-Premium-500 --amlfs-size 4 \
+  --accept-marketplace \
+  --deploy
+```
+
+### 3.4. Generated Artifacts
+
+* `output.json` – parameter file used for the Bicep deployment.
+* Random deployment name previewed in the summary section.
+* Summary of chosen SKUs and zones printed for validation.
+
+### 3.5. Optional Parameters
+
+The `deploy-ccws.sh` script supports numerous optional flags to customize the deployment. Below is a comprehensive reference for all available optional parameters:
+
+#### General Configuration
+
+* **`--admin-username <username>`** (default: `hpcadmin`)
+  - Username for the CycleCloud administrator account
+  - Used for SSH access and CycleCloud UI login
+
+#### CycleCloud Infrastructure SKUs
+
+* **`--scheduler-sku <sku>`** (default: `Standard_D4as_v5`)
+  - VM SKU for the CycleCloud scheduler node
+  - Controls the scheduler's compute capacity
+
+* **`--login-sku <sku>`** (default: `Standard_D2as_v5`)
+  - VM SKU for the login node
+  - Entry point for users to access the cluster
+
+#### Workspace Repository Configuration
+
+* **`--workspace-ref <branch|tag>`** (default: `main`)
+  - Git reference (branch or tag) to checkout from the Azure CycleCloud Workspace for Slurm repository
+  - Examples: `main`, `v2025.09.15`, `feature-branch`
+
+* **`--workspace-commit <sha>`**
+  - Pin to a specific commit SHA (creates detached HEAD)
+  - Overrides `--workspace-ref` if both are provided
+  - Recommended for reproducible deployments
+  - Example: `a1b2c3d4e5f6...`
+
+* **`--workspace-dir <path>`**
+  - Directory where the workspace repository will be cloned
+  - Default: `./cyclecloud-slurm-workspace` under script directory
+  - Useful for managing multiple workspace versions
+
+#### Availability Zones
+
+* **`--specify-az`**
+  - Enable interactive prompts for availability zones
+  - Only prompts if the region supports zonal SKUs
+  - If omitted, deployment uses region-level (non-zonal) placement
+
+* **`--htc-az <zone>`**
+  - Explicitly set availability zone for HTC partition (e.g., `1`, `2`, `3`)
+  - Suppresses interactive prompt for HTC partition
+  - Leave empty for non-zonal deployment
+
+* **`--hpc-az <zone>`**
+  - Explicitly set availability zone for HPC partition
+  - Suppresses interactive prompt for HPC partition
+
+* **`--gpu-az <zone>`**
+  - Explicitly set availability zone for GPU partition
+  - Suppresses interactive prompt for GPU partition
+
+#### Compute Partition Configuration
+
+* **`--htc-max-nodes <count>`**
+  - Maximum number of nodes for HTC (High Throughput Computing) partition
+  - Must be a positive integer
+  - Interactive prompt if omitted
+
+* **`--hpc-max-nodes <count>`**
+  - Maximum number of nodes for HPC (High Performance Computing) partition
+  - Must be a positive integer
+  - Interactive prompt if omitted
+
+* **`--gpu-max-nodes <count>`**
+  - Maximum number of nodes for GPU partition
+  - Must be a positive integer
+  - Interactive prompt if omitted
+
+* **`--htc-use-spot`**
+  - Use Azure Spot (preemptible) VMs for HTC partition
+  - Flag parameter (no value required)
+  - Default: disabled (use regular on-demand VMs)
+  - Provides cost savings with interruption tolerance
+
+#### Network Configuration
+
+* **`--network-address-space <cidr>`** (default: `10.0.0.0/24`)
+  - Virtual network CIDR address space
+  - Must be valid CIDR notation
+  - Example: `10.1.0.0/16`
+
+* **`--bastion`**
+  - Enable Azure Bastion deployment
+  - Flag parameter (no value required)
+  - Default: disabled
+  - Provides secure RDP/SSH access without public IPs
+
+#### Azure NetApp Files (ANF) Configuration
+
+All ANF parameters must be provided together to enable ANF storage:
+
+* **`--anf-sku <sku>`** (default: `Premium`)
+  - ANF service level: `Standard`, `Premium`, or `Ultra`
+  - Determines performance tier and pricing
+  - Example: `Premium`
+
+* **`--anf-size <size_in_TiB>`** (default: `2`)
+  - Capacity pool size in TiB (minimum: 2 TiB)
+  - Must be an integer ≥ 1
+  - Example: `4` for 4 TiB
+
+* **`--anf-az <zone>`**
+  - Availability zone for ANF deployment
+  - Should match compute partition zones for optimal latency
+  - Example: `1`
+
+#### Azure Managed Lustre File System (AMLFS) Configuration
+
+All AMLFS parameters must be provided together to enable AMLFS storage:
+
+* **`--amlfs-sku <sku>`** (default: `AMLFS-Durable-Premium-500`)
+  - AMLFS SKU type
+  - Available options: `AMLFS-Durable-Premium-40`, `AMLFS-Durable-Premium-125`, `AMLFS-Durable-Premium-250`, `AMLFS-Durable-Premium-500`
+  - Number indicates MB/s/TiB throughput
+  - Example: `AMLFS-Durable-Premium-500`
+
+* **`--amlfs-size <size_in_TiB>`** (default: `4`)
+  - File system size in TiB
+  - Must be an integer ≥ 4 TiB
+  - Example: `8` for 8 TiB
+
+* **`--amlfs-az <zone>`**
+  - Availability zone for AMLFS deployment
+  - Should match compute partition zones for optimal latency
+  - Defaults to zone `1` if not specified and region supports zones
+  - Example: `1`
+
+#### Database Configuration (Slurm Accounting)
+
+The script supports two modes for database configuration:
+
+**Mode 1: Auto-create MySQL Flexible Server** (use `--create-accounting-mysql`)
+
+* **`--create-accounting-mysql`**
+  - Flag to automatically create a minimal MySQL Flexible Server
+  - Requires `--db-name`, `--db-user`, `--db-password` (but NOT `--db-id`)
+  - Server is created in the specified resource group and location
+
+* **`--db-generate-name`**
+  - Automatically generate a random database name
+  - Only valid with `--create-accounting-mysql`
+  - Format: `ccdb-<random-hex>`
+  - Ignored if `--db-name` is already provided
+
+* **`--db-name <name>`**
+  - MySQL Flexible Server instance name (for auto-creation or existing server)
+  - Example: `myccdb`
+
+* **`--db-user <username>`**
+  - Database administrator username for Slurm accounting
+  - Example: `dbadmin`
+
+* **`--db-password <password>`**
+  - Password for the database user
+  - **Security Note**: Prefer using environment variables for sensitive values
+  - Example: `'DbP@ssw0rd!'`
+
+**Mode 2: Use Existing MySQL Flexible Server**
+
+To use an existing server, provide **all four** of these parameters (validated as all-or-nothing):
+
+* **`--db-name <name>`** - MySQL Flexible Server instance name
+* **`--db-user <username>`** - Database administrator username
+* **`--db-password <password>`** - Password for the database user
+* **`--db-id <resource_id>`** - Full Azure resource ID of the MySQL Flexible Server
+  - Format: `/subscriptions/<sub-id>/resourceGroups/<rg-name>/providers/Microsoft.DBforMySQL/flexibleServers/<server-name>`
+  - Example: `/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/myResourceGroup/providers/Microsoft.DBforMySQL/flexibleServers/myccdb`
+
+If none of the database flags are provided, `databaseConfig` defaults to:
+
+```json
+"databaseConfig": { "value": { "type": "disabled" } }
+```
+
+#### Open OnDemand Portal Configuration
+
+* **`--open-ondemand`**
+  - Enable Open OnDemand web portal deployment
+  - Flag parameter (no value required)
+  - Default: disabled
+  - Requires `--ood-user-domain` when enabled
+
+* **`--ood-sku <sku>`** (default: `Standard_D4as_v5`)
+  - VM SKU for the Open OnDemand portal server
+  - Example: `Standard_D8as_v5`
+
+* **`--ood-user-domain <domain>`**
+  - User domain for Open OnDemand authentication
+  - Required when `--open-ondemand` is enabled
+  - Example: `contoso.com`
+
+* **`--ood-fqdn <fqdn>`**
+  - Fully Qualified Domain Name for Open OnDemand portal
+  - Optional; defaults to empty string
+  - Only included in parameters when `--open-ondemand` is enabled
+  - Must contain at least one dot and no spaces if provided
+  - Example: `ood.contoso.com`
+
+* **`--ood-auto-register`**
+  - Automatically register a new Entra ID application for Open OnDemand
+  - Flag parameter (no value required)
+  - Default: manual registration (requires `--ood-app-id` and `--ood-managed-identity-id`)
+
+* **`--ood-app-id <app_id>`**
+  - Existing Entra ID Application (client) ID
+  - Required when NOT using `--ood-auto-register`
+  - Used for Open OnDemand authentication
+  - Example: `12345678-1234-1234-1234-123456789abc`
+
+* **`--ood-managed-identity-id <resource_id>`**
+  - Existing User Assigned Managed Identity resource ID
+  - Required when NOT using `--ood-auto-register`
+  - Format: `/subscriptions/<sub-id>/resourceGroups/<rg-name>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/<identity-name>`
+
+#### Deployment Control
+
+* **`--accept-marketplace`**
+  - Automatically accept Azure Marketplace terms
+  - Sets `acceptMarketplaceTerms=true` in parameters
+  - Required for first-time deployment of certain OS SKUs
+  - Avoids manual marketplace agreement step
+
+* **`--deploy`**
+  - Perform deployment immediately after generating `output.json`
+  - Skips interactive confirmation prompt
+  - Useful for automated/scripted deployments
+
+* **`--output-file <path>`**
+  - Custom path for the generated parameters file
+  - Default: `output.json` in script directory
+  - Useful for managing multiple deployment configurations
+
+#### Example: Full Configuration with All Optional Parameters
+
+```bash
+./scripts/deploy-ccws.sh \
+  --subscription-id <sub-id> \
+  --resource-group <rg-name> \
+  --location eastus \
+  --ssh-public-key-file ~/.ssh/id_rsa.pub \
+  --admin-password 'YourP@ssw0rd!' \
+  --admin-username myadmin \
+  --htc-sku Standard_F2s_v2 \
+  --hpc-sku Standard_HB176rs_v4 \
+  --gpu-sku Standard_ND96amsr_A100_v4 \
+  --scheduler-sku Standard_D8as_v5 \
+  --login-sku Standard_D4as_v5 \
+  --htc-az 1 \
+  --hpc-az 1 \
+  --gpu-az 1 \
+  --htc-max-nodes 10 \
+  --hpc-max-nodes 5 \
+  --gpu-max-nodes 2 \
+  --htc-use-spot \
+  --network-address-space 10.1.0.0/16 \
+  --bastion \
+  --anf-sku Premium \
+  --anf-size 4 \
+  --anf-az 1 \
+  --amlfs-sku AMLFS-Durable-Premium-500 \
+  --amlfs-size 8 \
+  --amlfs-az 1 \
+  --create-accounting-mysql \
+  --db-name myccdb \
+  --db-user dbadmin \
+  --db-password 'DbP@ssw0rd!' \
+  --open-ondemand \
+  --ood-sku Standard_D8as_v5 \
+  --ood-user-domain contoso.com \
+  --ood-fqdn ood.contoso.com \
+  --ood-auto-register \
+  --workspace-ref main \
+  --workspace-commit a1b2c3d4 \
+  --output-file my-deployment-params.json \
+  --accept-marketplace \
+  --specify-az \
+  --deploy
 ```
 
 > [!WARNING]  
-> Check other parameters in the template before proceeding with the deployment, like AMLFS file system size and the desired SKU.
+> Check all parameters carefully before proceeding with deployment, especially storage sizes and SKUs, as they impact performance and cost.
 
-## 4. Create a MySQL Flexible server
+> [!TIP]
+> For production deployments:
+> - Store sensitive values (passwords, keys) in environment variables
+> - Use `--workspace-commit` to pin to a tested commit SHA
+> - Co-locate compute and storage in the same availability zone
+> - Test with `--deploy` omitted first to review generated `output.json`
+> - Consider using `--htc-use-spot` for cost-effective HTC workloads that tolerate interruptions
+> - Enable `--bastion` for secure access without public IPs on VMs
 
-Some of the templates in this folder require the presence of a pre-existing MySQL Flexible server for Slurm job accounting.
+### 3.6. Script Reference (Docstring Style)
 
-This is a prerequisites for some of the deployments below.
+Below is a docstring-style summary of `deploy-ccws.sh` for quick reference:
 
-In order to deploy the smallest MySQL Flexible server, with the lowest tier:
+```
+deploy-ccws.sh - Generate and optionally deploy an Azure CycleCloud Workspace for Slurm environment.
 
-```bash
-az mysql flexible-server create \
-  --name $DB_NAME \
-  --resource-group $RESOURCE_GROUP_NAME \
-  --location $LOCATION \
-  --admin-user $DB_USERNAME \
-  --admin-password $DB_PASSWORD \
-  --sku-name Standard_B1ms \
-  --tier Burstable \
-  --storage-size 20 \
-  --high-availability Disabled \
-   --public-access 'None'
+USAGE:
+  deploy-ccws.sh \
+    --subscription-id <subId> --resource-group <rg> --location <region> \
+    --ssh-public-key-file <path> --admin-password <password> \
+    --htc-sku <sku> --hpc-sku <sku> --gpu-sku <sku> [options]
+
+REQUIRED PARAMETERS:
+  --subscription-id        Azure subscription ID
+  --resource-group         Target resource group name
+  --location               Azure region (used for all resources)
+  --ssh-public-key-file    Path to OpenSSH public key file
+  --admin-password         Admin password for CycleCloud UI / cluster DB
+  --htc-sku                HTC partition VM SKU (or interactive prompt)
+  --hpc-sku                HPC partition VM SKU (or interactive prompt)
+  --gpu-sku                GPU partition VM SKU (or interactive prompt)
+
+OPTIONAL PARAMETERS:
+  # General Configuration
+  --admin-username         Admin username (default: hpcadmin)
+  --scheduler-sku          Scheduler node VM SKU (default: Standard_D4as_v5)
+  --login-sku              Login node VM SKU (default: Standard_D2as_v5)
+  
+  # Workspace Repository
+  --workspace-ref <ref>    Git ref (branch/tag) to checkout (default: main)
+  --workspace-commit <sha> Explicit commit (detached HEAD override)
+  --workspace-dir <path>   Clone destination (default: ./cyclecloud-slurm-workspace under script dir)
+  --output-file <path>     Output parameters file path (default: output.json in script dir)
+  
+  # Availability Zones
+  --specify-az             Enable interactive AZ prompting (only if region has zonal SKUs)
+  --htc-az / --hpc-az / --gpu-az  Explicit AZ override; suppresses interactive prompt
+  
+  # Compute Partitions
+  --htc-max-nodes <count>  Maximum nodes for HTC partition (interactive if omitted)
+  --hpc-max-nodes <count>  Maximum nodes for HPC partition (interactive if omitted)
+  --gpu-max-nodes <count>  Maximum nodes for GPU partition (interactive if omitted)
+  --htc-use-spot           Use Spot (preemptible) VMs for HTC partition (flag)
+  
+  # Network Configuration
+  --network-address-space <cidr>  Virtual network CIDR (default: 10.0.0.0/24)
+  --bastion                Enable Azure Bastion deployment (flag)
+  
+  # Storage - Azure NetApp Files
+  --anf-sku <tier>         NetApp Files service level: Standard|Premium|Ultra (default: Premium)
+  --anf-size <TiB>         NetApp Files capacity in TiB (default: 2)
+  --anf-az <zone>          Availability zone for ANF (optional; interactive if omitted)
+  
+  # Storage - Azure Managed Lustre
+  --amlfs-sku <tier>       Lustre tier: AMLFS-Durable-Premium-{40|125|250|500} (default: 500)
+  --amlfs-size <TiB>       Lustre capacity in TiB (default: 4)
+  --amlfs-az <zone>        Availability zone for AMLFS (optional; defaults to 1 if region supports zones)
+  
+  # Database Configuration (Slurm Accounting)
+  --create-accounting-mysql    Auto-create MySQL Flexible Server (requires --db-name, --db-user, --db-password)
+  --db-generate-name           Generate random database name (with --create-accounting-mysql)
+  --db-name <name>             MySQL server name
+  --db-user <username>         Database admin username
+  --db-password <password>     Database admin password
+  --db-id <resourceId>         Existing MySQL server resource ID (for existing server mode)
+  
+  # Open OnDemand Portal
+  --open-ondemand              Enable Open OnDemand web portal (flag)
+  --ood-sku <sku>              Open OnDemand VM SKU (default: Standard_D4as_v5)
+  --ood-user-domain <domain>   User domain for OOD authentication (required with --open-ondemand)
+  --ood-fqdn <fqdn>            Fully Qualified Domain Name for OOD (optional)
+  --ood-auto-register          Auto-register new Entra ID application (flag)
+  --ood-app-id <appId>         Existing Entra ID app ID (when not auto-registering)
+  --ood-managed-identity-id <id>  Existing managed identity resource ID (when not auto-registering)
+  
+  # Deployment Control
+  --accept-marketplace     Accept marketplace terms automatically
+  --deploy                 Perform deployment after generating output.json
+  --help                   Show usage information
+
+INTERACTIVE PROMPTS:
+  If HTC/HPC/GPU SKUs or max nodes are not provided via CLI, the script will prompt interactively.
+  Availability zone prompts occur only when --specify-az is set and region supports zones.
+
+BEHAVIOR:
+  * Auto-discovers zonal availability using `az vm list-skus` + `jq`.
+  * Skips AZ prompts if region lacks zonal SKUs or tools are missing.
+  * Generates parameter file with conditional database and storage sections.
+  * Interactive confirmation unless --deploy provided.
+  * Passwords (admin and database) are NOT persisted in output.json for security.
+
+DATABASE MODES:
+  1. Auto-create: Use --create-accounting-mysql with --db-name, --db-user, --db-password
+  2. Existing server: Provide all four: --db-name, --db-user, --db-password, --db-id
+  3. Disabled: Omit all database parameters
+
+OUTPUT ARTIFACT:
+  output.json containing all deployment parameters for the Bicep template.
+
+EXIT CODES:
+  0 Success
+  1 Missing required arguments or validation failure
+
+SECURITY NOTES:
+  * Avoid committing generated output.json containing passwords.
+  * Prefer environment variables for sensitive values.
+  * Admin and database passwords must be passed via CLI during deployment.
 ```
 
-Let's then export the ID in a variable for the subsequent steps:
+### 3.7. Non-Interactive Deployment
+
+To avoid interactive zone prompts entirely, omit `--specify-az` or specify them with the corresponding command line options:
 
 ```bash
-export MYSQL_ID=$( az mysql flexible-server show -n $DB_NAME -g $RESOURCE_GROUP_NAME --query "id" --output tsv)
+./scripts/deploy-ccws.sh --subscription-id <sub-id> --resource-group <rg> --location eastus \
+  --ssh-public-key-file ~/.ssh/id_rsa.pub --admin-password 'YourP@ssw0rd!' \
+  --htc-sku Standard_F2s_v2 --hpc-sku Standard_HB176rs_v4 --gpu-sku Standard_ND96amsr_A100_v4 --deploy
 ```
 
-## 5. Create the parameters file
+### 3.8. Re-Running / Modifying
 
-The deployment ready file can be generated with the following commands after the steps described in the previous paragraphs are completed:
+User can re-run the script with different SKUs or zone selections; it will regenerate `output.json`. Delete or move the file if user wants to keep multiple versions.
+
+### 3.9. Troubleshooting
+
+* Missing zones: Ensure `jq` is installed and that your Azure CLI is up to date.
+* Permission errors: Verify subscription context (`az account show`) and role assignments.
+* Marketplace errors: Include `--accept-marketplace` if required for first-time OS SKU usage.
+
+### 3.10. Manual Deployment (Optional)
+
+If the user only wants the parameters file and prefer manual deployment:
 
 ```bash
-envsubst < large-ai-training-cluster-parameters.template > large-ai-training-cluster-parameters-deploy.json
-```
-
-## 6. Deploy the Azure CycleCloud Slurm Workspace environment
-
-> [!WARNING]  
-> Check other parameters in the template before proceeding with the deployment, like AMLFS file system size and the desired SKU.
-
-```bash
-export TENANT_ID="your-tenant-id"
-export SUBSCRIPTION_NAME="your-subscription-name"
-az login --tenant $TENANT_ID
-az account show ### Check you are in the right subscription
-az account set --subscription $SUBSCRIPTION_NAME ### In case you are not in the right one
-git clone --depth 1 --branch 2025.02.06 https://github.com/azure/cyclecloud-slurm-workspace.git
-az deployment sub create --template-file cyclecloud-slurm-workspace/bicep/mainTemplate.bicep --parameters large-ai-training-cluster-parameters-deploy.json --location $LOCATION
+az deployment sub create --name <name> --location <region> \
+  --template-file cyclecloud-slurm-workspace/bicep/mainTemplate.bicep \
+  --parameters @output.json
 ```
