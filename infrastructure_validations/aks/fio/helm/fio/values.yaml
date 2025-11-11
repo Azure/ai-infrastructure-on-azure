@@ -5,8 +5,8 @@
 # Storage configuration
 storage:
   # Storage type: azure-container-storage, existing-pvc
-  # - azure-container-storage: Creates StorageClass and PVC for
-  #   Azure Container Storage
+  # - azure-container-storage: Uses ephemeral volumes with Azure Container Storage
+  #   PVC is automatically deleted when the pod terminates
   # - existing-pvc: Use an existing PVC (specify existingPvcName)
   #   Use this for testing with blobfuse, Lustre, or other shared storage
   type: "azure-container-storage"
@@ -16,6 +16,12 @@ storage:
 
   # Storage size for the test volume (not used for existing-pvc)
   size: "10Gi"
+
+# Job configuration
+job:
+  # Time-to-live after job finishes (completed or failed)
+  # Job, Pod, and PVC will be automatically deleted after this time
+  ttlSecondsAfterFinished: 3600  # 1 hour
 
 # Pod configuration
 pod:
