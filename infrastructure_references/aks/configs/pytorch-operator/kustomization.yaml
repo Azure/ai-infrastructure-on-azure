@@ -1,18 +1,19 @@
+---
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 # Remove the MPIJob CRD to avoid conflict with MPI Operator
 # Patch to disable MPI in the training-operator deployment
 patches:
-- path: remove-mpijob-crd.yaml
-  target:
-    group: apiextensions.k8s.io
-    kind: CustomResourceDefinition
-    name: mpijobs.kubeflow.org
-    version: v1
-- path: patch-disable-mpi.yaml
-  target:
-    group: apps
-    kind: Deployment
-    name: training-operator
-    namespace: kubeflow
-    version: v1
+  - path: remove-mpijob-crd.yaml
+    target:
+      group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      name: mpijobs.kubeflow.org
+      version: v1
+  - path: patch-disable-mpi.yaml
+    target:
+      group: apps
+      kind: Deployment
+      name: training-operator
+      namespace: kubeflow
+      version: v1
