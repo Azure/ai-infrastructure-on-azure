@@ -1,33 +1,40 @@
 import pytest
-
 from ai_infrastructure_mcp.tools.azure_vm import get_physical_hostnames, get_vmss_id
 
 
 class DummyStd:
+
     def __init__(self, data: str):
         self._data = data
+
     def read(self):
         return self._data.encode()
 
 
 class DummyClient:
+
     def __init__(self, expected_fragment: str, output: str):
         self.expected_fragment = expected_fragment
         self.output = output
         self.closed = False
+
     def set_missing_host_key_policy(self, *_):
         pass
+
     def connect(self, **kwargs):
         pass
+
     def exec_command(self, cmd):
         assert self.expected_fragment in cmd
         return (None, DummyStd(self.output), DummyStd(""))
+
     def close(self):
         self.closed = True
 
 
 def test_get_physical_hostnames_multi(monkeypatch):
     from ai_infrastructure_mcp import ssh_config as mod
+
     sample_output = """[1] 12:00:00 [SUCCESS] vmA
 PHYS_HOST_A
 [2] 12:00:00 [SUCCESS] vmB
@@ -38,7 +45,7 @@ PHYS_HOST_B
         expected_fragment='parallel-ssh -i -H "vmA vmB vmC"',
         output=sample_output,
     )
-    monkeypatch.setattr(mod, 'get_ssh_client', lambda: dummy_client)
+    monkeypatch.setattr(mod, "get_ssh_client", lambda: dummy_client)
     result = get_physical_hostnames(["vmA", "vmB", "vmC"])
     assert result["version"] == 1
     assert "timestamp" in result
@@ -54,6 +61,7 @@ PHYS_HOST_B
 def test_get_physical_hostnames_with_permission_error(monkeypatch):
     """Test handling of permission errors in the command output."""
     from ai_infrastructure_mcp import ssh_config as mod
+
     sample_output = """[1] 12:00:00 [SUCCESS] vmA
 tr: /var/lib/hyperv/.kvp_pool_3: Permission denied
 [2] 12:00:00 [SUCCESS] vmB
@@ -63,7 +71,7 @@ PHYS_HOST_B
         expected_fragment='parallel-ssh -i -H "vmA vmB"',
         output=sample_output,
     )
-    monkeypatch.setattr(mod, 'get_ssh_client', lambda: dummy_client)
+    monkeypatch.setattr(mod, "get_ssh_client", lambda: dummy_client)
     result = get_physical_hostnames(["vmA", "vmB"])
     hosts = {h["host"]: h for h in result["hosts"]}
     # vmA should have empty physical_hostname and an error field
@@ -78,9 +86,11 @@ PHYS_HOST_B
 def test_get_physical_hostnames_ssh_exception(monkeypatch):
     """Test handling of SSH connection failures."""
     from ai_infrastructure_mcp import ssh_config as mod
+
     def failing_client():
         raise Exception("SSH connection failed")
-    monkeypatch.setattr(mod, 'get_ssh_client', failing_client)
+
+    monkeypatch.setattr(mod, "get_ssh_client", failing_client)
     result = get_physical_hostnames(["vmA"])
     assert result["version"] == 1
     assert "error" in result["summary"]
@@ -98,6 +108,7 @@ def test_get_physical_hostnames_empty_hosts():
 def test_get_vmss_id_multi(monkeypatch):
     """Test get_vmss_id with multiple hosts returning VMSS IDs."""
     from ai_infrastructure_mcp import ssh_config as mod
+
     sample_output = """[1] 12:00:00 [SUCCESS] vmA
 login-sinvqvly6zhmb_0
 [2] 12:00:00 [SUCCESS] vmB
@@ -108,7 +119,7 @@ compute-abc123_5
         expected_fragment='parallel-ssh -i -H "vmA vmB vmC"',
         output=sample_output,
     )
-    monkeypatch.setattr(mod, 'get_ssh_client', lambda: dummy_client)
+    monkeypatch.setattr(mod, "get_ssh_client", lambda: dummy_client)
     result = get_vmss_id(["vmA", "vmB", "vmC"])
     assert result["version"] == 1
     assert "timestamp" in result
@@ -124,6 +135,7 @@ compute-abc123_5
 def test_get_vmss_id_with_curl_error(monkeypatch):
     """Test handling of curl errors in the command output."""
     from ai_infrastructure_mcp import ssh_config as mod
+
     sample_output = """[1] 12:00:00 [SUCCESS] vmA
 curl: (7) Failed to connect to 169.254.169.254
 [2] 12:00:00 [SUCCESS] vmB
@@ -133,7 +145,7 @@ compute-abc123_1
         expected_fragment='parallel-ssh -i -H "vmA vmB"',
         output=sample_output,
     )
-    monkeypatch.setattr(mod, 'get_ssh_client', lambda: dummy_client)
+    monkeypatch.setattr(mod, "get_ssh_client", lambda: dummy_client)
     result = get_vmss_id(["vmA", "vmB"])
     hosts = {h["host"]: h for h in result["hosts"]}
     # vmA should have empty vmss_id and an error field
@@ -148,6 +160,7 @@ compute-abc123_1
 def test_get_vmss_id_with_jq_null(monkeypatch):
     """Test handling of jq returning null (metadata field not found)."""
     from ai_infrastructure_mcp import ssh_config as mod
+
     sample_output = """[1] 12:00:00 [SUCCESS] vmA
 null
 [2] 12:00:00 [SUCCESS] vmB
@@ -157,7 +170,7 @@ compute-def456_2
         expected_fragment='parallel-ssh -i -H "vmA vmB"',
         output=sample_output,
     )
-    monkeypatch.setattr(mod, 'get_ssh_client', lambda: dummy_client)
+    monkeypatch.setattr(mod, "get_ssh_client", lambda: dummy_client)
     result = get_vmss_id(["vmA", "vmB"])
     hosts = {h["host"]: h for h in result["hosts"]}
     # vmA should have empty vmss_id and an error field due to null result
@@ -172,9 +185,11 @@ compute-def456_2
 def test_get_vmss_id_ssh_exception(monkeypatch):
     """Test handling of SSH connection failures for get_vmss_id."""
     from ai_infrastructure_mcp import ssh_config as mod
+
     def failing_client():
         raise Exception("SSH connection failed")
-    monkeypatch.setattr(mod, 'get_ssh_client', failing_client)
+
+    monkeypatch.setattr(mod, "get_ssh_client", failing_client)
     result = get_vmss_id(["vmA"])
     assert result["version"] == 1
     assert "error" in result["summary"]

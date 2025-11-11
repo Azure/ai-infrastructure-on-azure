@@ -1,9 +1,18 @@
-from typing import List, Dict, Any
 from datetime import datetime, timezone
-from ai_infrastructure_mcp.ssh_config import run_login_command
-from .command_wrapper import build_parallel_ssh_command, parse_parallel_ssh_output, _validate_hosts
+from typing import Any, Dict, List
 
-_INNER_PKEY_CMD = "cat /sys/class/infiniband/mlx5_*/ports/1/pkeys/* 2>/dev/null | grep 0x8 | sort -u"
+from ai_infrastructure_mcp.ssh_config import run_login_command
+
+from .command_wrapper import (
+    _validate_hosts,
+    build_parallel_ssh_command,
+    parse_parallel_ssh_output,
+)
+
+_INNER_PKEY_CMD = (
+    "cat /sys/class/infiniband/mlx5_*/ports/1/pkeys/* 2>/dev/null | grep 0x8 | sort -u"
+)
+
 
 def get_infiniband_pkeys(hosts: List[str]) -> Dict[str, Any]:
     """Retrieve InfiniBand partition keys (matching 0x8) across multiple hosts via parallel-ssh."""
@@ -13,10 +22,12 @@ def get_infiniband_pkeys(hosts: List[str]) -> Dict[str, Any]:
     parsed = parse_parallel_ssh_output(raw)
     host_entries = []
     for h, pks in parsed.items():
-        host_entries.append({
-            "host": h,
-            "pkeys": sorted({pk.lower() for pk in pks}),
-        })
+        host_entries.append(
+            {
+                "host": h,
+                "pkeys": sorted({pk.lower() for pk in pks}),
+            }
+        )
     ts = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     return {
         "version": 1,
