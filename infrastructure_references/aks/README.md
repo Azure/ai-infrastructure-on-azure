@@ -9,7 +9,8 @@
 5. [Environment Variables](#5-environment-variables)
 6. [RDMA Device Plugin Configuration](#6-rdma-device-plugin-configuration)
 7. [Azure Managed Lustre File System (AMLFS) Support](#7-azure-managed-lustre-file-system-amlfs-support)
-8. [Monitoring](#8-monitoring)
+8. [Azure Container Storage Support](#8-azure-container-storage-support)
+9. [Monitoring](#9-monitoring)
 
 ## 1. Overview
 
@@ -153,6 +154,11 @@ INSTALL_AMLFS=false ./scripts/deploy-aks.sh all
 - **`INSTALL_AMLFS`** - Install Azure Managed Lustre File System CSI driver (default: "true")
   - Set to "false" to skip AMLFS installation in the 'all' command
 
+### Azure Container Storage Configuration
+
+- **`ENABLE_AZURE_CONTAINER_STORAGE`** - Enable Azure Container Storage during cluster creation (default: "true")
+  - Set to "false" to disable Azure Container Storage
+
 ## 6. RDMA Device Plugin Configuration
 
 The script supports two types of RDMA device plugins for InfiniBand networking:
@@ -258,7 +264,75 @@ USE_EXISTING_SUBNET_ID="/subscriptions/<subid>/resourceGroups/<rg>/providers/Mic
 - **Branch**: `dynamic-provisioning-preview`
 - **Repository**: `https://github.com/kubernetes-sigs/azurelustre-csi-driver.git`
 
-## 8. Monitoring
+## 8. Azure Container Storage Support
+
+Azure Container Storage is a cloud-based volume management service built natively for containers. The deployment script enables Azure Container Storage by default, which uses local NVMe or temp disks (ephemeral disk) for high-performance, low-latency storage.
+
+### Enabling Azure Container Storage
+
+Azure Container Storage is enabled by default during cluster creation using the `--enable-azure-container-storage` flag.
+
+#### Default Behavior (Enabled)
+
+```bash
+export AZURE_REGION="eastus"
+export NODE_POOL_VM_SIZE="Standard_ND96isr_H100_v5"
+
+./scripts/deploy-aks.sh deploy-aks
+```
+
+#### Disable Azure Container Storage
+
+To disable Azure Container Storage during cluster creation:
+
+```bash
+export ENABLE_AZURE_CONTAINER_STORAGE="false"
+./scripts/deploy-aks.sh deploy-aks
+```
+
+### Ephemeral Disk Storage
+
+Ephemeral disk storage uses local NVMe or temp disk on the node for high-performance workloads:
+
+- **Ideal for**: AI/ML training scratch space on NDv5 series VMs
+- **Performance**: Lowest latency, highest IOPS
+- **Data persistence**: Ephemeral (data lost when pod is deleted or node is recycled)
+- **Cost**: No additional cost beyond the VM
+
+**Example VM Series with Local NVMe:**
+
+- NDv5 series (e.g., Standard_ND96isr_H100_v5)
+
+### Testing Storage Performance
+
+After cluster creation with Azure Container Storage enabled, you can test storage performance using the FIO test tool:
+
+```bash
+# Test with Azure Container Storage
+helm install fio-test infrastructure_validations/aks/fio/helm/fio \
+  --set storage.type=azure-container-storage
+
+# Monitor the test
+kubectl logs -f fio-test-fio
+
+# Clean up
+helm uninstall fio-test
+```
+
+See the [FIO testing documentation](../../infrastructure_validations/aks/fio/README.md) for more test examples and configuration options.
+
+### Configuration Variables
+
+- **`ENABLE_AZURE_CONTAINER_STORAGE`** - Enable Azure Container Storage (default: `true`)
+  - Set to `false` to disable during cluster creation
+
+### Additional Resources
+
+- [Azure Container Storage Documentation](https://learn.microsoft.com/en-us/azure/storage/container-storage/)
+- [Install Azure Container Storage on AKS](https://learn.microsoft.com/en-us/azure/storage/container-storage/install-container-storage-aks)
+- [Use Container Storage with Local Disk](https://learn.microsoft.com/en-us/azure/storage/container-storage/use-container-storage-with-local-disk)
+
+## 9. Monitoring
 
 ### Installation
 

@@ -37,6 +37,101 @@ helm install shared-storage storage_references/aks/shared_storage/helm/blob-shar
   --set-json 'storage.mountOptions=["-o allow_other","--use-attr-cache=true","--cancel-list-on-mount-seconds=10","-o attr_timeout=120","-o entry_timeout=120","-o negative_timeout=120","--log-level=LOG_WARNING","--file-cache-timeout-in-seconds=120","--block-cache","--block-cache-block-size=32","--block-cache-parallelism=80"]'
 ```
 
+### Performance Testing
+
+You can test blobfuse performance using the FIO testing tool. See the [FIO testing documentation](../../infrastructure_validations/aks/fio/README.md) for detailed examples.
+
+#### Block Cache Sequential Write Test
+
+Test large block sequential writes using blobfuse block cache:
+
+```bash
+helm install fio-test infrastructure_validations/aks/fio/helm/fio -f - <<EOF
+storage:
+  type: "blobfuse"
+  size: "10Gi"
+  blobfuse:
+    skuName: "Standard_LRS"
+    mountOptions:
+      - "-o allow_other"
+      - "--use-attr-cache=true"
+      - "--cancel-list-on-mount-seconds=10"
+      - "-o attr_timeout=120"
+      - "-o entry_timeout=120"
+      - "-o negative_timeout=120"
+      - "--log-level=LOG_WARNING"
+      - "--block-cache"
+      - "--block-cache-block-size=32"
+
+fio:
+  testName: "sequential-write-test"
+  filename: "/mnt/test/testfile.img"
+  size: "10G"
+  blockSize: "4M"
+  readWrite: "write"
+  ioEngine: "libaio"
+  direct: 1
+  numJobs: 1
+  runtime: 0
+  timeBased: false
+  additionalOptions: "--group_reporting"
+
+resources:
+  limits:
+    cpu: "2"
+    memory: "8Gi"
+  requests:
+    cpu: "1"
+    memory: "4Gi"
+EOF
+```
+
+#### File Cache Sequential Write Test
+
+Test large block sequential writes using blobfuse file cache:
+
+```bash
+helm install fio-test infrastructure_validations/aks/fio/helm/fio -f - <<EOF
+storage:
+  type: "blobfuse"
+  size: "10Gi"
+  blobfuse:
+    skuName: "Standard_LRS"
+    mountOptions:
+      - "-o allow_other"
+      - "--use-attr-cache=true"
+      - "--cancel-list-on-mount-seconds=10"
+      - "-o attr_timeout=120"
+      - "-o entry_timeout=120"
+      - "-o negative_timeout=120"
+      - "--log-level=LOG_WARNING"
+      - "--file-cache-timeout=600"
+      - "--tmp-path=/tmp/blobfuse"
+      - "--lazy-write"
+
+fio:
+  testName: "sequential-write-test"
+  filename: "/mnt/test/testfile.img"
+  size: "10G"
+  blockSize: "4M"
+  readWrite: "write"
+  ioEngine: "libaio"
+  direct: 1
+  numJobs: 1
+  runtime: 0
+  timeBased: false
+  additionalOptions: "--group_reporting"
+
+resources:
+  limits:
+    cpu: "2"
+    memory: "8Gi"
+  requests:
+    cpu: "1"
+    memory: "4Gi"
+EOF
+```
+
 ## 4. AMLFS Shared Storage
 
 Provides high-throughput, low-latency shared storage using Azure Managed Lustre File System. AMLFS is optimized for large-scale, performance-critical workloads that require fast I/O operations.
