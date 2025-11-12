@@ -1,0 +1,59 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "fio.fullname" . }}
+  labels:
+    {{- include "fio.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ttlSecondsAfterFinished: {{ .Values.job.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        {{- include "fio.labels" . | nindent 8 }}
+    spec:
+      containers:
+      - name: {{ .Values.pod.containerName }}
+        image: {{ .Values.pod.image }}
+        command: ["/bin/sh"]
+        args:
+          - -c
+          - |
+            apk add --no-cache fio && \
+            echo "Running fio test..." && \
+            {{- if .Values.fio.timeBased }}
+            fio --name={{ .Values.fio.testName }} --filename={{ .Values.fio.filename }} --size={{ .Values.fio.size }} --bs={{ .Values.fio.blockSize }} --rw={{ .Values.fio.readWrite }} --ioengine={{ .Values.fio.ioEngine }} --direct={{ .Values.fio.direct }} --numjobs={{ .Values.fio.numJobs }} --iodepth={{ .Values.fio.ioDepth }} --runtime={{ .Values.fio.runtime }} --time_based {{ .Values.fio.additionalOptions }} && \
+            {{- else }}
+            fio --name={{ .Values.fio.testName }} --filename={{ .Values.fio.filename }} --size={{ .Values.fio.size }} --bs={{ .Values.fio.blockSize }} --rw={{ .Values.fio.readWrite }} --ioengine={{ .Values.fio.ioEngine }} --direct={{ .Values.fio.direct }} --numjobs={{ .Values.fio.numJobs }} --iodepth={{ .Values.fio.ioDepth }} {{ .Values.fio.additionalOptions }} && \
+            {{- end }}
+            echo "fio test completed. Sleeping for debugging ({{ .Values.sleepDuration }}s)..." && sleep {{ .Values.sleepDuration }}
+        volumeMounts:
+        - name: test-storage
+          mountPath: {{ .Values.pod.mountPath }}
+        {{- if .Values.resources }}
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        {{- end }}
+      volumes:
+      - name: test-storage
+        {{- if eq .Values.storage.type "existing-pvc" }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.storage.existingPvcName }}
+        {{- else }}
+        ephemeral:
+          volumeClaimTemplate:
+            metadata:
+              labels:
+                {{- include "fio.labels" . | nindent 16 }}
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              storageClassName: {{ include "fio.fullname" . }}-acstor
+              resources:
+                requests:
+                  storage: {{ .Values.storage.size }}
+        {{- end }}
+      restartPolicy: {{ .Values.pod.restartPolicy }}
