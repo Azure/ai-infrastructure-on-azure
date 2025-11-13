@@ -1,0 +1,9 @@
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: ResourceFlavor
+metadata:
+  name: {{ .Values.resourceFlavor.name }}
+spec:
+{{- if .Values.resourceFlavor.nodeLabels }}
+  nodeLabels:
+{{ toYaml .Values.resourceFlavor.nodeLabels | indent 4 }}
+{{- end }}

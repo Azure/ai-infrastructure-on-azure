@@ -18,6 +18,9 @@ spec:
           labels:
             {{- include "megatron-training.labels" . | nindent 12 }}
             role: master
+{{- if .Values.kueue.queueName }}
+            kueue.x-k8s.io/queue-name: {{ .Values.kueue.queueName }}
+{{- end }}
         spec:
           {{- with .Values.nodeSelector }}
           nodeSelector:

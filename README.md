@@ -6,11 +6,12 @@
 2. [Infrastructure References Catalog](#2-infrastructure-references-catalog)
 3. [AI Training Example Catalog](#3-ai-training-example-catalog)
 4. [Infrastructure Validation Catalog](#4-infrastructure-validation-catalog)
-5. [Utilities Catalog](#5-utilities-catalog)
-6. [AI Infrastructure MCP Server](#6-ai-infrastructure-mcp-server)
-7. [Contributing](#7-contributing)
-8. [Trademarks](#8-trademarks)
-9. [Contributors](#9-contributors)
+5. [Scheduling and Workload Management](#5-scheduling-and-workload-management)
+6. [Utilities Catalog](#6-utilities-catalog)
+7. [AI Infrastructure MCP Server](#7-ai-infrastructure-mcp-server)
+8. [Contributing](#8-contributing)
+9. [Trademarks](#9-trademarks)
+10. [Contributors](#10-contributors)
 
 ## 1. Overview
 
@@ -69,7 +70,15 @@ monitoring and observability.
    Container Storage, blobfuse, and other storage types
    - [AKS version](./infrastructure_validations/aks/fio/README.md)
 
-## 5. Utilities Catalog
+## 5. Scheduling and Workload Management
+
+1. [Kueue for AKS](./scheduling/aks/kueue/README.md) - Kubernetes-native job
+   queueing and quota management for batch workloads on AKS. Provides a simple
+   Helm chart example for setting up a GPU queue. All Helm charts in this
+   repository support optional Kueue integration via the `kueue.queueName`
+   parameter.
+
+## 6. Utilities Catalog
 
 1. Node Labeler - Automatically labels nodes with host information and
    InfiniBand HCA GUIDs for network topology awareness
@@ -78,7 +87,7 @@ monitoring and observability.
    domain) information using SHARP topology discovery
    - [AKS version](./utilities/aks/torset_labeler/helm/README.md)
 
-## 6. AI Infrastructure MCP Server
+## 7. AI Infrastructure MCP Server
 
 The [AI Infrastructure MCP Server](./tools/ai-infrastructure-mcp/README.md) is a
 Model Context Protocol (MCP) server that provides tools for managing and
@@ -96,7 +105,7 @@ Currently targeting Slurm clusters with SSH-based connectivity. See the
 [full documentation](./tools/ai-infrastructure-mcp/README.md) for setup and
 usage details.
 
-## 7. Contributing
+## 8. Contributing
 
 This project welcomes contributions and suggestions. Most contributions require
 you to agree to a Contributor License Agreement (CLA) declaring that you have
@@ -115,7 +124,7 @@ For more information see the
 contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any
 additional questions or comments.
 
-## 8. Trademarks
+## 9. Trademarks
 
 This project may contain trademarks or logos for projects, products, or
 services. Authorized use of Microsoft trademarks or logos is subject to and must
@@ -125,7 +134,7 @@ Use of Microsoft trademarks or logos in modified versions of this project must
 not cause confusion or imply Microsoft sponsorship. Any use of third-party
 trademarks or logos is subject to those third-party's policies.
 
-## 8. Contributors
+## 10. Contributors
 
 Please join us in contributing to the project
 
