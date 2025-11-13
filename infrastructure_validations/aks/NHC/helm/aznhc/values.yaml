@@ -15,7 +15,7 @@ rdmaResource: "rdma/ib"
 # Kueue integration (optional)
 # Set queueName to enable Kueue workload management
 kueue:
-  queueName: ""  # e.g., "gpu-local-queue" to use Kueue
+  queueName: "" # e.g., "gpu-local-queue" to use Kueue
 
 # Container image configuration
 image:

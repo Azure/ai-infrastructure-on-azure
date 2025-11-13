@@ -16,7 +16,7 @@ training:
 # Kueue integration (optional)
 # Set queueName to enable Kueue workload management
 kueue:
-  queueName: ""  # e.g., "gpu-local-queue" to use Kueue
+  queueName: "" # e.g., "gpu-local-queue" to use Kueue
 
 # Additional YAML updates for the training configuration
 yamlUpdates: {}
