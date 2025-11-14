@@ -1,6 +1,6 @@
 # Default values for mlperf-storage-checkpoint
 image:
-  repository: ghcr.io/azure/ai-infrastructure-on-azure/mlperfstorage
+  repository: ghcr.io/azure/ai-infrastructure-on-azure/mlperf-storage
   tag: latest
   pullPolicy: Always
 mpi:
@@ -27,7 +27,7 @@ benchmark:
   model: llama3-70b
   clientHostMemoryGiB: 32
   numCheckpointsWrite: 10
-  numCheckpointsRead: 0
+  numCheckpointsRead: 10
 storage:
   pvcName: "pvcName"
   mountPath: "/mnt/storage"
