@@ -10,6 +10,9 @@ spec:
       labels:
         app: aznhc
         task: {{ include "aznhc.fullname" . }}
+{{- if .Values.kueue.queueName }}
+        kueue.x-k8s.io/queue-name: {{ .Values.kueue.queueName }}
+{{- end }}
     spec:
       restartPolicy: Never
       containers:

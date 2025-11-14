@@ -5,6 +5,9 @@ metadata:
   name: {{ include "megatron-training.fullname" . }}
   labels:
     {{- include "megatron-training.labels" . | nindent 4 }}
+{{- if .Values.kueue.queueName }}
+    kueue.x-k8s.io/queue-name: {{ .Values.kueue.queueName }}
+{{- end }}
 spec:
   {{- if .Values.pytorchJob.ttlSecondsAfterFinished }}
   ttlSecondsAfterFinished: {{ .Values.pytorchJob.ttlSecondsAfterFinished }}

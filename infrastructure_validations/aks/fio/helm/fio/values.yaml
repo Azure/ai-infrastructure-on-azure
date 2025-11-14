@@ -17,6 +17,11 @@ storage:
   # Storage size for the test volume (not used for existing-pvc)
   size: "10Gi"
 
+# Kueue integration (optional)
+# Set queueName to enable Kueue workload management
+kueue:
+  queueName: "" # e.g., "gpu-local-queue" to use Kueue
+
 # Job configuration
 job:
   # Time-to-live after job finishes (completed or failed)

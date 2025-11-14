@@ -1,0 +1,27 @@
+# Default values for kueue-setup
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Node configuration
+nodes:
+  count: 2
+  perNodeResources:
+    nvidia.com/gpu: "8"
+    rdma/ib: "8"
+    cpu: "90" # 90 cores per node
+    memory: "1800Gi" # 1800Gi per node
+
+# Resource Flavor configuration
+resourceFlavor:
+  name: "gpu-flavor"
+  nodeLabels:
+    agentpool: gpu
+
+# Cluster Queue configuration
+clusterQueue:
+  name: "gpu-cluster-queue"
+
+# Local Queue configuration
+localQueue:
+  name: "gpu-local-queue"
+  namespace: "default"

@@ -1,0 +1,26 @@
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: ClusterQueue
+metadata:
+  name: {{ .Values.clusterQueue.name }}
+spec:
+  namespaceSelector: {} # Allow workloads from all namespaces
+  resourceGroups:
+    - coveredResources:
+{{- range $resource, $_ := .Values.nodes.perNodeResources }}
+        - {{ $resource | quote }}
+{{- end }}
+      flavors:
+        - name: {{ .Values.resourceFlavor.name }}
+          resources:
+{{- range $resource, $quota := .Values.nodes.perNodeResources }}
+  {{- $quotaStr := toString $quota }}
+  {{- if regexMatch "^[0-9]+[a-zA-Z]+$" $quotaStr }}
+    {{- $value := regexReplaceAll "[a-zA-Z]+" $quotaStr "" }}
+    {{- $unit := regexReplaceAll "[0-9]+" $quotaStr "" }}
+            - name: {{ $resource }}
+              nominalQuota: "{{ mul (int $value) (int $.Values.nodes.count) }}{{ $unit }}"
+  {{- else }}
+            - name: {{ $resource }}
+              nominalQuota: {{ mul (int $quota) (int $.Values.nodes.count) | quote }}
+  {{- end }}
+{{- end }}

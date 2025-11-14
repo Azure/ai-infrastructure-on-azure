@@ -4,6 +4,9 @@ metadata:
   name: {{ include "llm-training.fullname" . }}
   labels:
     {{- include "llm-training.labels" . | nindent 4 }}
+{{- if .Values.kueue.queueName }}
+    kueue.x-k8s.io/queue-name: {{ .Values.kueue.queueName }}
+{{- end }}
 spec:
   pytorchReplicaSpecs:
     Master:

@@ -12,6 +12,11 @@ gpusPerNode: 8
 gpuResource: "nvidia.com/gpu"
 rdmaResource: "rdma/ib"
 
+# Kueue integration (optional)
+# Set queueName to enable Kueue workload management
+kueue:
+  queueName: "" # e.g., "gpu-local-queue" to use Kueue
+
 # Container image configuration
 image:
   repository: ghcr.io/azure/ai-infrastructure-on-azure/nccl-test
