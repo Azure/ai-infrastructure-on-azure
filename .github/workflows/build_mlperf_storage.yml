@@ -49,4 +49,5 @@ jobs:
         with:
           context: ./examples/mlperf_storage/docker
           tags: ${{ steps.meta.outputs.tags }}
+          push: true
           labels: ${{ steps.meta.outputs.labels }}
