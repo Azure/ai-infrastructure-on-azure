@@ -4,14 +4,15 @@
 
 1. [Overview](#1-overview)
 2. [Infrastructure References Catalog](#2-infrastructure-references-catalog)
-3. [AI Training Example Catalog](#3-ai-training-example-catalog)
-4. [Infrastructure Validation Catalog](#4-infrastructure-validation-catalog)
-5. [Scheduling and Workload Management](#5-scheduling-and-workload-management)
-6. [Utilities Catalog](#6-utilities-catalog)
-7. [AI Infrastructure MCP Server](#7-ai-infrastructure-mcp-server)
-8. [Contributing](#8-contributing)
-9. [Trademarks](#9-trademarks)
-10. [Contributors](#10-contributors)
+3. [Storage References Catalog](#3-storage-references-catalog)
+4. [AI Training Example Catalog](#4-ai-training-example-catalog)
+5. [Infrastructure Validation Catalog](#5-infrastructure-validation-catalog)
+6. [Scheduling and Workload Management](#6-scheduling-and-workload-management)
+7. [Utilities Catalog](#7-utilities-catalog)
+8. [AI Infrastructure MCP Server](#8-ai-infrastructure-mcp-server)
+9. [Contributing](#9-contributing)
+10. [Trademarks](#10-trademarks)
+11. [Contributors](#11-contributors)
 
 ## 1. Overview
 
@@ -40,7 +41,16 @@ monitoring and observability.
 2. [Azure Kubernetes Service Cluster](./infrastructure_references/aks/README.md) -
    Deployment script for AKS cluster
 
-## 3. AI Training Example Catalog
+## 3. Storage References Catalog
+
+1. [AKS Shared Storage](./storage_references/aks/shared_storage/README.md) -
+   Helm charts for deploying shared storage on AKS using Azure Blob Storage
+   (BlobFuse) and Azure Managed Lustre File System (AMLFS)
+2. [Slurm Squashed Images](./storage_references/slurm/squashed_images/README.md) -
+   Tuning guidance for container squashed image files on Slurm clusters,
+   including Azure Managed Lustre striping optimization and local NVME staging
+
+## 4. AI Training Example Catalog
 
 1. MegatronLM GPT3-175B with Slimpajama 627B dataset - Example of an end-to-end
    training workflow based on MegatronLM, including data pre-processing from
@@ -54,7 +64,7 @@ monitoring and observability.
    - [Slurm version](./examples/llm-foundry/slurm/README.md)
    - [AKS version](./examples/llm-foundry/aks/README.md)
 
-## 4. Infrastructure Validation Catalog
+## 5. Infrastructure Validation Catalog
 
 1. NCCL All-reduce - Testing distributed communication performance for multi-GPU
    training
@@ -70,7 +80,7 @@ monitoring and observability.
    Container Storage, blobfuse, and other storage types
    - [AKS version](./infrastructure_validations/aks/fio/README.md)
 
-## 5. Scheduling and Workload Management
+## 6. Scheduling and Workload Management
 
 1. [Kueue for AKS](./scheduling/aks/kueue/README.md) - Kubernetes-native job
    queueing and quota management for batch workloads on AKS. Provides a simple
@@ -78,7 +88,7 @@ monitoring and observability.
    repository support optional Kueue integration via the `kueue.queueName`
    parameter.
 
-## 6. Utilities Catalog
+## 7. Utilities Catalog
 
 1. Node Labeler - Automatically labels nodes with host information and
    InfiniBand HCA GUIDs for network topology awareness
@@ -87,7 +97,7 @@ monitoring and observability.
    domain) information using SHARP topology discovery
    - [AKS version](./utilities/aks/torset_labeler/helm/README.md)
 
-## 7. AI Infrastructure MCP Server
+## 8. AI Infrastructure MCP Server
 
 The [AI Infrastructure MCP Server](./tools/ai-infrastructure-mcp/README.md) is a
 Model Context Protocol (MCP) server that provides tools for managing and
@@ -105,7 +115,7 @@ Currently targeting Slurm clusters with SSH-based connectivity. See the
 [full documentation](./tools/ai-infrastructure-mcp/README.md) for setup and
 usage details.
 
-## 8. Contributing
+## 9. Contributing
 
 This project welcomes contributions and suggestions. Most contributions require
 you to agree to a Contributor License Agreement (CLA) declaring that you have
@@ -124,7 +134,7 @@ For more information see the
 contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any
 additional questions or comments.
 
-## 9. Trademarks
+## 10. Trademarks
 
 This project may contain trademarks or logos for projects, products, or
 services. Authorized use of Microsoft trademarks or logos is subject to and must
@@ -134,7 +144,7 @@ Use of Microsoft trademarks or logos in modified versions of this project must
 not cause confusion or imply Microsoft sponsorship. Any use of third-party
 trademarks or logos is subject to those third-party's policies.
 
-## 10. Contributors
+## 11. Contributors
 
 Please join us in contributing to the project
 

@@ -157,5 +157,5 @@ This is an example of 16TiB filesystem with 2GB/s total throughput:
 helm install shared-storage storage_references/aks/shared_storage/helm/amlfs-shared-storage \
   --set storage.amlfs.skuName="AMLFS-Durable-Premium-125" \
   --set storage.size=16Ti \
-  --set pvc.name="shared-storage-pvc"
+  --set storage.pvcName="shared-storage-pvc"
 ```
