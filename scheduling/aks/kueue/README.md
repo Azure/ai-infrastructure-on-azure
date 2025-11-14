@@ -140,4 +140,4 @@ helm uninstall gpu-queue
 - [Kueue Documentation](https://kueue.sigs.k8s.io/)
 - [Kueue Concepts](https://kueue.sigs.k8s.io/docs/concepts/)
 - [Advanced Queue Configuration](https://kueue.sigs.k8s.io/docs/tasks/)
-- [Main AKS Infrastructure Guide](../../infrastructure_references/aks/README.md)
+- [Main AKS Infrastructure Guide](../../../infrastructure_references/aks/README.md)
