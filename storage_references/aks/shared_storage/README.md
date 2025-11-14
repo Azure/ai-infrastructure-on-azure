@@ -39,7 +39,7 @@ helm install shared-storage storage_references/aks/shared_storage/helm/blob-shar
 
 ### Performance Testing
 
-You can test blobfuse performance using the FIO testing tool. See the [FIO testing documentation](../../infrastructure_validations/aks/fio/README.md) for detailed examples.
+You can test blobfuse performance using the FIO testing tool. See the [FIO testing documentation](../../../infrastructure_validations/aks/fio/README.md) for detailed examples.
 
 #### Block Cache Sequential Write Test
 
