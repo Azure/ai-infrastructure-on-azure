@@ -3,6 +3,12 @@ image:
   repository: ghcr.io/azure/ai-infrastructure-on-azure/mlperf-storage
   tag: latest
   pullPolicy: Always
+
+# Kueue integration (optional)
+# Set queueName to enable Kueue workload management
+kueue:
+  queueName: "" # e.g., "gpu-local-queue" to use Kueue
+
 mpi:
   workers: 2
   slotsPerWorker: 8

@@ -41,7 +41,7 @@ Create a PVC for your storage backend. See [Storage Options](../../../storage_re
 
 ```bash
 # Basic installation
-```helm install mlperf-storage-checkpoint examples/mlperf_storage/aks/helm/mlperf-storage-checkpoint \
+helm install mlperf-storage-checkpoint examples/mlperf_storage/aks/helm/mlperf-storage-checkpoint \
   --set storage.pvcName=shared-amlfs-storage
 
 # With customization of the benchmark
