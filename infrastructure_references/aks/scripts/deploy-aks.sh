@@ -51,15 +51,15 @@ fi
 : "${GPU_OPERATOR_NS:=gpu-operator}"
 
 # Optional toggles for operator installation in composite 'all' flow
-: "${INSTALL_NETWORK_OPERATOR:=true}"  # Set to false to skip Network Operator in 'all'
-: "${INSTALL_GPU_OPERATOR:=true}"      # Set to false to skip GPU Operator in 'all'
+: "${INSTALL_NETWORK_OPERATOR:=true}" # Set to false to skip Network Operator in 'all'
+: "${INSTALL_GPU_OPERATOR:=true}"     # Set to false to skip GPU Operator in 'all'
 
 # Azure Container Registry (optional integrated image source)
 : "${INSTALL_ACR:=true}"               # Set to false to skip ACR attach inside 'all'
-: "${ACR_NAME:=""}"    # ACR name (must be globally unique)
+: "${ACR_NAME:=""}"                    # ACR name (must be globally unique)
 : "${ACR_SKU:=Standard}"               # Basic | Standard | Premium
 : "${ACR_LOCATION:=${AZURE_REGION:-}}" # Defaults to cluster region; can override
-: "${ACR_RANDOMIZE:=false}"             # Optional: force re-randomization even if ACR_NAME overridden
+: "${ACR_RANDOMIZE:=false}"            # Optional: force re-randomization even if ACR_NAME overridden
 
 function check_prereqs() {
 	local prereqs=("kubectl" "helm" "az" "jq" "git" "kustomize")
@@ -624,7 +624,9 @@ function setup_amlfs_roles() {
 			--assignee-principal-type ServicePrincipal \
 			--role "Contributor" \
 			--scope "/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${AZURE_RESOURCE_GROUP}" || {
-			echo "Failed to assign Contributor role to resource group: ${AZURE_RESOURCE_GROUP}"; exit 1; }
+			echo "Failed to assign Contributor role to resource group: ${AZURE_RESOURCE_GROUP}"
+			exit 1
+		}
 		echo "Successfully assigned Contributor role to resource group: ${AZURE_RESOURCE_GROUP}"
 	fi
 
@@ -687,7 +689,7 @@ function uninstall_kueue() {
 # create_or_attach_acr provisions an Azure Container Registry (if absent) and
 # attaches it to the cluster's managed identity for seamless image pulls.
 function create_or_attach_acr() {
-	: "${AZURE_REGION:?❌ Environment variable AZURE_REGION must be set for ACR creation}";
+	: "${AZURE_REGION:?❌ Environment variable AZURE_REGION must be set for ACR creation}"
 
 	# Determine location override
 	local acr_location="${ACR_LOCATION:-${AZURE_REGION}}"
@@ -701,13 +703,13 @@ function create_or_attach_acr() {
 		fi
 		# Random suffix to reach max length 10
 		remaining=$((10 - ${#base_prefix}))
-		if (( remaining < 1 )); then
+		if ((remaining < 1)); then
 			remaining=1
 		fi
 		random_suffix="$(LC_ALL=C tr -dc 'a-z0-9' </dev/urandom | head -c ${remaining} 2>/dev/null || true)" #|| true
-		
-        generated_name="${base_prefix}${random_suffix}"
-        ACR_NAME="${generated_name:0:10}"
+
+		generated_name="${base_prefix}${random_suffix}"
+		ACR_NAME="${generated_name:0:10}"
 		echo "🔧 Generated random ACR_NAME='${ACR_NAME}' (length <=10, ACR_RANDOMIZE=true)"
 	fi
 
@@ -732,7 +734,9 @@ function create_or_attach_acr() {
 		--name "${CLUSTER_NAME}" \
 		--resource-group "${AZURE_RESOURCE_GROUP}" \
 		--attach-acr "${ACR_NAME}" >/dev/null || {
-		echo "❌ Failed to attach ACR to AKS cluster."; return 1; }
+		echo "❌ Failed to attach ACR to AKS cluster."
+		return 1
+	}
 
 	echo "✅ ACR '${ACR_NAME}' attached to AKS cluster '${CLUSTER_NAME}'."
 
