@@ -47,7 +47,7 @@ To target a specific nodepool:
 
 ```bash
 helm install torset-labeler utilities/aks/torset_labeler/helm -n kube-system \
-  --set nodepool.selector="agentpool=mygpupool"
+  --set nodepool.selectorLabel="agentpool=mygpupool"
 ```
 
 ## 5. Configuration

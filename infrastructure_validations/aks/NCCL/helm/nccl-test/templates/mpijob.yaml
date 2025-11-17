@@ -2,6 +2,10 @@ apiVersion: kubeflow.org/v2beta1
 kind: MPIJob
 metadata:
   name: {{ include "nccl-test.fullname" . }}
+  {{- if .Values.kueue.queueName }}
+  labels:
+    kueue.x-k8s.io/queue-name: {{ .Values.kueue.queueName }}
+  {{- end }}
 spec:
   slotsPerWorker: {{ .Values.gpusPerNode }}
   runPolicy:

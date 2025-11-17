@@ -13,6 +13,16 @@ training:
   # Number of GPUs per node
   gpusPerNode: 8
 
+# Kueue integration (optional)
+# Set queueName to enable Kueue workload management
+kueue:
+  queueName: "" # e.g., "gpu-local-queue" to use Kueue
+
+# Logs configuration (optional)
+# Set copyLogsDir to save stdout/stderr logs to a directory
+logs:
+  copyLogsDir: "" # e.g., "/mnt/logs" - logs saved as $(hostname).out
+
 # Additional YAML updates for the training configuration
 yamlUpdates: {}
 # Example:

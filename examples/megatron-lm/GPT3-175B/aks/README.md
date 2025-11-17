@@ -55,10 +55,10 @@ AMLFS delivers high-throughput, low-latency storage optimized for large-scale tr
 Example deployment for AMLFS:
 
 ```bash
-helm install shared-storage ../../../storage_references/aks/shared_storage/helm/amlfs-shared-storage \
-  --set amlfs.skuName="AMLFS-Durable-Premium-125" \
-  --set amlfs.storageCapacityTiB=16 \
-  --set pvc.name="shared-storage-pvc"
+helm install shared-storage ../../../../storage_references/aks/shared_storage/helm/amlfs-shared-storage \
+  --set storage.amlfs.skuName="AMLFS-Durable-Premium-125" \
+  --set storage.size="16Ti" \
+  --set storage.pvcName="shared-storage-pvc"
 ```
 
 #### Option 2: Azure Blob Storage with BlobFuse
@@ -66,8 +66,8 @@ helm install shared-storage ../../../storage_references/aks/shared_storage/helm/
 Blob storage provides cost-effective storage with good performance for most training scenarios.
 
 ```bash
-helm install shared-storage ../../../storage_references/aks/shared_storage/helm/blob-shared-storage \
-  --set pvc.name="shared-storage-pvc" \
+helm install shared-storage ../../../../storage_references/aks/shared_storage/helm/blob-shared-storage \
+  --set storage.pvcName="shared-storage-pvc" \
   --set-json 'storage.mountOptions=["-o allow_other","--use-attr-cache=true","--cancel-list-on-mount-seconds=10","-o attr_timeout=120","-o entry_timeout=120","-o negative_timeout=120","--log-level=LOG_WARNING","--file-cache-timeout-in-seconds=120","--block-cache","--block-cache-block-size=32","--block-cache-parallelism=80"]'
 ```
 
@@ -221,12 +221,12 @@ For custom model architectures, override the model parameters directly:
 helm install megatron-training examples/megatron-lm/GPT3-175B/aks/helm/megatron-training \
   --set image.tag=latest \
   --set model.size="custom" \
-  --set model.custom.numLayers=24 \
-  --set model.custom.hiddenSize=1024 \
-  --set model.custom.numAttentionHeads=16 \
-  --set model.custom.seqLength=2048 \
-  --set model.custom.tensorModelParallelSize=1 \
-  --set model.custom.pipelineModelParallelSize=1 \
+  --set model.numLayers=24 \
+  --set model.hiddenSize=1024 \
+  --set model.numAttentionHeads=16 \
+  --set model.seqLength=2048 \
+  --set model.tensorModelParallelSize=1 \
+  --set model.pipelineModelParallelSize=1 \
   --set training.nodes=4 \
   --set storage.pvcName="shared-storage-pvc"
 ```

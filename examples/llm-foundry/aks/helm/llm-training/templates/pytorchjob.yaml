@@ -4,6 +4,9 @@ metadata:
   name: {{ include "llm-training.fullname" . }}
   labels:
     {{- include "llm-training.labels" . | nindent 4 }}
+{{- if .Values.kueue.queueName }}
+    kueue.x-k8s.io/queue-name: {{ .Values.kueue.queueName }}
+{{- end }}
 spec:
   pytorchReplicaSpecs:
     Master:
@@ -40,6 +43,7 @@ spec:
               ulimit -s unlimited && \
               ulimit -l unlimited && \
               ulimit -a && \
+              LOG_FILE="/tmp/$(hostname).out" && \
               composer \
                 --world_size {{ mul .Values.training.nodes .Values.training.gpusPerNode }} \
                 --node_rank $RANK \
@@ -52,6 +56,13 @@ spec:
                 {{- range $key, $value := .Values.yamlUpdates }}
                 {{ $key }}={{ $value }} \
                 {{- end }}
+              2>&1 | tee "$LOG_FILE"
+              EXIT_CODE=$?
+              {{- if .Values.logs.copyLogsDir }}
+              mkdir -p {{ .Values.logs.copyLogsDir }}
+              cp "$LOG_FILE" {{ .Values.logs.copyLogsDir }}/ || echo "Failed to copy logs"
+              {{- end }}
+              exit $EXIT_CODE
             env:
             {{- include "llm-training.nccl-env" . | nindent 12 }}
             {{- include "llm-training.sharp-env" . | nindent 12 }}
@@ -115,6 +126,7 @@ spec:
               ulimit -s unlimited && \
               ulimit -l unlimited && \
               ulimit -a && \
+              LOG_FILE="/tmp/$(hostname).out" && \
               composer \
                 --world_size {{ mul .Values.training.nodes .Values.training.gpusPerNode }} \
                 --node_rank $RANK \
@@ -127,6 +139,13 @@ spec:
                 {{- range $key, $value := .Values.yamlUpdates }}
                 {{ $key }}={{ $value }} \
                 {{- end }}
+              2>&1 | tee "$LOG_FILE"
+              EXIT_CODE=$?
+              {{- if .Values.logs.copyLogsDir }}
+              mkdir -p {{ .Values.logs.copyLogsDir }}
+              cp "$LOG_FILE" {{ .Values.logs.copyLogsDir }}/ || echo "Failed to copy logs"
+              {{- end }}
+              exit $EXIT_CODE
             env:
             {{- include "llm-training.nccl-env" . | nindent 12 }}
             {{- include "llm-training.sharp-env" . | nindent 12 }}

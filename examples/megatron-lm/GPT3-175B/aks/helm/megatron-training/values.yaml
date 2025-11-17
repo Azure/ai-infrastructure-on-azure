@@ -47,6 +47,11 @@ training:
   # Enable SHARP acceleration (0 or 1)
   useSharp: 0
 
+# Kueue integration (optional)
+# Set queueName to enable Kueue workload management
+kueue:
+  queueName: "" # e.g., "gpu-local-queue" to use Kueue
+
 # Storage configuration
 storage:
   # Mount path where the shared storage will be mounted

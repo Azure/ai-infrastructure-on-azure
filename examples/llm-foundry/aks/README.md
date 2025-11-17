@@ -50,7 +50,7 @@ AMLFS offers different performance tiers with bandwidth scaling per TiB of stora
 helm install shared-storage ../../../storage_references/aks/shared_storage/helm/amlfs-shared-storage \
   --set storage.amlfs.skuName="AMLFS-Durable-Premium-125" \
   --set storage.size="16Ti" \
-  --set storage.pvc.name="shared-storage-pvc"
+  --set storage.pvcName="shared-storage-pvc"
 ```
 
 #### Option 2: Azure Blob Storage with BlobFuse
@@ -63,7 +63,7 @@ Example deployment:
 
 ```bash
 helm install shared-storage ../../../storage_references/aks/shared_storage/helm/blob-shared-storage \
-  --set pvc.name="shared-storage-pvc" \
+  --set storage.pvcName="shared-storage-pvc" \
   --set-json 'storage.mountOptions=["-o allow_other","--use-attr-cache=true","--cancel-list-on-mount-seconds=10","-o attr_timeout=120","-o entry_timeout=120","-o negative_timeout=120","--log-level=LOG_WARNING","--file-cache-timeout-in-seconds=120","--block-cache","--block-cache-block-size=32","--block-cache-parallelism=80"]'
 ```
 

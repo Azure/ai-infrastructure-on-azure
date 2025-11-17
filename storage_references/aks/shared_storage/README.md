@@ -26,20 +26,20 @@ For detailed configuration options, see the [Azure Storage Fuse documentation](h
 
 ```bash
 helm install shared-storage storage_references/aks/shared_storage/helm/blob-shared-storage \
-  --set pvc.name="shared-storage-pvc"
+  --set storage.pvcName="shared-storage-pvc"
 ```
 
 With optimized mount options for multiple clients writing large, independent files:
 
 ```bash
 helm install shared-storage storage_references/aks/shared_storage/helm/blob-shared-storage \
-  --set pvc.name="shared-storage-pvc" \
+  --set storage.pvcName="shared-storage-pvc" \
   --set-json 'storage.mountOptions=["-o allow_other","--use-attr-cache=true","--cancel-list-on-mount-seconds=10","-o attr_timeout=120","-o entry_timeout=120","-o negative_timeout=120","--log-level=LOG_WARNING","--file-cache-timeout-in-seconds=120","--block-cache","--block-cache-block-size=32","--block-cache-parallelism=80"]'
 ```
 
 ### Performance Testing
 
-You can test blobfuse performance using the FIO testing tool. See the [FIO testing documentation](../../infrastructure_validations/aks/fio/README.md) for detailed examples.
+You can test blobfuse performance using the FIO testing tool. See the [FIO testing documentation](../../../infrastructure_validations/aks/fio/README.md) for detailed examples.
 
 #### Block Cache Sequential Write Test
 
