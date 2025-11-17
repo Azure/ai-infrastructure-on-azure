@@ -45,6 +45,7 @@ spec:
                   fi
                   ELAPSED=$(( $(date +%s)-START_TS ))
                   if [ "${ELAPSED}" -ge "${TIMEOUT}" ]; then
+                    echo "Error: Timeout waiting for all workers to be ready"
                     exit 1
                   fi
                   sleep 5

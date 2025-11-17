@@ -15,11 +15,8 @@ Run the **checkpoint** MLPerf Storage benchmark on Azure Kubernetes Service (AKS
 ### Helm (Recommended)
 
 ```bash
-# Navigate to the Helm chart directory
-cd helm/mlperf-storage-checkpoint
-
-# Or install with custom values
-helm install mlperf-storage-checkpoint . \
+# Install with custom values
+helm install mlperf-storage-checkpoint examples/mlperf_storage/aks/helm/mlperf-storage-checkpoint \
   --set mpi.workers=4 \
   --set mpi.slotsPerWorker=8 \
   --set benchmark.numCheckpointsWrite=10 \
@@ -43,13 +40,12 @@ Create a PVC for your storage backend. See [Storage Options](../../../storage_re
 #### 2. Install the Chart
 
 ```bash
-cd helm/mlperf-storage-checkpoint
-
 # Basic installation
-helm install mlperf-storage-checkpoint . --set storage.pvcName=shared-amlfs-storage
+```helm install mlperf-storage-checkpoint examples/mlperf_storage/aks/helm/mlperf-storage-checkpoint \
+  --set storage.pvcName=shared-amlfs-storage
 
 # With customization of the benchmark
-helm install mlperf-storage-checkpoint . \
+helm install mlperf-storage-checkpoint examples/mlperf_storage/aks/helm/mlperf-storage-checkpoint \
   --set mpi.workers=16 \
   --set mpi.slotsPerWorker=8 \
   --set benchmark.numCheckpointsWrite=40 \
@@ -75,6 +71,7 @@ kubectl logs -l role=worker
 LAUNCHER_POD=$(kubectl get pods -l role=launcher -o jsonpath='{.items[0].metadata.name}')
 kubectl cp ${LAUNCHER_POD}:/mnt/storage/results ./results
 ```
+
 ## Configuration Options
 
 ### Using Helm
@@ -85,21 +82,23 @@ Common configurations:
 
 ```bash
 # Increasing number of nodes
-helm install mlperf-storage-checkpoint ./helm/mlperf-storage-checkpoint --set mpi.workers=8
+helm install mlperf-storage-checkpoint examples/mlperf_storage/aks/helm/mlperf-storage-checkpoint \
+  --set mpi.workers=8
 
 # Larger write workload
-helm install mlperf-storage-checkpoint ./helm/mlperf-storage-checkpoint \
+helm install mlperf-storage-checkpoint examples/mlperf_storage/aks/helm/mlperf-storage-checkpoint \
   --set mpi.workers=8 \
   --set mpi.slotsPerWorker=8 \
   --set benchmark.numCheckpointsWrite=20 \
   --set benchmark.clientHostMemoryGiB=64
 
 # Node targeting
-helm install mlperf-storage-checkpoint ./helm/mlperf-storage-checkpoint \
+helm install mlperf-storage-checkpoint examples/mlperf_storage/aks/helm/mlperf-storage-checkpoint \
   --set nodeSelector.agentpool=compute
 ```
 
 ### Process / Slots / CPU
+
 Total processes = `mpi.workers * mpi.slotsPerWorker`. Worker CPU requests/limits derive automatically from `slotsPerWorker`.
 
 ### Scaling Workers
@@ -110,8 +109,9 @@ Adjust the number of worker replicas in `job.yaml`:
 spec:
   mpiReplicaSpecs:
     Worker:
-      replicas: 8  # Change this value
+      replicas: 8 # Change this value
 ```
+
 ### Resource Allocation
 
 Modify resource requests/limits through Helm values (`launcher.resources`, `worker.resources`) while CPUs map to `slotsPerWorker`.
@@ -125,26 +125,27 @@ affinity:
   nodeAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
       nodeSelectorTerms:
-      - matchExpressions:
-        - key: agentpool
-          operator: In
-          values:
-          - compute  # Your node pool name
+        - matchExpressions:
+            - key: agentpool
+              operator: In
+              values:
+                - compute # Your node pool name
 ```
 
 ## MPIJob Architecture (Checkpoint Mode)
 
 The deployment consists of:
 
-* **Launcher Pod (1)** builds host list, performs SSH readiness loop (300s timeout) then runs `mlpstorage checkpointing run` with explicit flags.
-* **Worker Pods (N)** expose SSH (sshd) for MPI; slots map to CPU.
-* **Shared Storage** provides checkpoint folder and results.
-* **No ConfigMap** usage; all settings are values → CLI flags.
+- **Launcher Pod (1)** builds host list, performs SSH readiness loop (300s timeout) then runs `mlpstorage checkpointing run` with explicit flags.
+- **Worker Pods (N)** expose SSH (sshd) for MPI; slots map to CPU.
+- **Shared Storage** provides checkpoint folder and results.
+- **No ConfigMap** usage; all settings are values → CLI flags.
 
 MPI Operator automatically:
-* Generates hostfile with worker endpoints
-* Injects SSH keys
-* Manages lifecycle & status CR
+
+- Generates hostfile with worker endpoints
+- Injects SSH keys
+- Manages lifecycle & status CR
 
 ## Cleanup
 

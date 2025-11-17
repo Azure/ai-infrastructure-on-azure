@@ -6,8 +6,8 @@ on:
       - main
       - add-mlperf-storage-checkpointing
     paths:
-      - 'examples/mlperf_storage/docker/**'
-      - '.github/workflows/build_mlperf_storage.yml'
+      - "examples/mlperf_storage/docker/**"
+      - ".github/workflows/build_mlperf_storage.yml"
   workflow_dispatch:
 
 env:
@@ -19,7 +19,7 @@ jobs:
     permissions:
       contents: read
       packages: write
-      
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
