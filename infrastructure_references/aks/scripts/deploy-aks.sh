@@ -50,6 +50,17 @@ fi
 : "${NETWORK_OPERATOR_NS:=network-operator}"
 : "${GPU_OPERATOR_NS:=gpu-operator}"
 
+# Optional toggles for operator installation in composite 'all' flow
+: "${INSTALL_NETWORK_OPERATOR:=true}"  # Set to false to skip Network Operator in 'all'
+: "${INSTALL_GPU_OPERATOR:=true}"      # Set to false to skip GPU Operator in 'all'
+
+# Azure Container Registry (optional integrated image source)
+: "${INSTALL_ACR:=true}"               # Set to false to skip ACR attach inside 'all'
+: "${ACR_NAME:=""}"    # ACR name (must be globally unique)
+: "${ACR_SKU:=Standard}"               # Basic | Standard | Premium
+: "${ACR_LOCATION:=${AZURE_REGION:-}}" # Defaults to cluster region; can override
+: "${ACR_RANDOMIZE:=false}"             # Optional: force re-randomization even if ACR_NAME overridden
+
 function check_prereqs() {
 	local prereqs=("kubectl" "helm" "az" "jq" "git" "kustomize")
 	for cmd in "${prereqs[@]}"; do
@@ -598,7 +609,26 @@ function setup_amlfs_roles() {
 		echo "Successfully assigned Reader role to subscription: ${SUBSCRIPTION_ID}"
 	fi
 
-	echo "✅ AMLFS role assignment completed successfully."
+	# Also assign roles on the main AZURE_RESOURCE_GROUP for direct access (mirrors node RG scope)
+	echo "Assigning Contributor role to primary resource group: ${AZURE_RESOURCE_GROUP}"
+	EXISTING_RG_CONTRIBUTOR=$(az role assignment list \
+		--assignee "${OBJECT_ID}" \
+		--role "Contributor" \
+		--scope "/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${AZURE_RESOURCE_GROUP}" \
+		--query "[].roleDefinitionName" -o tsv)
+	if [ -n "${EXISTING_RG_CONTRIBUTOR}" ]; then
+		echo "Contributor role already assigned on resource group '${AZURE_RESOURCE_GROUP}'"
+	else
+		az role assignment create \
+			--assignee-object-id "${OBJECT_ID}" \
+			--assignee-principal-type ServicePrincipal \
+			--role "Contributor" \
+			--scope "/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${AZURE_RESOURCE_GROUP}" || {
+			echo "Failed to assign Contributor role to resource group: ${AZURE_RESOURCE_GROUP}"; exit 1; }
+		echo "Successfully assigned Contributor role to resource group: ${AZURE_RESOURCE_GROUP}"
+	fi
+
+	echo "✅ AMLFS role assignment completed successfully (subscription, node RG, and primary RG)."
 }
 
 function uninstall_amlfs() {
@@ -654,6 +684,68 @@ function uninstall_kueue() {
 	echo "✅ Kueue uninstalled successfully."
 }
 
+# create_or_attach_acr provisions an Azure Container Registry (if absent) and
+# attaches it to the cluster's managed identity for seamless image pulls.
+function create_or_attach_acr() {
+	: "${AZURE_REGION:?❌ Environment variable AZURE_REGION must be set for ACR creation}";
+
+	# Determine location override
+	local acr_location="${ACR_LOCATION:-${AZURE_REGION}}"
+
+	# Always randomize if user didn't override ACR_NAME (still default "${CLUSTER_NAME}acr"). If ACR_RANDOMIZE=true, re-randomize regardless.
+	if [[ -z "${ACR_NAME}" || "${ACR_RANDOMIZE}" == "true" ]]; then
+		# Base prefix from cluster name (strip non-alnum, lowercase, truncate to 6 to leave space for suffix)
+		base_prefix="$(echo "${CLUSTER_NAME}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]//g' | cut -c1-6)"
+		if [[ -z "${base_prefix}" ]]; then
+			base_prefix="aiinf"
+		fi
+		# Random suffix to reach max length 10
+		remaining=$((10 - ${#base_prefix}))
+		if (( remaining < 1 )); then
+			remaining=1
+		fi
+		random_suffix="$(LC_ALL=C tr -dc 'a-z0-9' </dev/urandom | head -c ${remaining} 2>/dev/null || true)" #|| true
+		
+        generated_name="${base_prefix}${random_suffix}"
+        ACR_NAME="${generated_name:0:10}"
+		echo "🔧 Generated random ACR_NAME='${ACR_NAME}' (length <=10, ACR_RANDOMIZE=true)"
+	fi
+
+	echo "⏳ Ensuring Azure Container Registry '${ACR_NAME}' (SKU: ${ACR_SKU}) exists in resource group '${AZURE_RESOURCE_GROUP}'..."
+
+	if ! az acr show --name "${ACR_NAME}" --resource-group "${AZURE_RESOURCE_GROUP}" &>/dev/null; then
+		echo "⏳ Creating ACR '${ACR_NAME}'..."
+		az acr create \
+			--name "${ACR_NAME}" \
+			--resource-group "${AZURE_RESOURCE_GROUP}" \
+			--location "${acr_location}" \
+			--sku "${ACR_SKU}" \
+			--admin-enabled false >/dev/null
+		echo "✅ ACR '${ACR_NAME}' created."
+	else
+		echo "⚠️ ACR '${ACR_NAME}' already exists, reusing it."
+	fi
+
+	echo "⏳ Attaching ACR '${ACR_NAME}' to AKS cluster '${CLUSTER_NAME}'..."
+	# This grants the cluster's managed identity pull rights automatically.
+	az aks update \
+		--name "${CLUSTER_NAME}" \
+		--resource-group "${AZURE_RESOURCE_GROUP}" \
+		--attach-acr "${ACR_NAME}" >/dev/null || {
+		echo "❌ Failed to attach ACR to AKS cluster."; return 1; }
+
+	echo "✅ ACR '${ACR_NAME}' attached to AKS cluster '${CLUSTER_NAME}'."
+
+	# Show repository login server for reference
+	local acr_server
+	acr_server=$(az acr show --name "${ACR_NAME}" --resource-group "${AZURE_RESOURCE_GROUP}" --query "loginServer" -o tsv)
+	echo "🔗 ACR login server: ${acr_server}"
+
+	echo "💡 Push images example (after az acr login):"
+	echo "   docker build -t ${acr_server}/my-image:latest ."
+	echo "   docker push ${acr_server}/my-image:latest"
+}
+
 function print_usage() {
 	echo "Usage: $0 <command> [options]"
 	echo ""
@@ -672,6 +764,7 @@ function print_usage() {
 	echo "  setup-amlfs-roles        Setup AMLFS roles for kubelet identity (without installing CSI driver)"
 	echo "  install-kueue            Install Kueue for workload queue management"
 	echo "  uninstall-kueue          Uninstall Kueue from the cluster"
+	echo "  install-acr              Create (if needed) and attach Azure Container Registry to cluster"
 	echo "  all                      Deploy AKS cluster and install all operators (full setup)"
 	echo ""
 	echo "Examples:"
@@ -706,6 +799,13 @@ function print_usage() {
 	echo "                           Note: Both INSTALL_AMLFS and INSTALL_AMLFS_ROLES must be true for role assignment"
 	echo "  ENABLE_AZURE_CONTAINER_STORAGE Enable Azure Container Storage (default: true)"
 	echo "                           Note: Automatically installs k8s-extension Azure CLI extension when enabled"
+	echo "  INSTALL_NETWORK_OPERATOR Install Network Operator during 'all' (default: true)"
+	echo "  INSTALL_GPU_OPERATOR     Install GPU Operator during 'all' (default: true)"
+	echo "  INSTALL_ACR              Attach/create ACR during 'all' (default: true)"
+	echo "  ACR_RANDOMIZE            Force random ACR name (always randomizes, even if ACR_NAME set) (default: false)"
+	echo "  ACR_NAME                 ACR name (default: \"${CLUSTER_NAME}acr\")"
+	echo "  ACR_SKU                  ACR SKU: Basic | Standard | Premium (default: ${ACR_SKU})"
+	echo "  ACR_LOCATION             ACR location (default: AZURE_REGION)"
 	echo "  CREATE_DEDICATED_VNET    Create & use dedicated VNet/subnets for AKS (default: true)"
 	echo "  USE_EXISTING_SUBNET_ID   Existing subnet resource ID to use directly (overrides CREATE_DEDICATED_VNET)"
 	echo "  VNET_NAME                Name of VNet when CREATE_DEDICATED_VNET=true (default: \"${CLUSTER_NAME}-vnet\")"
@@ -767,6 +867,9 @@ install-kueue | install_kueue)
 uninstall-kueue | uninstall_kueue)
 	uninstall_kueue
 	;;
+install-acr | install_acr)
+	create_or_attach_acr
+	;;
 all)
 	deploy_aks
 	download_aks_credentials --overwrite-existing
@@ -774,10 +877,23 @@ all)
 	install_mpi_operator
 	install_pytorch_operator
 	add_nodepool --gpu-driver=none
-	install_network_operator
-	install_gpu_operator
+	if [[ "${INSTALL_NETWORK_OPERATOR}" == "true" ]]; then
+		install_network_operator
+	else
+		echo "⚠️ Skipping Network Operator (INSTALL_NETWORK_OPERATOR=${INSTALL_NETWORK_OPERATOR})"
+	fi
+	if [[ "${INSTALL_GPU_OPERATOR}" == "true" ]]; then
+		install_gpu_operator
+	else
+		echo "⚠️ Skipping GPU Operator (INSTALL_GPU_OPERATOR=${INSTALL_GPU_OPERATOR})"
+	fi
 	if [[ "${INSTALL_AMLFS}" == "true" ]]; then
 		install_amlfs
+	fi
+	if [[ "${INSTALL_ACR}" == "true" ]]; then
+		create_or_attach_acr
+	else
+		echo "⚠️ Skipping ACR attach in 'all' (INSTALL_ACR=${INSTALL_ACR})"
 	fi
 	;;
 *)
