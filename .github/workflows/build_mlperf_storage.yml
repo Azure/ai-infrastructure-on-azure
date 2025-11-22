@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - add-mlperf-storage-checkpoint
+      - add-mlperf-storage-checkpointing
     paths:
       - "examples/mlperf_storage/docker/**"
       - ".github/workflows/build_mlperf_storage.yml"
