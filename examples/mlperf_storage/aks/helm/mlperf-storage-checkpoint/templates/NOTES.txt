@@ -38,7 +38,6 @@ CONFIGURATION SUMMARY
 
 BENCHMARK INVOCATION (Template)
 	mlpstorage checkpointing run \
-		--allow-run-as-root \
 		--num-processes {{ mul .Values.mpi.workers .Values.mpi.slotsPerWorker }} \
 		--results-dir {{ .Values.storage.mountPath }}/{{ .Values.storage.resultsDir }} \
 		--checkpoint-folder {{ .Values.storage.mountPath }}/{{ .Values.storage.checkpointDir }} \
@@ -59,11 +58,6 @@ UPGRADE EXAMPLE
 
 UNINSTALL
 	helm uninstall {{ .Release.Name }}
-
-ROOT / MPI WARNING
-	Open MPI warns when running as root. Template passes --allow-run-as-root to enable execution
-	inside the launcher container. For stricter security, run with a non-root user image and remove
-	that flag.
 
 HOST READINESS
 	A 300s SSH readiness loop runs before the benchmark; if hosts are not reachable within the timeout

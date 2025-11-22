@@ -55,7 +55,6 @@ spec:
                 done
                 sleep 5
                 $(which mlpstorage) checkpointing run \
-                  --allow-run-as-root \
                   --num-processes "{{ mul .Values.mpi.workers .Values.mpi.slotsPerWorker }}" \
                   --results-dir {{ .Values.storage.mountPath }}/{{ .Values.storage.resultsDir }} \
                   --checkpoint-folder {{ .Values.storage.mountPath }}/{{ .Values.storage.checkpointDir }} \

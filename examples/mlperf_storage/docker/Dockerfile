@@ -13,8 +13,8 @@ RUN apt-get update && apt-get install -y \
     ssh \
     libhwloc-dev \
     libnuma-dev \
-    libopenmpi-dev \
-     python3.10-venv \
+    mpich \
+    python3.10-venv \
     && rm -rf /var/lib/apt/lists/*
 
 # Configure SSH
@@ -30,6 +30,9 @@ RUN cd /tmp && \
     cd mlperf-storage && \
     python3 -m venv /opt/mlperf-storage && \
     /opt/mlperf-storage/bin/pip3 install --no-cache-dir -e .
+
+# Fix libmpi.so link 
+RUN ln -s /lib/x86_64-linux-gnu/libmpi.so /lib/x86_64-linux-gnu/libmpi.so.12
 
 # Set working directory
 WORKDIR /opt/mlperf-storage
