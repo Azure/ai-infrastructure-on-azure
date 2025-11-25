@@ -1,154 +1,123 @@
-# MLPerf Storage Checkpoint Benchmark – AKS
+# MLPerf Storage Benchmarks on AKS
 
-Run the **checkpoint** MLPerf Storage benchmark on Azure Kubernetes Service (AKS) with the Kubeflow MPI Operator. Training/data generation are removed; only checkpoint write and read I/O is measured.
+This directory provides Helm charts to run MLPerf Storage workloads on Azure Kubernetes Service (AKS) using the Kubeflow MPI Operator. Benchmarks are decomposed into focused charts so you can size storage independently for checkpointing, training emulation, dataset generation, and dataset sizing.
+
+## Available Helm Charts
+
+| Chart | Path | Purpose |
+|-------|------|---------|
+| Checkpointing | `helm/mlperf-checkpointing` | Write & read model checkpoints (I/O focus) |
+| Training Run | `helm/mlperf-training-run` | Emulate training I/O (requires data generation) |
+| Training Dataset Generation | `helm/mlperf-training-dataset-generation` | Parallel generation of synthetic training dataset |
+| Training Dataset Size | `helm/mlperf-training-dataset-size` | Calculate recommended dataset size for a target host and GPU configuration |
+
+Each chart is independent; it is possible to install any subset depending on workflow stage.
 
 ## Prerequisites
 
-- AKS cluster with appropriate node pools
-- `kubectl` configured to access your cluster
-- Storage solution deployed (e.g. Azure Managed Lustre)
-- Storage CSI driver installed and configured
-- MPI Operator installed
+- AKS cluster with GPU or high‑memory node pools sized for your test
+- `kubectl` configured for the target cluster
+- Shared storage (e.g. Azure Managed Lustre, Azure NetApp Files, Azure Blob Storage) provisioned & mounted via PVC
+- Storage CSI driver installed (e.g. Azure Lustre CSI or Azure Blob CSI)
+- Kubeflow MPI Operator deployed 
 
-## Quick Start
+## Storage Setup
 
-### Helm (Recommended)
+Create or reuse a PersistentVolumeClaim pointing at your shared filesystem. See [Shared Storage References](../../../storage_references/aks/shared_storage/README.md).
 
+## Quick Start Examples
+
+### 1. Checkpointing
 ```bash
-# Install with custom values
-helm install mlperf-storage-checkpoint examples/mlperf_storage/aks/helm/mlperf-storage-checkpoint \
-  --set mpi.workers=4 \
-  --set mpi.slotsPerWorker=8 \
-  --set benchmark.numCheckpointsWrite=10 \
-  --set benchmark.numCheckpointsRead=0 \
+helm install ckpt examples/mlperf_storage/aks/helm/mlperf-checkpointing \
+  --set storage.pvcName=shared-amlfs-storage \
+  --set mpi.workers=8 --set mpi.slotsPerWorker=8 \
   --set benchmark.model=llama3-70b \
-  --set storage.pvcName=shared-amlfs-storage
-
-# Monitor MPIJob
-kubectl get mpijobs
-kubectl logs -f -l role=launcher
+  --set benchmark.numCheckpointsWrite=20 --set benchmark.numCheckpointsRead=5
 ```
-
-## Deployment Steps (Checkpoint Mode)
-
-### Using Helm Chart
-
-#### 1. Prepare Storage
-
-Create a PVC for your storage backend. See [Storage Options](../../../storage_references/aks/shared_storage/README.md).
-
-#### 2. Install the Chart
-
+Monitor:
 ```bash
-# Basic installation
-helm install mlperf-storage-checkpoint examples/mlperf_storage/aks/helm/mlperf-storage-checkpoint \
-  --set storage.pvcName=shared-amlfs-storage
-
-# With customization of the benchmark
-helm install mlperf-storage-checkpoint examples/mlperf_storage/aks/helm/mlperf-storage-checkpoint \
-  --set mpi.workers=16 \
-  --set mpi.slotsPerWorker=8 \
-  --set benchmark.numCheckpointsWrite=40 \
-  --set benchmark.numCheckpointsRead=0
+kubectl get mpijob ckpt -o wide
+kubectl logs -f -l app.kubernetes.io/instance=ckpt,role=launcher
 ```
-
-#### 3. Monitor the Job
-
+Retrieve results:
 ```bash
-# Check MPIJob status
-kubectl get mpijobs
-
-# View launcher logs
-kubectl logs -f -l role=launcher
-
-# View worker logs
-kubectl logs -l role=worker
+LAUNCHER=$(kubectl get pods -l app.kubernetes.io/instance=ckpt,role=launcher -o jsonpath='{.items[0].metadata.name}')
+kubectl cp ${LAUNCHER}:/mnt/storage/results ./results
 ```
 
-#### 4. Retrieve Results
-
+### 2. Dataset Size Calculator
 ```bash
-LAUNCHER_POD=$(kubectl get pods -l role=launcher -o jsonpath='{.items[0].metadata.name}')
-kubectl cp ${LAUNCHER_POD}:/mnt/storage/results ./results
+helm install datasize examples/mlperf_storage/aks/helm/mlperf-training-dataset-size \
+  --set storage.pvcName=shared-amlfs-storage \
+  --set benchmark.model=unet3d \
+  --set benchmark.clientHostMemoryGiB=128 \
+  --set benchmark.maxAccelerators=32 \
+  --set benchmark.numClientHosts=4 \
+  --set benchmark.acceleratorType=h100
 ```
-
-## Configuration Options
-
-### Using Helm
-
-The Helm chart provides extensive configuration options.
-
-Common configurations:
-
+### 3. Dataset Generation
 ```bash
-# Increasing number of nodes
-helm install mlperf-storage-checkpoint examples/mlperf_storage/aks/helm/mlperf-storage-checkpoint \
-  --set mpi.workers=8
-
-# Larger write workload
-helm install mlperf-storage-checkpoint examples/mlperf_storage/aks/helm/mlperf-storage-checkpoint \
-  --set mpi.workers=8 \
-  --set mpi.slotsPerWorker=8 \
-  --set benchmark.numCheckpointsWrite=20 \
-  --set benchmark.clientHostMemoryGiB=64
-
-# Node targeting
-helm install mlperf-storage-checkpoint examples/mlperf_storage/aks/helm/mlperf-storage-checkpoint \
-  --set nodeSelector.agentpool=compute
+helm install datagen examples/mlperf_storage/aks/helm/mlperf-training-dataset-generation \
+  --set storage.pvcName=shared-amlfs-storage \
+  --set mpi.workers=8 --set mpi.slotsPerWorker=8 \
+  --set benchmark.model=unet3d --set benchmark.numFilesTrain=56000
+```
+### 4. Training I/O Emulation
+```bash
+helm install train-io examples/mlperf_storage/aks/helm/mlperf-training-run \
+  --set storage.pvcName=shared-amlfs-storage \
+  --set mpi.workers=4 --set mpi.slotsPerWorker=8 \
+  --set benchmark.model=unet3d --set benchmark.numFilesTrain=400
 ```
 
-### Process / Slots / CPU
+## Common Configuration Keys
 
-Total processes = `mpi.workers * mpi.slotsPerWorker`. Worker CPU requests/limits derive automatically from `slotsPerWorker`.
+| Key | Charts | Description |
+|-----|--------|-------------|
+| `mpi.workers` | checkpointing, training-run, datagen | Number of worker pods (also equals client host count for training-run) |
+| `mpi.slotsPerWorker` | checkpointing, training-run, datagen | CPU slots per worker, also drives total MPI processes |
+| `benchmark.model` | all | Model name for sizing/emulation (e.g. `llama3-70b`, `unet3d`) |
+| `benchmark.numFilesTrain` | training-run, datagen | Number of synthetic training files / dataset size parameter |
+| `benchmark.numCheckpointsWrite` / `benchmark.numCheckpointsRead` | checkpointing | Number of checkpoints to write / read |
+| `benchmark.clientHostMemoryGiB` | checkpointing, training-run, datasize | Memory per host in GiB |
+| `storage.pvcName` | all | Existing PVC name providing shared storage |
+| `storage.mountPath` | all | Path inside containers where storage is mounted |
+| `benchmark.debug` / `benchmark.verbose` | all | Extra logging flags appended to command when true |
 
-### Scaling Workers
+## Derived Values
 
-Adjust the number of worker replicas in `job.yaml`:
+- Total MPI processes = `mpi.workers * mpi.slotsPerWorker`
+- Training-run accelerators (emulated) = same as total MPI processes
+- Client hosts for training-run = `mpi.workers`
 
-```yaml
-spec:
-  mpiReplicaSpecs:
-    Worker:
-      replicas: 8 # Change this value
+## Host Readiness Behavior
+
+Launcher performs an SSH readiness loop (up to 300s). All workers must accept ssh before workload starts.
+
+## Adjusting Resources
+
+Use:
+```bash
+--set launcher.resources.requests.memory=64Gi \
+--set worker.resources.requests.memory=256Gi
 ```
+CPU for workers is auto‑derived from `mpi.slotsPerWorker` in the templates.
 
-### Resource Allocation
+## Enabling Debug or Verbose Output
 
-Modify resource requests/limits through Helm values (`launcher.resources`, `worker.resources`) while CPUs map to `slotsPerWorker`.
+Add `--set benchmark.debug=true` and/or `--set benchmark.verbose=true` to the `helm install` or `helm upgrade` command; corresponding CLI flags are inserted automatically.
 
-### Node Affinity
-
-Target specific node pools by uncommenting and configuring the affinity section in `job.yaml`:
-
-```yaml
-affinity:
-  nodeAffinity:
-    requiredDuringSchedulingIgnoredDuringExecution:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: agentpool
-              operator: In
-              values:
-                - compute # Your node pool name
+## Upgrades
+```bash
+helm upgrade ckpt examples/mlperf_storage/aks/helm/mlperf-checkpointing \
+  --set mpi.workers=16 --set benchmark.numCheckpointsWrite=40
 ```
-
-## MPIJob Architecture (Checkpoint Mode)
-
-The deployment consists of:
-
-- **Launcher Pod (1)** builds host list, performs SSH readiness loop (300s timeout) then runs `mlpstorage checkpointing run` with explicit flags.
-- **Worker Pods (N)** expose SSH (sshd) for MPI; slots map to CPU.
-- **Shared Storage** provides checkpoint folder and results.
-- **No ConfigMap** usage; all settings are values → CLI flags.
-
-MPI Operator automatically:
-
-- Generates hostfile with worker endpoints
-- Injects SSH keys
-- Manages lifecycle & status CR
 
 ## Cleanup
-
 ```bash
-helm uninstall mlperf-storage-checkpoint
+helm uninstall ckpt
+helm uninstall train-io
+helm uninstall datagen
+helm uninstall datasize
 ```

@@ -1,0 +1,61 @@
+MLPerf Storage Training Run deployment succeeded.
+
+OVERVIEW
+	This release runs the MLPerf Storage training workload.
+
+STATUS COMMANDS
+	# MPIJob status
+	kubectl get mpijob {{ include "mlperf-training-run.fullname" . }} -n {{ .Release.Namespace }}
+
+	# Pods (launcher + workers)
+	kubectl get pods -l app.kubernetes.io/instance={{ .Release.Name }} -n {{ .Release.Namespace }}
+
+	# Launcher logs (training progress)
+	kubectl logs -f -l app.kubernetes.io/name={{ include "mlperf-training-run.name" . }},role=launcher -n {{ .Release.Namespace }}
+
+	# Worker logs (usually quiet except sshd)
+	kubectl logs -l app.kubernetes.io/name={{ include "mlperf-training-run.name" . }},role=worker -n {{ .Release.Namespace }}
+
+RESULTS & DATA
+	Training data directory: {{ .Values.storage.mountPath }}/{{ .Values.storage.dataDir }}
+	Results directory:       {{ .Values.storage.mountPath }}/{{ .Values.storage.resultsDir }}
+
+	Copy results locally:
+		LAUNCHER_POD=$(kubectl get pods -l app.kubernetes.io/name={{ include "mlperf-training-run.name" . }},role=launcher -n {{ .Release.Namespace }} -o jsonpath='{.items[0].metadata.name}')
+		kubectl cp ${LAUNCHER_POD}:{{ .Values.storage.mountPath }}/{{ .Values.storage.resultsDir }} ./training-results -n {{ .Release.Namespace }}
+
+CONFIGURATION SUMMARY
+	Release Name:            {{ .Release.Name }}
+	Namespace:               {{ .Release.Namespace }}
+	Workers:                 {{ .Values.mpi.workers }}
+	Slots / Worker (CPU):    {{ .Values.mpi.slotsPerWorker }}
+	Total MPI Processes:     {{ mul .Values.mpi.workers .Values.mpi.slotsPerWorker }}
+	Model:                   {{ .Values.benchmark.model }}
+	Num Client Hosts:        {{ .Values.mpi.workers }}
+	Client Host Memory:      {{ .Values.benchmark.clientHostMemoryGiB }} GB
+	Num Accelerators:        {{ mul .Values.mpi.workers .Values.mpi.slotsPerWorker }}
+	Accelerator Type:        {{ .Values.benchmark.acceleratorType }}
+	Num Files Train:         {{ .Values.benchmark.numFilesTrain }}
+	Debug Mode:              {{ .Values.benchmark.debug }}
+	Verbose Mode:            {{ .Values.benchmark.verbose }}
+	PVC Name:                {{ .Values.storage.pvcName }}
+	Image:                   {{ .Values.image.repository }}:{{ .Values.image.tag }}
+
+COMMAND INVOCATION (Template)
+	mlpstorage training run \
+		--hosts <auto-derived> \
+		--num-client-hosts {{ .Values.mpi.workers }} \
+		--client-host-memory-in-gb {{ .Values.benchmark.clientHostMemoryGiB }} \
+		--num-accelerators {{ mul .Values.mpi.workers .Values.mpi.slotsPerWorker }} \
+		--accelerator-type {{ .Values.benchmark.acceleratorType }} \
+		--model {{ .Values.benchmark.model }} \
+		--data-dir {{ .Values.storage.mountPath }}/{{ .Values.storage.dataDir }} \
+		--results-dir {{ .Values.storage.mountPath }}/{{ .Values.storage.resultsDir }} \
+		--param dataset.num_files_train={{ .Values.benchmark.numFilesTrain }} {{- if .Values.benchmark.debug }} --debug {{- end }} {{- if .Values.benchmark.verbose }} --verbose {{- end }} {{- if .Values.benchmark.additionalParams }} {{ .Values.benchmark.additionalParams }} {{- end }}
+
+NEXT STEPS
+	Monitor the training progress:
+		kubectl logs -f -l app.kubernetes.io/name={{ include "mlperf-training-run.name" . }},role=launcher -n {{ .Release.Namespace }}
+
+	Check training results:
+		The results will be saved in {{ .Values.storage.mountPath }}/{{ .Values.storage.resultsDir }}
