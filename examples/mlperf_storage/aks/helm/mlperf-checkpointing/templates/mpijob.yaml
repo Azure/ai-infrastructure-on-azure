@@ -22,6 +22,10 @@ spec:
             role: launcher
         spec:
           restartPolicy: OnFailure
+          {{- with .Values.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           containers:
           - name: mpi-launcher
             image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -30,30 +34,23 @@ spec:
               - /bin/bash
               - -c
               - |
-                set -euo pipefail
+                set -xuo pipefail
                 HOSTS=$(sed 's/ slots=/:/' /etc/mpi/hostfile | paste -sd ',' -)
                 START_TS=$(date +%s)
                 TIMEOUT=300
-                IFS=',' read -r -a HOST_ARR <<< "${HOSTS}"
                 while true; do
-                  ALL_READY=1
-                  for entry in "${HOST_ARR[@]}"; do
-                    host="${entry%%:*}"
-                    if ! ssh -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=5 "${host}" true 2>/dev/null; then
-                      ALL_READY=0
-                    fi
-                  done
-                  if [ "${ALL_READY}" -eq 1 ]; then
+                  if timeout 5 mpirun -np {{ mul .Values.mpi.workers .Values.mpi.slotsPerWorker }} -host "${HOSTS}" hostname >/dev/null 2>&1; then
+                    echo "All hosts are ready via mpirun hostname"
                     break
+                  else
+                    echo "Hosts are not ready yet via mpirun hostname, retrying..."
                   fi
                   ELAPSED=$(( $(date +%s)-START_TS ))
                   if [ "${ELAPSED}" -ge "${TIMEOUT}" ]; then
-                    echo "Error: Timeout waiting for all workers to be ready"
+                    echo "Error: Timeout waiting for all workers to be ready via mpirun hostname"
                     exit 1
                   fi
-                  sleep 5
                 done
-                sleep 5
                 $(which mlpstorage) checkpointing run \
                   --num-processes "{{ mul .Values.mpi.workers .Values.mpi.slotsPerWorker }}" \
                   --results-dir {{ .Values.storage.mountPath }}/{{ .Values.storage.resultsDir }} \
@@ -81,6 +78,10 @@ spec:
             {{- include "mlperf-checkpointing.selectorLabels" . | nindent 12 }}
             role: worker
         spec:
+          {{- with .Values.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 10 }}
+          {{- end }}
           containers:
           - name: mpi-worker
             image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
