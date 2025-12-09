@@ -1,0 +1,55 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "mlperf-training-dataset-size.fullname" . }}
+  labels:
+    {{- include "mlperf-training-dataset-size.labels" . | nindent 4 }}
+    {{- if .Values.kueue.queueName }}
+    kueue.x-k8s.io/queue-name: {{ .Values.kueue.queueName }}
+    {{- end }}
+spec:
+  backoffLimit: {{ .Values.job.backoffLimit }}
+  template:
+    metadata:
+      labels:
+        {{- include "mlperf-training-dataset-size.selectorLabels" . | nindent 8 }}
+    spec:
+      restartPolicy: {{ .Values.job.restartPolicy }}
+      containers:
+      - name: mlperf-training-dataset-size
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command:
+          - /bin/bash
+          - -c
+          - |
+            set -euo pipefail
+            $(which mlpstorage) training datasize \
+              --model {{ .Values.benchmark.model }} \
+              --client-host-memory-in-gb {{ .Values.benchmark.clientHostMemoryGiB }} \
+              --max-accelerators {{ .Values.benchmark.maxAccelerators }} \
+              --num-client-hosts {{ .Values.benchmark.numClientHosts }} \
+              --accelerator-type {{ .Values.benchmark.acceleratorType }} \
+              --results-dir {{ .Values.storage.mountPath }}/{{ .Values.storage.resultsDir }} {{- if .Values.benchmark.debug }} --debug {{- end }} {{- if .Values.benchmark.verbose }} --verbose {{- end }}
+              {{- if .Values.benchmark.additionalParams }} {{ .Values.benchmark.additionalParams }} {{- end }}
+        volumeMounts:
+        - name: storage
+          mountPath: {{ .Values.storage.mountPath }}
+        resources:
+          {{- toYaml .Values.container.resources | nindent 10 }}
+      volumes:
+      - name: storage
+        persistentVolumeClaim:
+          claimName: {{ .Values.storage.pvcName }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

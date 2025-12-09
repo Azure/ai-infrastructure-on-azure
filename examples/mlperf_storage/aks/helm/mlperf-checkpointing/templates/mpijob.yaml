@@ -1,0 +1,105 @@
+apiVersion: kubeflow.org/v2beta1
+kind: MPIJob
+metadata:
+  name: {{ include "mlperf-checkpointing.fullname" . }}
+  labels:
+    {{- include "mlperf-checkpointing.labels" . | nindent 4 }}
+    {{- if .Values.kueue.queueName }}
+    kueue.x-k8s.io/queue-name: {{ .Values.kueue.queueName }}
+    {{- end }}
+spec:
+  slotsPerWorker: {{ .Values.mpi.slotsPerWorker }}
+  runPolicy:
+    cleanPodPolicy: {{ .Values.mpi.cleanPodPolicy }}
+    backoffLimit: {{ .Values.mpi.backoffLimit }}
+  mpiReplicaSpecs:
+    Launcher:
+      replicas: 1
+      template:
+        metadata:
+          labels:
+            {{- include "mlperf-checkpointing.selectorLabels" . | nindent 12 }}
+            role: launcher
+        spec:
+          restartPolicy: OnFailure
+          {{- with .Values.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          containers:
+          - name: mpi-launcher
+            image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+            imagePullPolicy: {{ .Values.image.pullPolicy }}
+            command:
+              - /bin/bash
+              - -c
+              - |
+                set -xuo pipefail
+                HOSTS=$(sed 's/ slots=/:/' /etc/mpi/hostfile | paste -sd ',' -)
+                START_TS=$(date +%s)
+                TIMEOUT=300
+                while true; do
+                  if timeout 5 mpirun -np {{ mul .Values.mpi.workers .Values.mpi.slotsPerWorker }} -host "${HOSTS}" hostname >/dev/null 2>&1; then
+                    echo "All hosts are ready via mpirun hostname"
+                    break
+                  else
+                    echo "Hosts are not ready yet via mpirun hostname, retrying..."
+                  fi
+                  ELAPSED=$(( $(date +%s)-START_TS ))
+                  if [ "${ELAPSED}" -ge "${TIMEOUT}" ]; then
+                    echo "Error: Timeout waiting for all workers to be ready via mpirun hostname"
+                    exit 1
+                  fi
+                done
+                $(which mlpstorage) checkpointing run \
+                  --num-processes "{{ mul .Values.mpi.workers .Values.mpi.slotsPerWorker }}" \
+                  --results-dir {{ .Values.storage.mountPath }}/{{ .Values.storage.resultsDir }} \
+                  --checkpoint-folder {{ .Values.storage.mountPath }}/{{ .Values.storage.checkpointDir }} \
+                  --model {{ .Values.benchmark.model }} \
+                  --num-checkpoints-write "{{ .Values.benchmark.numCheckpointsWrite }}" \
+                  --num-checkpoints-read "{{ .Values.benchmark.numCheckpointsRead }}" \
+                  --client-host-memory-in-gb "{{ .Values.benchmark.clientHostMemoryGiB }}" \
+                  --hosts "${HOSTS}" {{- if .Values.benchmark.debug }} --debug {{- end }} {{- if .Values.benchmark.verbose }} --verbose {{- end }} {{- if .Values.benchmark.additionalParams }} {{ .Values.benchmark.additionalParams }} {{- end }}
+                  
+            volumeMounts:
+            - name: storage
+              mountPath: {{ .Values.storage.mountPath }}
+            resources:
+              {{- toYaml .Values.launcher.resources | nindent 14 }}
+          volumes:
+          - name: storage
+            persistentVolumeClaim:
+              claimName: {{ .Values.storage.pvcName }}
+    Worker:
+      replicas: {{ .Values.mpi.workers }}
+      template:
+        metadata:
+          labels:
+            {{- include "mlperf-checkpointing.selectorLabels" . | nindent 12 }}
+            role: worker
+        spec:
+          {{- with .Values.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 10 }}
+          {{- end }}
+          containers:
+          - name: mpi-worker
+            image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+            imagePullPolicy: {{ .Values.image.pullPolicy }}
+            command:
+              - /usr/sbin/sshd
+              - -De
+            volumeMounts:
+            - name: storage
+              mountPath: {{ .Values.storage.mountPath }}
+            resources:
+              requests:
+                cpu: "{{ .Values.mpi.slotsPerWorker }}"
+                memory: {{ .Values.worker.resources.requests.memory | quote }}
+              limits:
+                cpu: "{{ .Values.mpi.slotsPerWorker }}"
+                memory: {{ .Values.worker.resources.limits.memory | quote }}
+          volumes:
+          - name: storage
+            persistentVolumeClaim:
+              claimName: {{ .Values.storage.pvcName }}

@@ -1,0 +1,60 @@
+# Default values for mlperf-training-run
+image:
+  repository: ghcr.io/azure/ai-infrastructure-on-azure/mlperf-storage
+  tag: latest
+  pullPolicy: Always
+
+# Kueue integration (optional)
+# Set queueName to enable Kueue workload management
+kueue:
+  queueName: "" # e.g., "gpu-local-queue" to use Kueue
+
+mpi:
+  workers: 2
+  slotsPerWorker: 8
+  cleanPodPolicy: Running
+  backoffLimit: 0
+
+launcher:
+  resources:
+    requests:
+      cpu: "1"
+      memory: "64Gi"
+    limits:
+      cpu: "1"
+      memory: "64Gi"
+
+worker:
+  resources:
+    requests:
+      memory: "256Gi"
+    limits:
+      memory: "256Gi"
+
+benchmark:
+  # Model to emulate: cosmoflow, resnet50, unet3d
+  model: unet3d
+  # Client host memory in GB
+  clientHostMemoryGiB: 64
+  # Accelerator type (e.g., a100, h100)
+  acceleratorType: h100
+  # Number of training files
+  numFilesTrain: 400
+  # Additional parameters (space-separated key=value pairs)
+  # Example: "batch_size=32 sample_size=1024"
+  additionalParams: ""
+  # Enable debug mode
+  debug: false
+  # Enable verbose mode
+  verbose: false
+
+storage:
+  # REQUIRED: Name of the PersistentVolumeClaim to use for storage
+  pvcName:
+  mountPath: "/mnt/storage"
+  dataDir: "training-data"
+  resultsDir: "training-results"
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

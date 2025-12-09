@@ -1,0 +1,49 @@
+MLPerf Storage Training Data Generation deployment succeeded.
+
+OVERVIEW
+	This release runs the MLPerf Storage training data generation workload.
+
+STATUS COMMANDS
+	# MPIJob status
+	kubectl get mpijob {{ include "mlperf-training-dataset-generation.fullname" . }} -n {{ .Release.Namespace }}
+
+	# Pods (launcher + workers)
+	kubectl get pods -l app.kubernetes.io/instance={{ .Release.Name }} -n {{ .Release.Namespace }}
+
+	# Launcher logs (benchmark progress)
+	kubectl logs -f -l app.kubernetes.io/name={{ include "mlperf-training-dataset-generation.name" . }},role=launcher -n {{ .Release.Namespace }}
+
+	# Worker logs (usually quiet except sshd)
+	kubectl logs -l app.kubernetes.io/name={{ include "mlperf-training-dataset-generation.name" . }},role=worker -n {{ .Release.Namespace }}
+
+DATA DIRECTORY
+	Training data directory: {{ .Values.storage.mountPath }}/{{ .Values.storage.dataDir }}
+
+CONFIGURATION SUMMARY
+	Release Name:            {{ .Release.Name }}
+	Namespace:               {{ .Release.Namespace }}
+	Workers:                 {{ .Values.mpi.workers }}
+	Slots / Worker (CPU):    {{ .Values.mpi.slotsPerWorker }}
+	Total MPI Processes:     {{ mul .Values.mpi.workers .Values.mpi.slotsPerWorker }}
+	Model:                   {{ .Values.benchmark.model }}
+	Num Files Train:         {{ .Values.benchmark.numFilesTrain }}
+	Debug Mode:              {{ .Values.benchmark.debug }}
+	Verbose Mode:            {{ .Values.benchmark.verbose }}
+	PVC Name:                {{ .Values.storage.pvcName }}
+	Image:                   {{ .Values.image.repository }}:{{ .Values.image.tag }}
+
+BENCHMARK INVOCATION (Template)
+	mlpstorage training datagen \
+		--allow-run-as-root \
+		--model {{ .Values.benchmark.model }} \
+		--num-processes {{ mul .Values.mpi.workers .Values.mpi.slotsPerWorker }} \
+		--data-dir {{ .Values.storage.mountPath }}/{{ .Values.storage.dataDir }} \
+		--params dataset.num_files_train={{ .Values.benchmark.numFilesTrain }} \
+		--hosts <auto-derived> {{- if .Values.benchmark.debug }} --debug {{- end }} {{- if .Values.benchmark.verbose }} --verbose {{- end }} {{- if .Values.benchmark.additionalParams }} {{ .Values.benchmark.additionalParams }} {{- end }}
+
+NEXT STEPS
+	Monitor the job progress:
+		kubectl logs -f -l app.kubernetes.io/name={{ include "mlperf-training-dataset-generation.name" . }},role=launcher -n {{ .Release.Namespace }}
+
+	Check generated data:
+		The training data will be generated in {{ .Values.storage.mountPath }}/{{ .Values.storage.dataDir }}

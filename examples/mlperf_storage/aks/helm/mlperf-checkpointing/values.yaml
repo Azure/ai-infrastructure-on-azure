@@ -1,0 +1,52 @@
+# Default values for mlperf-checkpointing
+image:
+  repository: ghcr.io/azure/ai-infrastructure-on-azure/mlperf-storage
+  tag: latest
+  pullPolicy: Always
+
+# Kueue integration (optional)
+# Set queueName to enable Kueue workload management
+kueue:
+  queueName: "" # e.g., "gpu-local-queue" to use Kueue
+
+mpi:
+  workers: 2
+  slotsPerWorker: 8
+  cleanPodPolicy: Running
+  backoffLimit: 0
+launcher:
+  resources:
+    requests:
+      cpu: "1"
+      memory: "16Gi"
+    limits:
+      cpu: "1"
+      memory: "16Gi"
+worker:
+  resources:
+    requests:
+      memory: "256Gi"
+    limits:
+      memory: "256Gi"
+benchmark:
+  model: llama3-70b
+  clientHostMemoryGiB: 32
+  numCheckpointsWrite: 10
+  numCheckpointsRead: 10
+  # Additional parameters (space-separated key=value pairs)
+  # Example: "buffer_size=64M thread_count=8"
+  additionalParams: ""
+  # Enable debug mode
+  debug: false
+  # Enable verbose mode
+  verbose: false
+storage:
+  # REQUIRED: Name of the PersistentVolumeClaim to use for storage
+  pvcName:
+  mountPath: "/mnt/storage"
+  checkpointDir: "checkpoints"
+  workloadRoot: "mlperf-workload"
+  resultsDir: "results"
+nodeSelector: {}
+tolerations: []
+affinity: {}

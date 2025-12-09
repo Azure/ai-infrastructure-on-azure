@@ -1,0 +1,6 @@
+apiVersion: v2
+name: mlperf-training-dataset-generation
+description: MLPerf Storage training data generation on Kubernetes using MPI Operator
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

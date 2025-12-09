@@ -1,0 +1,57 @@
+MLPerf Storage Training Data Size Calculator deployment succeeded.
+
+OVERVIEW
+	This release runs the MLPerf Storage training data size calculator.
+	It calculates the required dataset size based on target GPU and nodes configuration.
+
+STATUS COMMANDS
+	# Job status
+	kubectl get job {{ include "mlperf-training-dataset-size.fullname" . }} -n {{ .Release.Namespace }}
+
+	# Pod status
+	kubectl get pods -l app.kubernetes.io/instance={{ .Release.Name }} -n {{ .Release.Namespace }}
+
+	# Job logs (calculation output)
+	kubectl logs -f -l app.kubernetes.io/name={{ include "mlperf-training-dataset-size.name" . }} -n {{ .Release.Namespace }}
+
+RESULTS DIRECTORY
+	Results directory: {{ .Values.storage.mountPath }}/{{ .Values.storage.resultsDir }}
+
+	Copy results locally:
+		POD=$(kubectl get pods -l app.kubernetes.io/name={{ include "mlperf-training-dataset-size.name" . }} -n {{ .Release.Namespace }} -o jsonpath='{.items[0].metadata.name}')
+		kubectl cp ${POD}:{{ .Values.storage.mountPath }}/{{ .Values.storage.resultsDir }} ./mlps-results -n {{ .Release.Namespace }}
+
+CONFIGURATION SUMMARY
+	Release Name:            {{ .Release.Name }}
+	Namespace:               {{ .Release.Namespace }}
+	Model:                   {{ .Values.benchmark.model }}
+	Client Host Memory:      {{ .Values.benchmark.clientHostMemoryGiB }} GB
+	Max Accelerators:        {{ .Values.benchmark.maxAccelerators }}
+	Num Client Hosts:        {{ .Values.benchmark.numClientHosts }}
+	Accelerator Type:        {{ .Values.benchmark.acceleratorType }}
+	Debug Mode:              {{ .Values.benchmark.debug }}
+	Verbose Mode:            {{ .Values.benchmark.verbose }}
+	PVC Name:                {{ .Values.storage.pvcName }}
+	Image:                   {{ .Values.image.repository }}:{{ .Values.image.tag }}
+
+COMMAND INVOCATION (Template)
+	mlpstorage training datasize \
+		-m {{ .Values.benchmark.model }} \
+		--client-host-memory-in-gb {{ .Values.benchmark.clientHostMemoryGiB }} \
+		--max-accelerators {{ .Values.benchmark.maxAccelerators }} \
+		--num-client-hosts {{ .Values.benchmark.numClientHosts }} \
+		--accelerator-type {{ .Values.benchmark.acceleratorType }} \
+		--results-dir {{ .Values.storage.mountPath }}/{{ .Values.storage.resultsDir }} {{- if .Values.benchmark.additionalParams }} {{ .Values.benchmark.additionalParams }} {{- end }} \
+{{- if .Values.benchmark.debug }}
+		--debug \
+{{- end }}
+{{- if .Values.benchmark.verbose }}
+		--verbose \
+{{- end }}
+
+NEXT STEPS
+	Monitor the calculation:
+		kubectl logs -f -l app.kubernetes.io/name={{ include "mlperf-training-dataset-size.name" . }} -n {{ .Release.Namespace }}
+
+	View the calculation results:
+		The results will be saved in {{ .Values.storage.mountPath }}/{{ .Values.storage.resultsDir }}
