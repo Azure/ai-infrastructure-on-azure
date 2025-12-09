@@ -12,6 +12,7 @@ from .tools.files import search_file as _search_file_impl
 from .tools.files import tail_file as _tail_file_impl
 from .tools.pkeys import get_infiniband_pkeys as _get_infiniband_pkeys_impl
 from .tools.slurm import sacct as _sacct_impl
+from .tools.slurm import sbatch as _sbatch_impl
 from .tools.slurm import scontrol as _scontrol_impl
 from .tools.slurm import sinfo as _sinfo_impl
 from .tools.slurm import squeue as _squeue_impl
@@ -203,6 +204,25 @@ def build_server() -> FastMCP:
             sreport(['reservation', 'Utilization']) - Reservation usage statistics
         """
         return _sreport_impl(args)
+
+    @server.tool()
+    def sbatch(args: Optional[List[str]] = None) -> Dict[str, Any]:  # type: ignore
+        """Wrapper for the Slurm sbatch command - submit a batch script to Slurm for execution.
+
+        This tool allows you to submit jobs to the Slurm scheduler for execution on the cluster.
+        Jobs can be submitted with various resource requirements, time limits, and execution parameters.
+
+        Args:
+            args: Optional list of command-line arguments to pass to sbatch
+
+        Examples:
+            sbatch(['myjob.sh']) - Submit a job script
+            sbatch(['--partition=gpu', '--nodes=1', '--time=1:00:00', 'gpu_job.sh']) - Submit with specific resources
+            sbatch(['--account=myaccount', '--mail-type=END', '--mail-user=user@domain.com', 'job.sh']) - Submit with accounting and notifications
+            sbatch(['--array=1-10', 'array_job.sh']) - Submit an array job
+            sbatch(['--wrap="echo Hello World"']) - Submit a simple command without a script file
+        """
+        return _sbatch_impl(args)
 
     @server.tool()
     def systemctl(hosts: List[str], args: Optional[List[str]] = None) -> Dict[str, Any]:  # type: ignore
