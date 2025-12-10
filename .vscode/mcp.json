@@ -1,0 +1,16 @@
+{
+  "servers": {
+    "ai-infrastructure-mcp": {
+      "type": "stdio",
+      "command": "/home/paul/Microsoft/ai-infrastructure-on-azure/mcp-server/tools/ai-infrastructure-mcp/.venv/bin/python",
+      "args": ["-m", "ai_infrastructure_mcp.server"],
+      "cwd": "/home/paul/Microsoft/ai-infrastructure-on-azure/mcp-server/tools/ai-infrastructure-mcp",
+      "env": {
+        "CLUSTER_HOST": "localhost",
+        "CLUSTER_USER": "paedwar",
+        "CLUSTER_PRIVATE_KEY": "/home/paul/.ssh/id_rsa",
+        "CLUSTER_PORT": 50022
+      }
+    }
+  }
+}

@@ -249,37 +249,78 @@ Notes:
 
 ### 6.3 Slurm Tools
 
-#### sacct
+#### slurm
 
-Run Slurm job accounting with raw argument control.
-
-New simplified signature:
+Execute Slurm commands with a unified interface. This tool provides access to all major Slurm cluster management commands through a single entry point.
 
 ```
-sacct(args: Optional[List[str]] = None)
+slurm(command: str, args: Optional[List[str]] = None)
 ```
 
-Provide a list exactly as you would type after `sacct` on the command line. Each element is one argument; quoting is applied safely.
+**Allowed commands:** `sacct`, `squeue`, `sinfo`, `scontrol`, `sreport`, `sbatch`
+
+**Important for squeue:**
+Always use short format specifiers (`--format=%...`) instead of long field names. The `%` codes prevent column truncation and ensure consistent machine-readable output.
 
 Examples:
 
-```
-sacct()                         # default view for current user
-sacct(['--user','alice'])       # jobs for user alice
-sacct(['--state=FAILED'])       # failed jobs
-sacct(['--format','jobid,state,elapsed'])
-sacct(['--user','bob','--starttime','2024-01-01','--endtime','2024-01-02'])
+```python
+# sacct - Display job accounting data from last 24 hours with parsable format
+slurm('sacct', ['--format=JobID,State,Elapsed', '--starttime=now-1day', '--parsable'])
 
-# Convenience behavior:
-# If you specify a state selector (-s/--state or --state=STATE) without an
-# explicit end time (-E/--endtime/--endtime=TIME), the wrapper automatically
-# appends `--endtime=now`. Rationale: on many clusters a state filter with no
-# end time yields an empty result set (surprising to users). Adding an explicit
-# end time returns the expected active/completed jobs in that window. Provide
-# --endtime (or -E) yourself to override this default.
+# sacct - Show jobs for user alice within date range
+slurm('sacct', ['--user', 'alice', '--starttime=2024-01-01', '--endtime=2024-01-02'])
+
+# sacct - Show failed jobs with error output paths
+slurm('sacct', ['--state=FAILED', '--format=JobID,JobName,StdOut,StdErr', '--starttime=now-1day'])
+
+# squeue - Show default job queue view
+slurm('squeue')
+
+# squeue - Show jobs for specific user
+slurm('squeue', ['--user', 'alice'])
+
+# squeue - Show all queued jobs with key details (Job ID, Name, User, State, Time, Nodes, Reason)
+slurm('squeue', ['--format=%t,%j,%u,%T,%M,%D,%R'])
+
+# squeue - Filter to only running jobs
+slurm('squeue', ['--states=RUNNING', '--format=%t,%j,%u,%T,%M'])
+
+# sinfo - Show default partition and node summary
+slurm('sinfo')
+
+# sinfo - Show GPU partition information
+slurm('sinfo', ['--partition', 'gpu'])
+
+# sinfo - Custom format showing specific node details
+slurm('sinfo', ['--Format', 'NodeList,CPUs,Memory,State'])
+
+# scontrol - Test communication with Slurm controller
+slurm('scontrol', ['ping'])
+
+# scontrol - Show detailed information for job 123
+slurm('scontrol', ['show', 'job', '123'])
+
+# scontrol - Show node configuration for compute-01
+slurm('scontrol', ['show', 'node', 'compute-01'])
+
+# sreport - Generate cluster utilization report
+slurm('sreport', ['cluster', 'Utilization'])
+
+# sreport - Show top resource consumers
+slurm('sreport', ['user', 'TopUsage'])
+
+# sreport - Job size distribution by account
+slurm('sreport', ['job', 'SizesByAccount'])
+
+# sbatch - Submit a batch job script
+slurm('sbatch', ['myjob.sh'])
+
+# sbatch - Submit GPU job with specific resources (partition, nodes, time limit)
+slurm('sbatch', ['--partition=gpu', '--nodes=1', '--time=1:00:00', 'gpu_job.sh'])
 ```
 
-Response schema (all Slurm tools share this):
+Response schema:
 
 ```json
 {
@@ -291,91 +332,12 @@ Response schema (all Slurm tools share this):
 }
 ```
 
-#### squeue
+**Notes:**
 
-Queue inspection.
-
-```
-squeue(args: Optional[List[str]] = None)
-```
-
-Examples:
-
-```
-squeue()
-squeue(['--user','alice'])
-squeue(['--states','RUNNING'])
-squeue(['--partition','gpu','--format','%i %t %j'])
-```
-
-#### sinfo
-
-Cluster node / partition info.
-
-```
-sinfo(args: Optional[List[str]] = None)
-```
-
-Examples:
-
-```
-sinfo()
-sinfo(['--partition','gpu'])
-sinfo(['--format','%P %a %l %D %C'])
-```
-
-#### scontrol
-
-Cluster control & detailed queries.
-
-```
-scontrol(args: Optional[List[str]] = None)
-```
-
-Examples:
-
-```
-scontrol(['ping'])
-scontrol(['show','job','123'])
-scontrol(['show','node','node001'])
-scontrol(['update','JobId=123','Priority=1000'])
-```
-
-#### sreport
-
-Accounting reports.
-
-```
-sreport(args: Optional[List[str]] = None)
-```
-
-Examples:
-
-```
-sreport(['cluster','Utilization'])
-sreport(['user','TopUsage','Start=now-7days'])
-sreport(['job','SizesByAccount'])
-sreport(['cluster','Utilization','Start=2024-01-01','End=2024-01-31','Accounts=myacct'])
-```
-
-Report Types and Commands:
-
-- **cluster**: AccountUtilizationByUser, UserUtilizationByAccount, UserUtilizationByWckey, Utilization, WCKeyUtilizationByUser
-- **job**: SizesByAccount, SizesByAccountAndWckey, SizesByWckey
-- **reservation**: Utilization
-- **user**: TopUsage
-
-Common Report Options (add to command string):
-
-- All_Clusters: Use all monitored clusters
-- Clusters=<list>: List of clusters to include
-- End=<time>: Period ending for report
-- Format=<fields>: Comma separated list of fields to display
-- Start=<time>: Period start for report
-- Accounts=<list>: List of accounts to include
-- Users=<list>: List of users to include
-- Wckeys=<list>: List of wckeys to include
-- Tree: Show account hierarchy (for AccountUtilizationByUser)
+- Command validation ensures only allowed Slurm commands are executed
+- For `sacct` with state filter (`--state` or `-s`) but no explicit `--endtime`, the tool automatically appends `--endtime=now` to ensure results are returned from the current window
+- Use `--parsable` with `sacct` for easier parsing of output
+- Use `--format=%...` short codes with `squeue` to prevent column truncation
 
 ### 6.4 Systemd Tools
 
