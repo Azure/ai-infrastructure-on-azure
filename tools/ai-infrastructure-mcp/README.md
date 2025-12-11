@@ -395,113 +395,56 @@ Notes:
 
 ### 6.5 File Access Tools
 
-#### head_file
+#### read_file_content
 
-Read lines from the beginning of a file with offset and length support for chunked reading.
+Retrieves specific content or metadata from a file on the remote cluster.
 
 Parameters:
 
 - `path` (string): Path to the file on the cluster
-- `offset` (int, default: 0): Number of lines to skip from the beginning
-- `length` (int, default: 10): Number of lines to read
+- `action` (string, default: "peek"): Primary mode ('peek', 'search', 'count')
+- `pattern` (string, optional): Regex pattern (required for 'search')
+- `start_line` (int, default: 0): 0-indexed start line (inclusive). Negative values supported (e.g. -50).
+- `end_line` (int, optional): 0-indexed end line (exclusive).
+- `limit_lines` (int, default: 10): Hard cap on lines returned.
+- `lines_before` (int, default: 0): Context lines before match (for 'search').
+- `lines_after` (int, default: 0): Context lines after match (for 'search').
+- `count_mode` (string, optional): 'lines' or 'bytes' (for 'count').
 
-Example response:
+Example response (peek):
 
 ```json
 {
-  "version": 1,
   "success": true,
   "path": "/path/to/file.log",
-  "offset": 0,
-  "length": 10,
-  "lines": ["line 1", "line 2", "..."],
-  "line_count": 10,
-  "error": null
+  "action": "peek",
+  "start_line": 0,
+  "end_line": 10,
+  "lines": ["line 1", "line 2", "..."]
 }
 ```
 
-#### tail_file
-
-Read lines from the end of a file with offset and length support for chunked reading.
-
-Parameters:
-
-- `path` (string): Path to the file on the cluster
-- `offset` (int, default: 0): Number of lines to skip from the end
-- `length` (int, default: 10): Number of lines to read
-
-Example response:
+Example response (search):
 
 ```json
 {
-  "version": 1,
   "success": true,
   "path": "/path/to/file.log",
-  "offset": 0,
-  "length": 10,
-  "lines": ["line 991", "line 992", "..."],
-  "line_count": 10,
-  "error": null
-}
-```
-
-#### count_file
-
-Count lines or bytes in a file.
-
-Parameters:
-
-- `path` (string): Path to the file on the cluster
-- `mode` (string, default: "lines"): "lines" to count lines, "bytes" to count bytes
-
-Example response:
-
-```json
-{
-  "version": 1,
-  "success": true,
-  "path": "/path/to/file.log",
-  "mode": "lines",
-  "count": 1000,
-  "error": null
-}
-```
-
-#### search_file
-
-Search for a pattern in a file with context lines (like grep with before/after).
-
-Parameters:
-
-- `path` (string): Path to the file on the cluster
-- `pattern` (string): Regular expression pattern to search for
-- `before` (int, default: 0): Number of lines to include before each match
-- `after` (int, default: 0): Number of lines to include after each match
-- `max_matches` (int, default: 100): Maximum number of matches to return
-
-Example response:
-
-```json
-{
-  "version": 1,
-  "success": true,
-  "path": "/path/to/file.log",
+  "action": "search",
   "pattern": "ERROR",
-  "before": 1,
-  "after": 1,
-  "max_matches": 100,
-  "matches": [
-    {
-      "line_number": 42,
-      "line": "ERROR: Something went wrong",
-      "context_before": [
-        { "line_number": 41, "line": "Processing request..." }
-      ],
-      "context_after": [{ "line_number": 43, "line": "Stack trace:" }]
-    }
-  ],
-  "match_count": 1,
-  "error": null
+  "lines": ["ERROR: Something went wrong"]
+}
+```
+
+Example response (count):
+
+```json
+{
+  "success": true,
+  "path": "/path/to/file.log",
+  "action": "count",
+  "count": 1000,
+  "mode": "lines"
 }
 ```
 

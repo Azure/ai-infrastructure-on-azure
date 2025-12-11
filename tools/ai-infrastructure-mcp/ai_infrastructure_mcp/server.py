@@ -6,10 +6,7 @@ from fastmcp.server import FastMCP
 
 from .tools.azure_vm import get_physical_hostnames as _get_physical_hostnames_impl
 from .tools.azure_vm import get_vmss_id as _get_vmss_instance_name_impl
-from .tools.files import count_file as _count_file_impl
-from .tools.files import head_file as _head_file_impl
-from .tools.files import search_file as _search_file_impl
-from .tools.files import tail_file as _tail_file_impl
+from .tools.files import read_file_content as _read_file_content_impl
 from .tools.pkeys import get_infiniband_pkeys as _get_infiniband_pkeys_impl
 from .tools.slurm import slurm as _slurm_impl
 from .tools.systemd import journalctl as _journalctl_impl
@@ -174,61 +171,61 @@ def build_server() -> FastMCP:
         return _journalctl_impl(hosts, args)
 
     @server.tool()
-    def head_file(path: str, offset: int = 0, length: int = 10) -> Dict[str, Any]:  # type: ignore
-        """Read lines from the beginning of a file with offset and length.
+    def read_file_content(
+        path: str,
+        action: str = "peek",
+        pattern: Optional[str] = None,
+        start_line: int = 0,
+        end_line: Optional[int] = None,
+        limit_lines: int = 10,
+        lines_before: int = 0,
+        lines_after: int = 0,
+        count_mode: Optional[str] = None,
+    ) -> Dict[str, Any]:  # type: ignore
+        """Retrieves specific content or metadata from a file on the remote cluster.
+
+        The primary operation is controlled by the 'action' parameter:
+        - 'peek': Reads a limited, scoped block of lines (like head or tail).
+        - 'search': Searches for lines matching a pattern.
+        - 'count': Returns the line or byte count (ignores other parameters).
 
         Args:
-            path: Path to the file on the cluster
-            offset: Number of lines to skip from the beginning (default: 0)
-            length: Number of lines to read (default: 10)
+            path: Path to the file on the cluster.
+            action: The primary mode ('peek', 'search', 'count'). Default is 'peek'.
+            pattern: Regular expression pattern to search for (required if action='search'). Uses grep -E (Extended Regex).
+
+            # --- Pythonic Slicing Parameters ---
+            start_line: The 0-indexed line number to start reading from (inclusive).
+                        Negative indices are supported (e.g., -50 means start 50 lines from the end, like 'tail').
+                        (Default: 0)
+            end_line: The 0-indexed line number to stop reading at (exclusive). 
+                      If None, it reads to the end of the file.
+                      Negative indices are NOT recommended here; use limit_lines instead.
+                      (Default: None)
+
+            # --- Global Limits and Context ---
+            limit_lines: A hard cap on the maximum number of lines to return. 
+                         This limit overrides the range defined by start_line/end_line if the range is larger. 
+                         **Crucial for context management.** (Default: 10)
+            lines_before: Number of context lines to include before each match for the 'search' action.
+            lines_after: Number of context lines to include after each match for the 'search' action.
+
+            count_mode: If action='count', use 'lines' or 'bytes' (Optional).
 
         Returns:
-            Structured JSON dict with lines[], line_count, success status, etc.
+            Structured JSON dict containing results (lines[], count, success status, etc.).
         """
-        return _head_file_impl(path, offset, length)
-
-    @server.tool()
-    def tail_file(path: str, offset: int = 0, length: int = 10) -> Dict[str, Any]:  # type: ignore
-        """Read lines from the end of a file with offset and length.
-
-        Args:
-            path: Path to the file on the cluster
-            offset: Number of lines to skip from the end (default: 0)
-            length: Number of lines to read (default: 10)
-
-        Returns:
-            Structured JSON dict with lines[], line_count, success status, etc.
-        """
-        return _tail_file_impl(path, offset, length)
-
-    @server.tool()
-    def count_file(path: str, mode: str = "lines") -> Dict[str, Any]:  # type: ignore
-        """Count lines or bytes in a file.
-
-        Args:
-            path: Path to the file on the cluster
-            mode: "lines" to count lines, "bytes" to count bytes (default: "lines")
-
-        Returns:
-            Structured JSON dict with count, mode, success status, etc.
-        """
-        return _count_file_impl(path, mode)
-
-    @server.tool()
-    def search_file(path: str, pattern: str, before: int = 0, after: int = 0, max_matches: int = 100) -> Dict[str, Any]:  # type: ignore
-        """Search for a pattern in a file with context lines.
-
-        Args:
-            path: Path to the file on the cluster
-            pattern: Regular expression pattern to search for
-            before: Number of lines to include before each match (default: 0)
-            after: Number of lines to include after each match (default: 0)
-            max_matches: Maximum number of matches to return (default: 100)
-
-        Returns:
-            Structured JSON dict with matches[], match_count, success status, etc.
-        """
-        return _search_file_impl(path, pattern, before, after, max_matches)
+        return _read_file_content_impl(
+            path,
+            action,
+            pattern,
+            start_line,
+            end_line,
+            limit_lines,
+            lines_before,
+            lines_after,
+            count_mode,
+        )
 
     return server
 
