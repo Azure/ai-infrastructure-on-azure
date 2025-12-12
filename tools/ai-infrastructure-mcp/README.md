@@ -19,7 +19,9 @@ This is an MCP server for the AI Infrastructure on Azure project. The initial re
 
    6.4 [Systemd Tools](#64-systemd-tools)
 
-   6.5 [File Access Tools](#65-file-access-tools)
+   6.5 [Shell Tools](#65-shell-tools)
+
+   6.6 [File Access Tools](#66-file-access-tools)
 
 7. [Local LLM (Ollama) Setup](#7-local-llm-ollama-setup)
 
@@ -393,7 +395,30 @@ Notes:
 - Only simple command argument lists are allowed; no shell pipelines are constructed for systemd tools.
 - Hostnames failing validation raise `ValueError`.
 
-### 6.5 File Access Tools
+### 6.5 Shell Tools
+
+#### run_command
+
+Run a shell command on the remote cluster.
+
+**WARNING**: This tool allows execution of arbitrary shell commands. Use with caution and validate all commands before execution. Do not run interactive commands or commands that require user input.
+
+Parameters:
+
+- `command` (string): The shell command to execute.
+
+Example response:
+
+```json
+{
+  "success": true,
+  "command": "ls -la /tmp",
+  "stdout": "total 0\ndrwxrwxrwt 1 root root 4096 Jan 1 00:00 .\n...",
+  "stderr": ""
+}
+```
+
+### 6.6 File Access Tools
 
 #### read_file_content
 

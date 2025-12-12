@@ -8,6 +8,7 @@ from .tools.azure_vm import get_physical_hostnames as _get_physical_hostnames_im
 from .tools.azure_vm import get_vmss_id as _get_vmss_instance_name_impl
 from .tools.files import read_file_content as _read_file_content_impl
 from .tools.pkeys import get_infiniband_pkeys as _get_infiniband_pkeys_impl
+from .tools.shell import run_command as _run_command_impl
 from .tools.slurm import slurm as _slurm_impl
 from .tools.systemd import journalctl as _journalctl_impl
 from .tools.systemd import systemctl as _systemctl_impl
@@ -226,6 +227,22 @@ def build_server() -> FastMCP:
             lines_after,
             count_mode,
         )
+
+    @server.tool()
+    def run_command(command: str) -> Dict[str, Any]:  # type: ignore
+        """Run a shell command on the remote cluster.
+
+        WARNING: This tool allows execution of arbitrary shell commands.
+        Use with caution and validate all commands before execution.
+        Do not run interactive commands or commands that require user input.
+
+        Args:
+            command: The shell command to execute.
+
+        Returns:
+            Structured JSON dict with stdout, stderr, success status.
+        """
+        return _run_command_impl(command)
 
     return server
 
