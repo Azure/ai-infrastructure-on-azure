@@ -84,6 +84,13 @@ CLUSTER_PRIVATE_KEY # path to private key (if omitted, SSH agent / default keys 
 CLUSTER_PORT        # SSH port (default 22)
 ```
 
+A sample VS Code MCP configuration is provided at `.vscode/mcp.json.sample`. Copy it to `.vscode/mcp.json` and update the values for your environment:
+
+```bash
+cp .vscode/mcp.json.sample .vscode/mcp.json
+# Edit .vscode/mcp.json with your cluster details
+```
+
 Example `.vscode/mcp.json` snippet:
 
 ```jsonc
