@@ -202,9 +202,9 @@ Notes:
 - `physical_hostname` may be empty if pattern not found.
 - Follows the same structural pattern as `get_infiniband_pkeys` for consistency.
 
-#### get_vmss_id
+#### get_vmss_instance_name
 
-Retrieve the Azure VMSS (Virtual Machine Scale Set) ID for a list of VM hosts.
+Retrieve the Azure VMSS (Virtual Machine Scale Set) instance name for a list of VM hosts.
 
 Queries the Azure Instance Metadata Service on each specified host via `parallel-ssh` to extract the `compute.name` field,
 which contains the VMSS instance name. This ID is essential for correlating hostnames with Azure Monitor metrics data.
@@ -226,13 +226,13 @@ curl -H "Metadata: true" "http://169.254.169.254/metadata/instance?api-version=2
 Signature:
 
 ```
-get_vmss_id(hosts: List[str])
+get_vmss_instance_name(hosts: List[str])
 ```
 
 Example usage:
 
 ```
-get_vmss_id(['compute-node-01', 'compute-node-02', 'login-node'])
+get_vmss_instance_name(['compute-node-01', 'compute-node-02', 'login-node'])
 ```
 
 Example response:
