@@ -6,17 +6,10 @@ from fastmcp.server import FastMCP
 
 from .tools.azure_vm import get_physical_hostnames as _get_physical_hostnames_impl
 from .tools.azure_vm import get_vmss_id as _get_vmss_instance_name_impl
-from .tools.files import count_file as _count_file_impl
-from .tools.files import head_file as _head_file_impl
-from .tools.files import search_file as _search_file_impl
-from .tools.files import tail_file as _tail_file_impl
+from .tools.files import read_file_content as _read_file_content_impl
 from .tools.pkeys import get_infiniband_pkeys as _get_infiniband_pkeys_impl
-from .tools.slurm import sacct as _sacct_impl
-from .tools.slurm import sbatch as _sbatch_impl
-from .tools.slurm import scontrol as _scontrol_impl
-from .tools.slurm import sinfo as _sinfo_impl
-from .tools.slurm import squeue as _squeue_impl
-from .tools.slurm import sreport as _sreport_impl
+from .tools.shell import run_command as _run_command_impl
+from .tools.slurm import slurm as _slurm_impl
 from .tools.systemd import journalctl as _journalctl_impl
 from .tools.systemd import systemctl as _systemctl_impl
 
@@ -76,153 +69,67 @@ def build_server() -> FastMCP:
         return _get_vmss_instance_name_impl(hosts)
 
     @server.tool()
-    def sacct(args: Optional[List[str]] = None) -> Dict[str, Any]:  # type: ignore
-        """Wrapper for the Slurm sacct command - displays accounting data for all jobs and job steps in the Slurm job accounting log or Slurm database.
+    def slurm(command: str, args: Optional[List[str]] = None) -> Dict[str, Any]:  # type: ignore
+        """Execute Slurm commands: sacct, squeue, sinfo, scontrol, sreport, sbatch, scancel.
 
-        This tool provides a direct interface to the sacct command, allowing you to query historical job information,
-        resource usage, and accounting data from completed and running jobs.
-
-        *Always use a time range to limit data.*
-        *Use --parsable for easier parsing.*
+        This unified tool provides access to all Slurm cluster management commands with proper
+        argument validation. Specify the command name and pass arguments as a list.
 
         Args:
-            args: Optional list of command-line arguments to pass to sacct
+            command: Slurm command name (sacct, squeue, sinfo, scontrol, sreport, sbatch, scancel)
+            args: Optional list of command-line arguments
+
+        Important for squeue:
+            Always use short format specifiers (--format=%...) instead of long field names.
+            The % codes prevent column truncation and ensure consistent machine-readable output.
 
         Examples:
-            sacct(['--format=JobID,JobName,StdOut,StdErr,State,ExitCode,Elapsed','--starttime=now-1day','--endtime==now','--parsable']) - Custom output format
-            sacct(['--allusers','--allocations','--format=JobID,User','--starttime=now-1day','--endtime==now','--parsable']) - Lists the JobID and User for all jobs from the last 24 hours.
-            sacct(['--state=FAILED','--format=JobID,JobName,StdOut,StdErr','--starttime=now-1day','--endtime=now','--parsable']) - Lists the JobID, JobName, StdOut, and StdErr for all failed jobs from the last 24 hours.
+            # sacct - Display job accounting data from last 24 hours with parsable format
+            slurm('sacct', ['--format=JobID,State,Elapsed', '--starttime=now-1day', '--parsable'])
+            
+            # sacct - Show failed jobs with error output paths
+            slurm('sacct', ['--state=FAILED', '--format=JobID,JobName,StdOut,StdErr', '--starttime=now-1day'])
+            
+            # squeue - Show all queued jobs with key details (use % format codes)
+            slurm('squeue', ['--format=%t,%j,%u,%T,%M,%D,%R'])
+            
+            # squeue - Show jobs for specific user alice
+            slurm('squeue', ['--user', 'alice', '--format=%t,%j,%T,%M'])
+            
+            # squeue - Filter to only running jobs
+            slurm('squeue', ['--states=RUNNING', '--format=%t,%j,%u,%T,%M'])
+            
+            # sinfo - Show default partition and node summary
+            slurm('sinfo')
+            
+            # sinfo - Show GPU partition information
+            slurm('sinfo', ['--partition', 'gpu'])
+            
+            # sinfo - Custom format showing specific node details
+            slurm('sinfo', ['--Format', 'NodeList,CPUs,Memory,State'])
+            
+            # scontrol - Test communication with Slurm controller
+            slurm('scontrol', ['ping'])
+            
+            # scontrol - Show detailed information for job 123
+            slurm('scontrol', ['show', 'job', '123'])
+            
+            # scontrol - Show node configuration for compute-01
+            slurm('scontrol', ['show', 'node', 'compute-01'])
+            
+            # sreport - Generate cluster utilization report
+            slurm('sreport', ['cluster', 'Utilization'])
+            
+            # sreport - Show top resource consumers
+            slurm('sreport', ['user', 'TopUsage'])
+            
+            # sbatch - Submit a batch job script
+            slurm('sbatch', ['myjob.sh'])
+            
+            # sbatch - Submit GPU job with specific resources
+            slurm('sbatch', ['--partition=gpu', '--nodes=1', '--time=1:00:00', 'gpu_job.sh'])
         """
-        return _sacct_impl(args)
-
-    @server.tool()
-    def squeue(args: Optional[List[str]] = None) -> Dict[str, Any]:  # type: ignore
-        """
-        Wrapper for the Slurm `squeue` command – query jobs in the scheduling queue.
-
-        This tool provides access to real-time information about jobs, including
-        running, pending, and recently completed jobs. It is commonly used to
-        monitor job status, resource allocation, and queue state.
-
-        ⚠️ Important:
-        Always use the short format specifiers (`--format=%...`) instead of long
-        field names. The `%` codes prevent column truncation and ensure consistent
-        machine-readable output.
-
-        Args:
-            args: Optional list of command-line arguments to pass to `squeue`.
-
-        Available format fields (long name → short % code):
-            Account: %a, AccrueTime: %F, AdminComment: %K, AllocNodes: %B, AllocSID: %o
-            ArrayJobId: %k, ArrayTaskId: %O, AssocId: %I, BatchFlag: %X, BatchHost: %E
-            BoardsPerNode: %e, BurstBuffer: %x, BurstBufferState: %f, Cluster: %G, ClusterFeature: %g
-            Command: %i, Comment: %A, Container: %W, ContainerId: %c, Contiguous: %m
-            Cores: %d, CoreSpec: %j, CPUsPerTask: %y, cpus-per-task: %N, cpus-per-tres: %C
-            Deadline: %D, DelayBoot: %h, Dependency: %P, DerivedEC: %p, EligibleTime: %Q
-            EndTime: %q, ExcNodes: %r, ExitCode: %R, Feature: %n, GroupId: %v
-            GroupName: %Y, HetJobId: %z, HetJobIdSet: %H, HetJobOffset: %S, JobArrayId: %T
-            JobId: %t, LastSchedEval: %V, Licenses: %J, MaxCPUs: %L, MaxNodes: %l
-            mem-per-tres: %M, MCSLabel: %U, MinCPUs: %u, MinMemory: %w, MinTime: %Z
-            Name: %j, NodeList: %N, NumCPUs: %c, NumNodes: %D, NumTasks: %W
-            Partition: %P, Priority: %p, QOS: %q, Reason: %Q/%r, ReqNodes: %R
-            Sockets: %X, StartTime: %S, State: %T, StateCompact: %t, SubmitTime: %V
-            TimeLeft: %L, TimeLimit: %l, TimeUsed: %M, UserId: %u, UserName: %U
-            WCKey: %k/%K, WorkDir: %w
-
-        Examples:
-            squeue(['--format=%t,%j,%u,%T,%M,%D,%R'])
-            # Show all jobs with Job ID, Name, User, State, Time Used, Num Nodes, and Reason
-
-            squeue(['--user', 'alice', '--format=%t,%j,%T,%M'])
-            # Show jobs submitted by user 'alice' with Job ID, Name, State, and Time Used
-
-            squeue(['--states=RUNNING', '--format=%t,%j,%u,%T,%M'])
-            # Show only running jobs with Job ID, Name, User, State, and Time Used
-
-            squeue(['--partition=gpu', '--format=%t,%j,%u,%T,%N'])
-            # Show jobs in the 'gpu' partition with Job ID, Name, User, State, and NodeList
-
-            squeue(['--format=%t,%j,%P,%T,%L,%D,%R'])
-            # Show all jobs with Job ID, Name, Partition, State, Time Left, Num Nodes, and Reason
-        """
-        return _squeue_impl(args)
-
-    @server.tool()
-    def sinfo(args: Optional[List[str]] = None) -> Dict[str, Any]:  # type: ignore
-        """Wrapper for the Slurm sinfo command - view information about Slurm nodes and partitions.
-
-        This tool provides information about the cluster's compute resources, including node states,
-        partition configurations, and hardware specifications. Use it to understand cluster topology
-        and resource availability.
-
-        Args:
-            args: Optional list of command-line arguments to pass to sinfo
-
-        Examples:
-            sinfo() - Show partition and node summary with default format
-            sinfo(['--partition', 'gpu']) - Show information for the 'gpu' partition
-            sinfo(['--Format', 'NodeList,CPUs,Memory,State']) - Custom format showing node details
-            sinfo(['--nodes']) - Show detailed node information instead of partition summary
-            sinfo(['--states=idle,alloc']) - Show nodes in idle or allocated states
-        """
-        return _sinfo_impl(args)
-
-    @server.tool()
-    def scontrol(args: Optional[List[str]] = None) -> Dict[str, Any]:  # type: ignore
-        """Wrapper for the Slurm scontrol command - view or modify Slurm configuration and state.
-
-        This tool provides administrative access to view and modify Slurm cluster configuration,
-        job states, and system information. Use it for detailed job inspection and cluster management.
-
-        Args:
-            args: Optional list of command-line arguments to pass to scontrol
-
-        Examples:
-            scontrol(['ping']) - Test communication with Slurm controller
-            scontrol(['show', 'job', '123']) - Show detailed information for job ID 123
-            scontrol(['show', 'node', 'compute-01']) - Show detailed node information
-            scontrol(['show', 'partition']) - Show all partition configurations
-            scontrol(['show', 'config']) - Display Slurm configuration parameters
-        """
-        return _scontrol_impl(args)
-
-    @server.tool()
-    def sreport(args: Optional[List[str]] = None) -> Dict[str, Any]:  # type: ignore
-        """Wrapper for the Slurm sreport command - generate reports from the Slurm accounting data.
-
-        This tool generates various reports and statistics from historical Slurm accounting data,
-        including cluster utilization, user usage patterns, and resource consumption analytics.
-
-        Args:
-            args: Optional list of command-line arguments to pass to sreport
-
-        Examples:
-            sreport(['cluster', 'Utilization']) - Generate cluster utilization report
-            sreport(['user', 'TopUsage']) - Show top users by resource usage
-            sreport(['job', 'SizesByAccount']) - Job size distribution by account
-            sreport(['cluster', 'AccountUtilizationByUser', 'Start=2024-01-01']) - User utilization with date filter
-            sreport(['reservation', 'Utilization']) - Reservation usage statistics
-        """
-        return _sreport_impl(args)
-
-    @server.tool()
-    def sbatch(args: Optional[List[str]] = None) -> Dict[str, Any]:  # type: ignore
-        """Wrapper for the Slurm sbatch command - submit a batch script to Slurm for execution.
-
-        This tool allows you to submit jobs to the Slurm scheduler for execution on the cluster.
-        Jobs can be submitted with various resource requirements, time limits, and execution parameters.
-
-        Args:
-            args: Optional list of command-line arguments to pass to sbatch
-
-        Examples:
-            sbatch(['myjob.sh']) - Submit a job script
-            sbatch(['--partition=gpu', '--nodes=1', '--time=1:00:00', 'gpu_job.sh']) - Submit with specific resources
-            sbatch(['--account=myaccount', '--mail-type=END', '--mail-user=user@domain.com', 'job.sh']) - Submit with accounting and notifications
-            sbatch(['--array=1-10', 'array_job.sh']) - Submit an array job
-            sbatch(['--wrap="echo Hello World"']) - Submit a simple command without a script file
-        """
-        return _sbatch_impl(args)
+        return _slurm_impl(command, args)
 
     @server.tool()
     def systemctl(hosts: List[str], args: Optional[List[str]] = None) -> Dict[str, Any]:  # type: ignore
@@ -265,61 +172,77 @@ def build_server() -> FastMCP:
         return _journalctl_impl(hosts, args)
 
     @server.tool()
-    def head_file(path: str, offset: int = 0, length: int = 10) -> Dict[str, Any]:  # type: ignore
-        """Read lines from the beginning of a file with offset and length.
+    def read_file_content(
+        path: str,
+        action: str = "peek",
+        pattern: Optional[str] = None,
+        start_line: int = 0,
+        end_line: Optional[int] = None,
+        limit_lines: int = 10,
+        lines_before: int = 0,
+        lines_after: int = 0,
+        count_mode: Optional[str] = None,
+    ) -> Dict[str, Any]:  # type: ignore
+        """Retrieves specific content or metadata from a file on the remote cluster.
+
+        The primary operation is controlled by the 'action' parameter:
+        - 'peek': Reads a limited, scoped block of lines (like head or tail).
+        - 'search': Searches for lines matching a pattern.
+        - 'count': Returns the line or byte count (ignores other parameters).
 
         Args:
-            path: Path to the file on the cluster
-            offset: Number of lines to skip from the beginning (default: 0)
-            length: Number of lines to read (default: 10)
+            path: Path to the file on the cluster.
+            action: The primary mode ('peek', 'search', 'count'). Default is 'peek'.
+            pattern: Regular expression pattern to search for (required if action='search'). Uses grep -E (Extended Regex).
+
+            # --- Pythonic Slicing Parameters ---
+            start_line: The 0-indexed line number to start reading from (inclusive).
+                        Negative indices are supported (e.g., -50 means start 50 lines from the end, like 'tail').
+                        (Default: 0)
+            end_line: The 0-indexed line number to stop reading at (exclusive). 
+                      If None, it reads to the end of the file.
+                      Negative indices are NOT recommended here; use limit_lines instead.
+                      (Default: None)
+
+            # --- Global Limits and Context ---
+            limit_lines: A hard cap on the maximum number of lines to return. 
+                         This limit overrides the range defined by start_line/end_line if the range is larger. 
+                         **Crucial for context management.** (Default: 10)
+            lines_before: Number of context lines to include before each match for the 'search' action.
+            lines_after: Number of context lines to include after each match for the 'search' action.
+
+            count_mode: If action='count', use 'lines' or 'bytes' (Optional).
 
         Returns:
-            Structured JSON dict with lines[], line_count, success status, etc.
+            Structured JSON dict containing results (lines[], count, success status, etc.).
         """
-        return _head_file_impl(path, offset, length)
+        return _read_file_content_impl(
+            path,
+            action,
+            pattern,
+            start_line,
+            end_line,
+            limit_lines,
+            lines_before,
+            lines_after,
+            count_mode,
+        )
 
     @server.tool()
-    def tail_file(path: str, offset: int = 0, length: int = 10) -> Dict[str, Any]:  # type: ignore
-        """Read lines from the end of a file with offset and length.
+    def run_command(command: str) -> Dict[str, Any]:  # type: ignore
+        """Run a shell command on the remote cluster.
+
+        WARNING: This tool allows execution of arbitrary shell commands.
+        Use with caution and validate all commands before execution.
+        Do not run interactive commands or commands that require user input.
 
         Args:
-            path: Path to the file on the cluster
-            offset: Number of lines to skip from the end (default: 0)
-            length: Number of lines to read (default: 10)
+            command: The shell command to execute.
 
         Returns:
-            Structured JSON dict with lines[], line_count, success status, etc.
+            Structured JSON dict with stdout, stderr, success status.
         """
-        return _tail_file_impl(path, offset, length)
-
-    @server.tool()
-    def count_file(path: str, mode: str = "lines") -> Dict[str, Any]:  # type: ignore
-        """Count lines or bytes in a file.
-
-        Args:
-            path: Path to the file on the cluster
-            mode: "lines" to count lines, "bytes" to count bytes (default: "lines")
-
-        Returns:
-            Structured JSON dict with count, mode, success status, etc.
-        """
-        return _count_file_impl(path, mode)
-
-    @server.tool()
-    def search_file(path: str, pattern: str, before: int = 0, after: int = 0, max_matches: int = 100) -> Dict[str, Any]:  # type: ignore
-        """Search for a pattern in a file with context lines.
-
-        Args:
-            path: Path to the file on the cluster
-            pattern: Regular expression pattern to search for
-            before: Number of lines to include before each match (default: 0)
-            after: Number of lines to include after each match (default: 0)
-            max_matches: Maximum number of matches to return (default: 100)
-
-        Returns:
-            Structured JSON dict with matches[], match_count, success status, etc.
-        """
-        return _search_file_impl(path, pattern, before, after, max_matches)
+        return _run_command_impl(command)
 
     return server
 
