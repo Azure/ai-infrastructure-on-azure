@@ -86,46 +86,46 @@ def build_server() -> FastMCP:
         Examples:
             # sacct - Display job accounting data from last 24 hours with parsable format
             slurm('sacct', ['--format=JobID,State,Elapsed', '--starttime=now-1day', '--parsable'])
-            
+
             # sacct - Show failed jobs with error output paths
             slurm('sacct', ['--state=FAILED', '--format=JobID,JobName,StdOut,StdErr', '--starttime=now-1day'])
-            
+
             # squeue - Show all queued jobs with key details (use % format codes)
             slurm('squeue', ['--format=%t,%j,%u,%T,%M,%D,%R'])
-            
+
             # squeue - Show jobs for specific user alice
             slurm('squeue', ['--user', 'alice', '--format=%t,%j,%T,%M'])
-            
+
             # squeue - Filter to only running jobs
             slurm('squeue', ['--states=RUNNING', '--format=%t,%j,%u,%T,%M'])
-            
+
             # sinfo - Show default partition and node summary
             slurm('sinfo')
-            
+
             # sinfo - Show GPU partition information
             slurm('sinfo', ['--partition', 'gpu'])
-            
+
             # sinfo - Custom format showing specific node details
             slurm('sinfo', ['--Format', 'NodeList,CPUs,Memory,State'])
-            
+
             # scontrol - Test communication with Slurm controller
             slurm('scontrol', ['ping'])
-            
+
             # scontrol - Show detailed information for job 123
             slurm('scontrol', ['show', 'job', '123'])
-            
+
             # scontrol - Show node configuration for compute-01
             slurm('scontrol', ['show', 'node', 'compute-01'])
-            
+
             # sreport - Generate cluster utilization report
             slurm('sreport', ['cluster', 'Utilization'])
-            
+
             # sreport - Show top resource consumers
             slurm('sreport', ['user', 'TopUsage'])
-            
+
             # sbatch - Submit a batch job script
             slurm('sbatch', ['myjob.sh'])
-            
+
             # sbatch - Submit GPU job with specific resources
             slurm('sbatch', ['--partition=gpu', '--nodes=1', '--time=1:00:00', 'gpu_job.sh'])
         """
@@ -199,14 +199,14 @@ def build_server() -> FastMCP:
             start_line: The 0-indexed line number to start reading from (inclusive).
                         Negative indices are supported (e.g., -50 means start 50 lines from the end, like 'tail').
                         (Default: 0)
-            end_line: The 0-indexed line number to stop reading at (exclusive). 
+            end_line: The 0-indexed line number to stop reading at (exclusive).
                       If None, it reads to the end of the file.
                       Negative indices are NOT recommended here; use limit_lines instead.
                       (Default: None)
 
             # --- Global Limits and Context ---
-            limit_lines: A hard cap on the maximum number of lines to return. 
-                         This limit overrides the range defined by start_line/end_line if the range is larger. 
+            limit_lines: A hard cap on the maximum number of lines to return.
+                         This limit overrides the range defined by start_line/end_line if the range is larger.
                          **Crucial for context management.** (Default: 10)
             lines_before: Number of context lines to include before each match for the 'search' action.
             lines_after: Number of context lines to include after each match for the 'search' action.

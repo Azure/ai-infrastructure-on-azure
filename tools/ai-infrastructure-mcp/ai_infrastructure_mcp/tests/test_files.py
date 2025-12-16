@@ -36,7 +36,9 @@ def test_peek_with_start_line(monkeypatch):
 
     monkeypatch.setattr(files, "run_login_command", fake_run)
 
-    result = files.read_file_content("/test/file", action="peek", start_line=2, limit_lines=2)
+    result = files.read_file_content(
+        "/test/file", action="peek", start_line=2, limit_lines=2
+    )
     assert result["success"] is True
     assert result["lines"] == ["line 3", "line 4"]
 
@@ -52,7 +54,9 @@ def test_peek_with_negative_start_line(monkeypatch):
 
     monkeypatch.setattr(files, "run_login_command", fake_run)
 
-    result = files.read_file_content("/test/file", action="peek", start_line=-3, limit_lines=10)
+    result = files.read_file_content(
+        "/test/file", action="peek", start_line=-3, limit_lines=10
+    )
     assert result["success"] is True
     assert result["lines"] == ["line 8", "line 9", "line 10"]
 
@@ -99,8 +103,7 @@ def test_search_with_context(monkeypatch):
     monkeypatch.setattr(files, "run_login_command", fake_run)
 
     result = files.read_file_content(
-        "/test/file", action="search", pattern="match",
-        lines_before=2, lines_after=1
+        "/test/file", action="search", pattern="match", lines_before=2, lines_after=1
     )
     assert result["success"] is True
 
@@ -120,7 +123,9 @@ def test_search_no_matches(monkeypatch):
 
     monkeypatch.setattr(files, "run_login_command", fake_run)
 
-    result = files.read_file_content("/test/file", action="search", pattern="nonexistent")
+    result = files.read_file_content(
+        "/test/file", action="search", pattern="nonexistent"
+    )
     assert result["success"] is True
     assert result["lines"] == []
 
@@ -228,8 +233,7 @@ def test_pattern_escaping(monkeypatch):
     monkeypatch.setattr(files, "run_login_command", fake_run)
 
     result = files.read_file_content(
-        "/test/file", action="search",
-        pattern="special $pattern [with] chars"
+        "/test/file", action="search", pattern="special $pattern [with] chars"
     )
     assert result["success"] is True
 
