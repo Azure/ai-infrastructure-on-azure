@@ -1,0 +1,16 @@
+{
+  "servers": {
+    "ai-infrastructure-mcp": {
+      "type": "stdio",
+      "command": "${workspaceFolder}/tools/ai-infrastructure-mcp/.venv/bin/python",
+      "args": ["-m", "ai_infrastructure_mcp.server"],
+      "cwd": "${workspaceFolder}/tools/ai-infrastructure-mcp",
+      "env": {
+        "CLUSTER_HOST": "login.cluster.local",
+        "CLUSTER_USER": "your-username",
+        "CLUSTER_PRIVATE_KEY": "/path/to/.ssh/id_rsa",
+        "CLUSTER_PORT": "22"
+      }
+    }
+  }
+}

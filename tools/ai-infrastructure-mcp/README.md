@@ -19,7 +19,9 @@ This is an MCP server for the AI Infrastructure on Azure project. The initial re
 
    6.4 [Systemd Tools](#64-systemd-tools)
 
-   6.5 [File Access Tools](#65-file-access-tools)
+   6.5 [Shell Tools](#65-shell-tools)
+
+   6.6 [File Access Tools](#66-file-access-tools)
 
 7. [Local LLM (Ollama) Setup](#7-local-llm-ollama-setup)
 
@@ -80,6 +82,13 @@ Optional env vars:
 ```
 CLUSTER_PRIVATE_KEY # path to private key (if omitted, SSH agent / default keys are tried)
 CLUSTER_PORT        # SSH port (default 22)
+```
+
+A sample VS Code MCP configuration is provided at `.vscode/mcp.json.sample`. Copy it to `.vscode/mcp.json` and update the values for your environment:
+
+```bash
+cp .vscode/mcp.json.sample .vscode/mcp.json
+# Edit .vscode/mcp.json with your cluster details
 ```
 
 Example `.vscode/mcp.json` snippet:
@@ -193,9 +202,9 @@ Notes:
 - `physical_hostname` may be empty if pattern not found.
 - Follows the same structural pattern as `get_infiniband_pkeys` for consistency.
 
-#### get_vmss_id
+#### get_vmss_instance_name
 
-Retrieve the Azure VMSS (Virtual Machine Scale Set) ID for a list of VM hosts.
+Retrieve the Azure VMSS (Virtual Machine Scale Set) instance name for a list of VM hosts.
 
 Queries the Azure Instance Metadata Service on each specified host via `parallel-ssh` to extract the `compute.name` field,
 which contains the VMSS instance name. This ID is essential for correlating hostnames with Azure Monitor metrics data.
@@ -217,13 +226,13 @@ curl -H "Metadata: true" "http://169.254.169.254/metadata/instance?api-version=2
 Signature:
 
 ```
-get_vmss_id(hosts: List[str])
+get_vmss_instance_name(hosts: List[str])
 ```
 
 Example usage:
 
 ```
-get_vmss_id(['compute-node-01', 'compute-node-02', 'login-node'])
+get_vmss_instance_name(['compute-node-01', 'compute-node-02', 'login-node'])
 ```
 
 Example response:
@@ -249,37 +258,87 @@ Notes:
 
 ### 6.3 Slurm Tools
 
-#### sacct
+#### slurm
 
-Run Slurm job accounting with raw argument control.
-
-New simplified signature:
+Execute Slurm commands with a unified interface. This tool provides access to all major Slurm cluster management commands through a single entry point.
 
 ```
-sacct(args: Optional[List[str]] = None)
+slurm(command: str, args: Optional[List[str]] = None)
 ```
 
-Provide a list exactly as you would type after `sacct` on the command line. Each element is one argument; quoting is applied safely.
+**Allowed commands:** `sacct`, `squeue`, `sinfo`, `scontrol`, `sreport`, `sbatch`, `scancel`
+
+**Important for squeue:**
+Always use short format specifiers (`--format=%...`) instead of long field names. The `%` codes prevent column truncation and ensure consistent machine-readable output.
 
 Examples:
 
-```
-sacct()                         # default view for current user
-sacct(['--user','alice'])       # jobs for user alice
-sacct(['--state=FAILED'])       # failed jobs
-sacct(['--format','jobid,state,elapsed'])
-sacct(['--user','bob','--starttime','2024-01-01','--endtime','2024-01-02'])
+```python
+# sacct - Display job accounting data from last 24 hours with parsable format
+slurm('sacct', ['--format=JobID,State,Elapsed', '--starttime=now-1day', '--parsable'])
 
-# Convenience behavior:
-# If you specify a state selector (-s/--state or --state=STATE) without an
-# explicit end time (-E/--endtime/--endtime=TIME), the wrapper automatically
-# appends `--endtime=now`. Rationale: on many clusters a state filter with no
-# end time yields an empty result set (surprising to users). Adding an explicit
-# end time returns the expected active/completed jobs in that window. Provide
-# --endtime (or -E) yourself to override this default.
+# sacct - Show jobs for user alice within date range
+slurm('sacct', ['--user', 'alice', '--starttime=2024-01-01', '--endtime=2024-01-02'])
+
+# sacct - Show failed jobs with error output paths
+slurm('sacct', ['--state=FAILED', '--format=JobID,JobName,StdOut,StdErr', '--starttime=now-1day'])
+
+# squeue - Show default job queue view
+slurm('squeue')
+
+# squeue - Show jobs for specific user
+slurm('squeue', ['--user', 'alice'])
+
+# squeue - Show all queued jobs with key details (Job ID, Name, User, State, Time, Nodes, Reason)
+slurm('squeue', ['--format=%t,%j,%u,%T,%M,%D,%R'])
+
+# squeue - Filter to only running jobs
+slurm('squeue', ['--states=RUNNING', '--format=%t,%j,%u,%T,%M'])
+
+# sinfo - Show default partition and node summary
+slurm('sinfo')
+
+# sinfo - Show GPU partition information
+slurm('sinfo', ['--partition', 'gpu'])
+
+# sinfo - Custom format showing specific node details
+slurm('sinfo', ['--Format', 'NodeList,CPUs,Memory,State'])
+
+# scontrol - Test communication with Slurm controller
+slurm('scontrol', ['ping'])
+
+# scontrol - Show detailed information for job 123
+slurm('scontrol', ['show', 'job', '123'])
+
+# scontrol - Show node configuration for compute-01
+slurm('scontrol', ['show', 'node', 'compute-01'])
+
+# sreport - Generate cluster utilization report
+slurm('sreport', ['cluster', 'Utilization'])
+
+# sreport - Show top resource consumers
+slurm('sreport', ['user', 'TopUsage'])
+
+# sreport - Job size distribution by account
+slurm('sreport', ['job', 'SizesByAccount'])
+
+# sbatch - Submit a batch job script
+slurm('sbatch', ['myjob.sh'])
+
+# sbatch - Submit GPU job with specific resources (partition, nodes, time limit)
+slurm('sbatch', ['--partition=gpu', '--nodes=1', '--time=1:00:00', 'gpu_job.sh'])
+
+# scancel - Cancel a specific job
+slurm('scancel', ['12345'])
+
+# scancel - Cancel all jobs for a user
+slurm('scancel', ['--user', 'alice'])
+
+# scancel - Cancel all pending jobs for a user
+slurm('scancel', ['--user', 'alice', '--state=PENDING'])
 ```
 
-Response schema (all Slurm tools share this):
+Response schema:
 
 ```json
 {
@@ -291,91 +350,12 @@ Response schema (all Slurm tools share this):
 }
 ```
 
-#### squeue
+**Notes:**
 
-Queue inspection.
-
-```
-squeue(args: Optional[List[str]] = None)
-```
-
-Examples:
-
-```
-squeue()
-squeue(['--user','alice'])
-squeue(['--states','RUNNING'])
-squeue(['--partition','gpu','--format','%i %t %j'])
-```
-
-#### sinfo
-
-Cluster node / partition info.
-
-```
-sinfo(args: Optional[List[str]] = None)
-```
-
-Examples:
-
-```
-sinfo()
-sinfo(['--partition','gpu'])
-sinfo(['--format','%P %a %l %D %C'])
-```
-
-#### scontrol
-
-Cluster control & detailed queries.
-
-```
-scontrol(args: Optional[List[str]] = None)
-```
-
-Examples:
-
-```
-scontrol(['ping'])
-scontrol(['show','job','123'])
-scontrol(['show','node','node001'])
-scontrol(['update','JobId=123','Priority=1000'])
-```
-
-#### sreport
-
-Accounting reports.
-
-```
-sreport(args: Optional[List[str]] = None)
-```
-
-Examples:
-
-```
-sreport(['cluster','Utilization'])
-sreport(['user','TopUsage','Start=now-7days'])
-sreport(['job','SizesByAccount'])
-sreport(['cluster','Utilization','Start=2024-01-01','End=2024-01-31','Accounts=myacct'])
-```
-
-Report Types and Commands:
-
-- **cluster**: AccountUtilizationByUser, UserUtilizationByAccount, UserUtilizationByWckey, Utilization, WCKeyUtilizationByUser
-- **job**: SizesByAccount, SizesByAccountAndWckey, SizesByWckey
-- **reservation**: Utilization
-- **user**: TopUsage
-
-Common Report Options (add to command string):
-
-- All_Clusters: Use all monitored clusters
-- Clusters=<list>: List of clusters to include
-- End=<time>: Period ending for report
-- Format=<fields>: Comma separated list of fields to display
-- Start=<time>: Period start for report
-- Accounts=<list>: List of accounts to include
-- Users=<list>: List of users to include
-- Wckeys=<list>: List of wckeys to include
-- Tree: Show account hierarchy (for AccountUtilizationByUser)
+- Command validation ensures only allowed Slurm commands are executed
+- For `sacct` with state filter (`--state` or `-s`) but no explicit `--endtime`, the tool automatically appends `--endtime=now` to ensure results are returned from the current window
+- Use `--parsable` with `sacct` for easier parsing of output
+- Use `--format=%...` short codes with `squeue` to prevent column truncation
 
 ### 6.4 Systemd Tools
 
@@ -431,115 +411,81 @@ Notes:
 - Only simple command argument lists are allowed; no shell pipelines are constructed for systemd tools.
 - Hostnames failing validation raise `ValueError`.
 
-### 6.5 File Access Tools
+### 6.5 Shell Tools
 
-#### head_file
+#### run_command
 
-Read lines from the beginning of a file with offset and length support for chunked reading.
+Run a shell command on the remote cluster.
+
+**WARNING**: This tool allows execution of arbitrary shell commands. Use with caution and validate all commands before execution. Do not run interactive commands or commands that require user input.
 
 Parameters:
 
-- `path` (string): Path to the file on the cluster
-- `offset` (int, default: 0): Number of lines to skip from the beginning
-- `length` (int, default: 10): Number of lines to read
+- `command` (string): The shell command to execute.
 
 Example response:
 
 ```json
 {
-  "version": 1,
   "success": true,
-  "path": "/path/to/file.log",
-  "offset": 0,
-  "length": 10,
-  "lines": ["line 1", "line 2", "..."],
-  "line_count": 10,
-  "error": null
+  "command": "ls -la /tmp",
+  "stdout": "total 0\ndrwxrwxrwt 1 root root 4096 Jan 1 00:00 .\n...",
+  "stderr": ""
 }
 ```
 
-#### tail_file
+### 6.6 File Access Tools
 
-Read lines from the end of a file with offset and length support for chunked reading.
+#### read_file_content
+
+Retrieves specific content or metadata from a file on the remote cluster.
 
 Parameters:
 
 - `path` (string): Path to the file on the cluster
-- `offset` (int, default: 0): Number of lines to skip from the end
-- `length` (int, default: 10): Number of lines to read
+- `action` (string, default: "peek"): Primary mode ('peek', 'search', 'count')
+- `pattern` (string, optional): Regex pattern (required for 'search')
+- `start_line` (int, default: 0): 0-indexed start line (inclusive). Negative values supported (e.g. -50).
+- `end_line` (int, optional): 0-indexed end line (exclusive).
+- `limit_lines` (int, default: 10): Hard cap on lines returned.
+- `lines_before` (int, default: 0): Context lines before match (for 'search').
+- `lines_after` (int, default: 0): Context lines after match (for 'search').
+- `count_mode` (string, optional): 'lines' or 'bytes' (for 'count').
 
-Example response:
+Example response (peek):
 
 ```json
 {
-  "version": 1,
   "success": true,
   "path": "/path/to/file.log",
-  "offset": 0,
-  "length": 10,
-  "lines": ["line 991", "line 992", "..."],
-  "line_count": 10,
-  "error": null
+  "action": "peek",
+  "start_line": 0,
+  "end_line": 10,
+  "lines": ["line 1", "line 2", "..."]
 }
 ```
 
-#### count_file
-
-Count lines or bytes in a file.
-
-Parameters:
-
-- `path` (string): Path to the file on the cluster
-- `mode` (string, default: "lines"): "lines" to count lines, "bytes" to count bytes
-
-Example response:
+Example response (search):
 
 ```json
 {
-  "version": 1,
   "success": true,
   "path": "/path/to/file.log",
-  "mode": "lines",
-  "count": 1000,
-  "error": null
-}
-```
-
-#### search_file
-
-Search for a pattern in a file with context lines (like grep with before/after).
-
-Parameters:
-
-- `path` (string): Path to the file on the cluster
-- `pattern` (string): Regular expression pattern to search for
-- `before` (int, default: 0): Number of lines to include before each match
-- `after` (int, default: 0): Number of lines to include after each match
-- `max_matches` (int, default: 100): Maximum number of matches to return
-
-Example response:
-
-```json
-{
-  "version": 1,
-  "success": true,
-  "path": "/path/to/file.log",
+  "action": "search",
   "pattern": "ERROR",
-  "before": 1,
-  "after": 1,
-  "max_matches": 100,
-  "matches": [
-    {
-      "line_number": 42,
-      "line": "ERROR: Something went wrong",
-      "context_before": [
-        { "line_number": 41, "line": "Processing request..." }
-      ],
-      "context_after": [{ "line_number": 43, "line": "Stack trace:" }]
-    }
-  ],
-  "match_count": 1,
-  "error": null
+  "lines": ["ERROR: Something went wrong"]
+}
+```
+
+Example response (count):
+
+```json
+{
+  "success": true,
+  "path": "/path/to/file.log",
+  "action": "count",
+  "count": 1000,
+  "mode": "lines"
 }
 ```
 
