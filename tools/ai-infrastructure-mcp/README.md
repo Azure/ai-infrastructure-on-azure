@@ -266,7 +266,7 @@ Execute Slurm commands with a unified interface. This tool provides access to al
 slurm(command: str, args: Optional[List[str]] = None)
 ```
 
-**Allowed commands:** `sacct`, `squeue`, `sinfo`, `scontrol`, `sreport`, `sbatch`
+**Allowed commands:** `sacct`, `squeue`, `sinfo`, `scontrol`, `sreport`, `sbatch`, `scancel`
 
 **Important for squeue:**
 Always use short format specifiers (`--format=%...`) instead of long field names. The `%` codes prevent column truncation and ensure consistent machine-readable output.
@@ -327,6 +327,15 @@ slurm('sbatch', ['myjob.sh'])
 
 # sbatch - Submit GPU job with specific resources (partition, nodes, time limit)
 slurm('sbatch', ['--partition=gpu', '--nodes=1', '--time=1:00:00', 'gpu_job.sh'])
+
+# scancel - Cancel a specific job
+slurm('scancel', ['12345'])
+
+# scancel - Cancel all jobs for a user
+slurm('scancel', ['--user', 'alice'])
+
+# scancel - Cancel all pending jobs for a user
+slurm('scancel', ['--user', 'alice', '--state=PENDING'])
 ```
 
 Response schema:

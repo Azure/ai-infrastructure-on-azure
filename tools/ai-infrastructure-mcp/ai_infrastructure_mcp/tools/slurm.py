@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional
 
 from ai_infrastructure_mcp.tools.command_wrapper import run_simple_command
 
-ALLOWED_COMMANDS = {"sacct", "squeue", "sinfo", "scontrol", "sreport", "sbatch"}
+ALLOWED_COMMANDS = {"sacct", "squeue", "sinfo", "scontrol", "sreport", "sbatch", "scancel"}
 
 
 def slurm(command: str, args: Optional[List[str]] = None) -> Dict[str, Any]:

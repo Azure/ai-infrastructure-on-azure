@@ -70,13 +70,13 @@ def build_server() -> FastMCP:
 
     @server.tool()
     def slurm(command: str, args: Optional[List[str]] = None) -> Dict[str, Any]:  # type: ignore
-        """Execute Slurm commands: sacct, squeue, sinfo, scontrol, sreport, sbatch.
+        """Execute Slurm commands: sacct, squeue, sinfo, scontrol, sreport, sbatch, scancel.
 
         This unified tool provides access to all Slurm cluster management commands with proper
         argument validation. Specify the command name and pass arguments as a list.
 
         Args:
-            command: Slurm command name (sacct, squeue, sinfo, scontrol, sreport, sbatch)
+            command: Slurm command name (sacct, squeue, sinfo, scontrol, sreport, sbatch, scancel)
             args: Optional list of command-line arguments
 
         Important for squeue:
