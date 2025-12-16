@@ -63,6 +63,9 @@ monitoring and observability.
    Foundry
    - [Slurm version](./examples/llm-foundry/slurm/README.md)
    - [AKS version](./examples/llm-foundry/aks/README.md)
+3. MLPerf Storage Benchmark - Example of performance
+   testing using MLPerf Storage benchmark
+   - [AKS version](./examples/mlperf_storage/aks/README.md)
 
 ## 5. Infrastructure Validation Catalog
 
