@@ -613,8 +613,26 @@ load_compute_skus() {
 		exit 1
 	fi
 	echo "[INFO] Discovering VM SKUs and zones for region '${LOCATION}'..." >&2
+	
+	# Build JMESPath query to filter SKUs (only htc, hpc, gpu partitions)
+	local query_filter=""
+	local filter_parts=()
+	if [[ -n "$HTC_SKU" ]]; then filter_parts+=("name=='$HTC_SKU'"); fi
+	if [[ -n "$HPC_SKU" ]]; then filter_parts+=("name=='$HPC_SKU'"); fi
+	if [[ -n "$GPU_SKU" ]]; then filter_parts+=("name=='$GPU_SKU'"); fi
+	
+	if [[ ${#filter_parts[@]} -eq 0 ]]; then
+		echo "[DEBUG] No partition SKUs defined yet; loading all SKUs." >&2
+		query_filter="[?locationInfo!=null]"
+	else
+		local condition
+		condition=$(IFS='||'; echo "${filter_parts[*]}")
+		query_filter="[?locationInfo!=null && ($condition)]"
+		echo "[DEBUG] Loading only SKUs: HTC=$HTC_SKU, HPC=$HPC_SKU, GPU=$GPU_SKU" >&2
+	fi
+	
 	local raw
-	if ! raw="$(az vm list-skus --location "${LOCATION}" --resource-type virtualMachines -o json 2>/dev/null)"; then
+	if ! raw="$(az vm list-skus --location "${LOCATION}" --resource-type virtualMachines --query "$query_filter" -o json 2>/dev/null)"; then
 		echo "[ERROR] az vm list-skus failed; zone discovery cannot proceed." >&2
 		COMPUTE_SKUS_CACHE=""
 		return 1
@@ -622,7 +640,6 @@ load_compute_skus() {
 	# Build mapping SKU:space_separated_zones (empty after colon if none)
 	COMPUTE_SKUS_CACHE="$(echo "$raw" | jq -r '
 		.[]
-		| select(.locationInfo!=null)
 		| . as $sku
 		| ($sku.locationInfo
 			| map(select(.zones!=null))
@@ -745,7 +762,10 @@ prompt_zone_manual() {
 	if [[ -n "$sel" ]]; then echo "$sel"; else echo ""; fi
 }
 
-load_compute_skus
+# Only load compute SKUs if we need zone discovery
+if [[ "$SPECIFY_AZ" == "true" ]]; then
+	load_compute_skus
+fi
 
 # Prompt for SKUs if missing
 if [[ -z "${HTC_SKU:-}" ]]; then
