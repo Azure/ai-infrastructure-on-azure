@@ -906,7 +906,7 @@ fi
 
 pushd "$WORKSPACE_DIR" >/dev/null
 echo "[INFO] Checking out ref $WORKSPACE_REF"
-git fetch --all --tags
+git fetch --all --tags --force
 if [[ -n "$WORKSPACE_COMMIT" ]]; then
 	echo "[INFO] Workspace commit override specified: $WORKSPACE_COMMIT"
 	# Verify commit exists
