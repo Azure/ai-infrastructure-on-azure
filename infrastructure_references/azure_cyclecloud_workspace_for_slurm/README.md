@@ -121,7 +121,7 @@ region-level (non-zonal) placement. AMLFS will default to zone `1`.
   --hpc-sku Standard_HB176rs_v4 \
   --gpu-sku Standard_ND96amsr_A100_v4 \
   --anf-sku Premium --anf-size 2 \
-  --amlfs-sku AMLFS-Durable-Premium-500 --amlfs-size 4 \
+  --data-filesystem --amlfs-sku AMLFS-Durable-Premium-500 --amlfs-size 4 \
   --accept-marketplace \
   --deploy
 ```
@@ -269,11 +269,18 @@ All ANF parameters must be provided together to enable ANF storage:
 
 #### Azure Managed Lustre File System (AMLFS) Configuration
 
-All AMLFS parameters must be provided together to enable AMLFS storage:
+AMLFS provides an additional high-performance data filesystem. It is **disabled by default**.
+
+- **`--data-filesystem`**
+
+  - Enable Azure Managed Lustre data filesystem
+  - Flag parameter (no value required)
+  - Default: disabled
+  - When enabled, AMLFS will be deployed with the parameters below
 
 - **`--amlfs-sku <sku>`** (default: `AMLFS-Durable-Premium-500`)
 
-  - AMLFS SKU type
+  - AMLFS SKU type (only used when `--data-filesystem` is enabled)
   - Available options: `AMLFS-Durable-Premium-40`, `AMLFS-Durable-Premium-125`,
     `AMLFS-Durable-Premium-250`, `AMLFS-Durable-Premium-500`
   - Number indicates MB/s/TiB throughput
@@ -281,14 +288,13 @@ All AMLFS parameters must be provided together to enable AMLFS storage:
 
 - **`--amlfs-size <size_in_TiB>`** (default: `4`)
 
-  - File system size in TiB
+  - File system size in TiB (only used when `--data-filesystem` is enabled)
   - Must be an integer ≥ 4 TiB
   - Example: `8` for 8 TiB
 
 - **`--amlfs-az <zone>`**
-  - Availability zone for AMLFS deployment
-  - Should match compute partition zones for optimal latency
-  - Defaults to zone `1` if not specified and region supports zones
+  - Availability zone for AMLFS deployment (only used when `--data-filesystem` is enabled)
+  - Defaults to zone `1` if not specified
   - Example: `1`
 
 #### Database Configuration (Slurm Accounting)

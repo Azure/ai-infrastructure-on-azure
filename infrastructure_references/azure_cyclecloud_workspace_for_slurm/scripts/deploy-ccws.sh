@@ -73,9 +73,10 @@ OPTIONAL PARAMETERS:
     --anf-az <zone>              Availability zone for ANF (optional; interactive if omitted)
 
   Storage - Azure Managed Lustre:
+    --data-filesystem            Enable Azure Managed Lustre data filesystem (disabled by default)
     --amlfs-sku <tier>           AMLFS tier: AMLFS-Durable-Premium-{40|125|250|500} (default: 500)
     --amlfs-size <TiB>           AMLFS capacity in TiB (integer, default: 4, minimum: 4)
-    --amlfs-az <zone>            Availability zone for AMLFS (defaults to 1 if region supports zones)
+    --amlfs-az <zone>            Availability zone for AMLFS (defaults to 1)
 
   Database Configuration (Slurm Accounting):
     Mode 1 - Auto-create MySQL Flexible Server:
@@ -151,7 +152,7 @@ EXAMPLES:
        --gpu-sku Standard_ND96amsr_A100_v4 --gpu-az 1 --gpu-max-nodes 20 \\
        --network-address-space 10.1.0.0/16 --bastion \\
        --anf-sku Premium --anf-size 4 --anf-az 1 \\
-       --amlfs-sku AMLFS-Durable-Premium-500 --amlfs-size 8 --amlfs-az 1 \\
+       --data-filesystem --amlfs-sku AMLFS-Durable-Premium-500 --amlfs-size 8 --amlfs-az 1 \\
        --create-accounting-mysql --db-name myccdb --db-user dbadmin --db-password 'DbP@ss!' \\
        --open-ondemand --ood-user-domain contoso.com --ood-fqdn ood.contoso.com \\
        --ood-auto-register --accept-marketplace --deploy
@@ -188,6 +189,7 @@ ANF_AZ=""
 AMLFS_SKU="AMLFS-Durable-Premium-500"
 AMLFS_SIZE="4"
 AMLFS_AZ=""
+DATA_FILESYSTEM_ENABLED="false"
 NO_AZ="true"
 SPECIFY_AZ="false"
 COMPUTE_SKUS_CACHE=""
@@ -317,6 +319,10 @@ while [[ $# -gt 0 ]]; do
 		;;
 	--bastion)
 		NETWORK_BASTION="true"
+		shift 1
+		;;
+	--data-filesystem)
+		DATA_FILESYSTEM_ENABLED="true"
 		shift 1
 		;;
 	--htc-use-spot)
@@ -816,9 +822,11 @@ else
 fi
 
 # Default AMLFS zone to 1 if none provided (AMLFS requires a zone)
-if [[ -z "${AMLFS_AZ}" ]]; then
-	echo "[INFO] AMLFS zone not specified; defaulting to '1'." >&2
-	AMLFS_AZ="1"
+if [[ "$DATA_FILESYSTEM_ENABLED" == "true" ]]; then
+	if [[ -z "${AMLFS_AZ}" ]]; then
+		echo "[INFO] AMLFS zone not specified; defaulting to '1'." >&2
+		AMLFS_AZ="1"
+	fi
 fi
 
 # Prepare JSON fragments for optional availability zone (include leading comma when present)
@@ -845,22 +853,24 @@ Standard | Premium | Ultra) ;;
 	;;
 esac
 
-# Validate AMLFS inputs
-if ! [[ "$AMLFS_SIZE" =~ ^[0-9]+$ ]]; then
-	echo "[ERROR] --amlfs-size must be an integer (TiB). Provided: $AMLFS_SIZE" >&2
-	exit 1
+# Validate AMLFS inputs (only if data filesystem is enabled)
+if [[ "$DATA_FILESYSTEM_ENABLED" == "true" ]]; then
+	if ! [[ "$AMLFS_SIZE" =~ ^[0-9]+$ ]]; then
+		echo "[ERROR] --amlfs-size must be an integer (TiB). Provided: $AMLFS_SIZE" >&2
+		exit 1
+	fi
+	if ((AMLFS_SIZE < 4)); then
+		echo "[ERROR] --amlfs-size must be >= 4 TiB. Provided: $AMLFS_SIZE" >&2
+		exit 1
+	fi
+	case "$AMLFS_SKU" in
+	AMLFS-Durable-Premium-40 | AMLFS-Durable-Premium-125 | AMLFS-Durable-Premium-250 | AMLFS-Durable-Premium-500) ;;
+	*)
+		echo "[ERROR] --amlfs-sku must be one of AMLFS-Durable-Premium-40|AMLFS-Durable-Premium-125|AMLFS-Durable-Premium-250|AMLFS-Durable-Premium-500. Provided: $AMLFS_SKU" >&2
+		exit 1
+		;;
+	esac
 fi
-if ((AMLFS_SIZE < 4)); then
-	echo "[ERROR] --amlfs-size must be >= 4 TiB. Provided: $AMLFS_SIZE" >&2
-	exit 1
-fi
-case "$AMLFS_SKU" in
-AMLFS-Durable-Premium-40 | AMLFS-Durable-Premium-125 | AMLFS-Durable-Premium-250 | AMLFS-Durable-Premium-500) ;;
-*)
-	echo "[ERROR] --amlfs-sku must be one of AMLFS-Durable-Premium-40|AMLFS-Durable-Premium-125|AMLFS-Durable-Premium-250|AMLFS-Durable-Premium-500. Provided: $AMLFS_SKU" >&2
-	exit 1
-	;;
-esac
 
 # Validate Open OnDemand requirements
 if [[ "$OOD_ENABLED" == "true" ]]; then
@@ -948,6 +958,13 @@ else
 	OOD_JSON='"ood": { "value": { "type": "disabled" } },'
 fi
 
+# Construct AMLFS JSON fragment (conditional on enabled flag)
+if [[ "$DATA_FILESYSTEM_ENABLED" == "true" ]]; then
+	AMLFS_JSON='"additionalFilesystem": { "value": { "type": "aml-new", "lustreTier": "'"${AMLFS_SKU}"'", "lustreCapacityInTib": '${AMLFS_SIZE}', "mountPath": "/data"'"${AMLFS_ZONES_JSON}"' } },'
+else
+	AMLFS_JSON='"additionalFilesystem": { "value": { "type": "disabled" } },'
+fi
+
 # Retrieve Slurm default version from workspace UI definitions file
 SLURM_VERSION=$(jq -r '.. | objects | select(.name == "slurmVersion") | .defaultValue' "$WORKSPACE_DIR/uidefinitions/createUiDefinition.json")
 
@@ -963,7 +980,7 @@ cat >"$OUTPUT_FILE" <<EOF
 		"ccVMSize": { "value": "${SCHEDULER_SKU}" },
 		"resourceGroup": { "value": "${RESOURCE_GROUP}" },
 		"sharedFilesystem": { "value": { "type": "anf-new", "anfServiceTier": "${ANF_SKU}", "anfCapacityInTiB": ${ANF_SIZE}${ANF_ZONES_JSON} } },
-		"additionalFilesystem": { "value": { "type": "aml-new", "lustreTier": "${AMLFS_SKU}", "lustreCapacityInTib": ${AMLFS_SIZE}, "mountPath": "/data"${AMLFS_ZONES_JSON} } },
+		${AMLFS_JSON}
 		"network": { "value": { "type": "new", "addressSpace": "${NETWORK_ADDRESS_SPACE}", "bastion": ${NETWORK_BASTION}, "createNatGateway": true } },
 		"storagePrivateDnsZone": { "value": { "type": "new" } },
 		${DB_JSON_DATABASE_CONFIG}
@@ -1017,7 +1034,10 @@ echo "OOD Managed Identity:   ${OOD_MANAGED_IDENTITY_ID:-<none>}"
 echo "HPC SKU / AZ / Max:     ${HPC_SKU} / ${HPC_AZ:-<none>} / ${HPC_MAX_NODES}"
 echo "GPU SKU / AZ / Max:     ${GPU_SKU} / ${GPU_AZ:-<none>} / ${GPU_MAX_NODES}"
 echo "ANF Tier / Size / AZ:   ${ANF_SKU} / ${ANF_SIZE} / ${ANF_AZ:-<none>}"
-echo "AMLFS Tier / Size / AZ: ${AMLFS_SKU} / ${AMLFS_SIZE} / ${AMLFS_AZ:-<none>}"
+echo "Data Filesystem:        ${DATA_FILESYSTEM_ENABLED}"
+if [[ "$DATA_FILESYSTEM_ENABLED" == "true" ]]; then
+	echo "AMLFS Tier / Size / AZ: ${AMLFS_SKU} / ${AMLFS_SIZE} / ${AMLFS_AZ:-<none>}"
+fi
 echo "Accept Marketplace:     ${ACCEPT_MARKETPLACE}"
 echo "Network Address Space:  ${NETWORK_ADDRESS_SPACE}"
 echo "Bastion Enabled:        ${NETWORK_BASTION}"
