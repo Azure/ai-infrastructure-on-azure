@@ -51,6 +51,7 @@ OPTIONAL PARAMETERS:
     --output-file <path>         Output parameters file path (default: ${DEFAULT_OUTPUT_FILE})
 
   Availability Zones:
+    --no-az                      Disable availability zones entirely (default behavior)
     --specify-az                 Enable interactive AZ prompting (only if region has zonal SKUs)
     --htc-az <zone>              Explicit AZ for HTC partition (suppresses interactive prompt)
     --hpc-az <zone>              Explicit AZ for HPC partition (suppresses interactive prompt)
@@ -187,6 +188,7 @@ ANF_AZ=""
 AMLFS_SKU="AMLFS-Durable-Premium-500"
 AMLFS_SIZE="4"
 AMLFS_AZ=""
+NO_AZ="true"
 SPECIFY_AZ="false"
 COMPUTE_SKUS_CACHE=""
 DB_NAME=""
@@ -385,12 +387,11 @@ while [[ $# -gt 0 ]]; do
 		DB_GENERATE_NAME="true"
 		shift 1
 		;;
-	--specify-az)
-		SPECIFY_AZ="true"
+	--no-az)
+		NO_AZ="true"
 		shift 1
 		;;
-	--no-az)
-		echo "[WARN] --no-az deprecated; use --specify-az for prompting zones (invert semantics)." >&2
+	--specify-az)
 		SPECIFY_AZ="true"
 		shift 1
 		;;
@@ -768,7 +769,14 @@ if ! validate_max_nodes "$GPU_MAX_NODES" "GPU"; then
 	prompt_for_max_nodes GPU_MAX_NODES "GPU"
 fi
 
-if [[ "$SPECIFY_AZ" == "true" ]]; then
+if [[ "$NO_AZ" == "true" ]]; then
+	echo "[INFO] --no-az specified; disabling all availability zones." >&2
+	HTC_AZ=""
+	HPC_AZ=""
+	GPU_AZ=""
+	ANF_AZ=""
+	AMLFS_AZ=""
+elif [[ "$SPECIFY_AZ" == "true" ]]; then
 	if region_has_zone_support; then
 		POTENTIAL_HTC_AZ="$(fetch_region_zones "$HTC_SKU")"
 		POTENTIAL_HPC_AZ="$(fetch_region_zones "$HPC_SKU")"
@@ -808,23 +816,24 @@ else
 	fi
 fi
 
-# Default AMLFS zone to 1 if none provided
+# Default AMLFS zone to 1 if none provided (unless NO_AZ is set)
 if [[ -z "${AMLFS_AZ}" ]]; then
-	echo "[INFO] AMLFS zone not specified; defaulting to '1'." >&2
-	if region_has_zone_support; then
+	if [[ "$NO_AZ" == "true" ]]; then
+		AMLFS_AZ=""
+	elif [[ "$SPECIFY_AZ" == "true" ]] && region_has_zone_support; then
+		echo "[INFO] AMLFS zone not specified; defaulting to '1'." >&2
 		AMLFS_AZ="1"
 	else
-		echo "[INFO] Region $LOCATION appears to have no zone-capable VM SKUs (or discovery unavailable); skipping AMLFS AZ default." >&2
 		AMLFS_AZ=""
 	fi
 fi
 
-# Prepare JSON fragments for optional availability zone (renamed to availabilityZone)
-if [[ -n "${HTC_AZ}" ]]; then HTC_ZONES_JSON="\"availabilityZone\": [\"${HTC_AZ}\"],"; else HTC_ZONES_JSON="\"availabilityZone\": [],"; fi
-if [[ -n "${HPC_AZ}" ]]; then HPC_ZONES_JSON="\"availabilityZone\": [\"${HPC_AZ}\"],"; else HPC_ZONES_JSON="\"availabilityZone\": [],"; fi
-if [[ -n "${GPU_AZ}" ]]; then GPU_ZONES_JSON="\"availabilityZone\": [\"${GPU_AZ}\"],"; else GPU_ZONES_JSON="\"availabilityZone\": [],"; fi
-if [[ -n "${ANF_AZ}" ]]; then ANF_ZONES_JSON="\"availabilityZone\": [\"${ANF_AZ}\"],"; else ANF_ZONES_JSON="\"availabilityZone\": [],"; fi
-if [[ -n "${AMLFS_AZ}" ]]; then AMLFS_ZONES_JSON="\"availabilityZone\": [\"${AMLFS_AZ}\"],"; else AMLFS_ZONES_JSON="\"availabilityZone\": [],"; fi
+# Prepare JSON fragments for optional availability zone (include leading comma when present)
+if [[ -n "${HTC_AZ}" ]]; then HTC_ZONES_JSON=", \"availabilityZone\": [\"${HTC_AZ}\"]"; else HTC_ZONES_JSON=""; fi
+if [[ -n "${HPC_AZ}" ]]; then HPC_ZONES_JSON=", \"availabilityZone\": [\"${HPC_AZ}\"]"; else HPC_ZONES_JSON=""; fi
+if [[ -n "${GPU_AZ}" ]]; then GPU_ZONES_JSON=", \"availabilityZone\": [\"${GPU_AZ}\"]"; else GPU_ZONES_JSON=""; fi
+if [[ -n "${ANF_AZ}" ]]; then ANF_ZONES_JSON=", \"availabilityZone\": [\"${ANF_AZ}\"]"; else ANF_ZONES_JSON=""; fi
+if [[ -n "${AMLFS_AZ}" ]]; then AMLFS_ZONES_JSON=", \"availabilityZone\": [\"${AMLFS_AZ}\"]"; else AMLFS_ZONES_JSON=""; fi
 
 # Validate ANF inputs
 if ! [[ "$ANF_SIZE" =~ ^[0-9]+$ ]]; then
@@ -960,8 +969,8 @@ cat >"$OUTPUT_FILE" <<EOF
 		"ccVMName": { "value": "ccw-cyclecloud-vm" },
 		"ccVMSize": { "value": "${SCHEDULER_SKU}" },
 		"resourceGroup": { "value": "${RESOURCE_GROUP}" },
-		"sharedFilesystem": { "value": { "type": "anf-new", "anfServiceTier": "${ANF_SKU}", "anfCapacityInTiB": ${ANF_SIZE}, ${ANF_ZONES_JSON%%,} } },
-		"additionalFilesystem": { "value": { "type": "aml-new", "lustreTier": "${AMLFS_SKU}", "lustreCapacityInTib": ${AMLFS_SIZE}, "mountPath": "/data", ${AMLFS_ZONES_JSON%%,} } },
+		"sharedFilesystem": { "value": { "type": "anf-new", "anfServiceTier": "${ANF_SKU}", "anfCapacityInTiB": ${ANF_SIZE}${ANF_ZONES_JSON} } },
+		"additionalFilesystem": { "value": { "type": "aml-new", "lustreTier": "${AMLFS_SKU}", "lustreCapacityInTib": ${AMLFS_SIZE}, "mountPath": "/data"${AMLFS_ZONES_JSON} } },
 		"network": { "value": { "type": "new", "addressSpace": "${NETWORK_ADDRESS_SPACE}", "bastion": ${NETWORK_BASTION}, "createNatGateway": true } },
 		"storagePrivateDnsZone": { "value": { "type": "new" } },
 		${DB_JSON_DATABASE_CONFIG}
@@ -969,9 +978,9 @@ cat >"$OUTPUT_FILE" <<EOF
 		"slurmSettings": { "value": { "startCluster": true, "version": "${SLURM_VERSION}", "healthCheckEnabled": false } },
 		"schedulerNode": { "value": { "sku": "${SCHEDULER_SKU}", "osImage": "cycle.image.ubuntu22" } },
 		"loginNodes": { "value": { "sku": "${LOGIN_SKU}", "osImage": "cycle.image.ubuntu22", "initialNodes": 1, "maxNodes": 1 } },
-		"htc": { "value": { "sku": "${HTC_SKU}", "maxNodes": ${HTC_MAX_NODES}, "osImage": "cycle.image.ubuntu22", "useSpot": ${HTC_USE_SPOT}, ${HTC_ZONES_JSON%%,} } },
-		"hpc": { "value": { "sku": "${HPC_SKU}", "maxNodes": ${HPC_MAX_NODES}, "osImage": "cycle.image.ubuntu22", ${HPC_ZONES_JSON%%,} } },
-		"gpu": { "value": { "sku": "${GPU_SKU}", "maxNodes": ${GPU_MAX_NODES}, "osImage": "cycle.image.ubuntu22", ${GPU_ZONES_JSON%%,} } },
+		"htc": { "value": { "sku": "${HTC_SKU}", "maxNodes": ${HTC_MAX_NODES}, "osImage": "cycle.image.ubuntu22", "useSpot": ${HTC_USE_SPOT}${HTC_ZONES_JSON} } },
+		"hpc": { "value": { "sku": "${HPC_SKU}", "maxNodes": ${HPC_MAX_NODES}, "osImage": "cycle.image.ubuntu22"${HPC_ZONES_JSON} } },
+		"gpu": { "value": { "sku": "${GPU_SKU}", "maxNodes": ${GPU_MAX_NODES}, "osImage": "cycle.image.ubuntu22"${GPU_ZONES_JSON} } },
 		${OOD_JSON}
 		"tags": { "value": {} }
 	}

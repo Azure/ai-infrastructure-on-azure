@@ -177,26 +177,34 @@ parameters:
 
 #### Availability Zones
 
+- **`--no-az`**
+
+  - Explicitly disable availability zones for all resources (default behavior)
+  - When set, all availability zone configurations are omitted from deployment
+  - This is the default if neither `--no-az` nor `--specify-az` is provided
+
 - **`--specify-az`**
 
   - Enable interactive prompts for availability zones
   - Only prompts if the region supports zonal SKUs
-  - If omitted, deployment uses region-level (non-zonal) placement
+  - Mutually exclusive with `--no-az`
 
 - **`--htc-az <zone>`**
 
   - Explicitly set availability zone for HTC partition (e.g., `1`, `2`, `3`)
   - Suppresses interactive prompt for HTC partition
-  - Leave empty for non-zonal deployment
+  - Requires `--specify-az` to be set
 
 - **`--hpc-az <zone>`**
 
   - Explicitly set availability zone for HPC partition
   - Suppresses interactive prompt for HPC partition
+  - Requires `--specify-az` to be set
 
 - **`--gpu-az <zone>`**
   - Explicitly set availability zone for GPU partition
   - Suppresses interactive prompt for GPU partition
+  - Requires `--specify-az` to be set
 
 #### Compute Partition Configuration
 
@@ -579,13 +587,34 @@ SECURITY NOTES:
 
 ### 3.7. Non-Interactive Deployment
 
-To avoid interactive zone prompts entirely, omit `--specify-az` or specify them
-with the corresponding command line options:
+To avoid interactive zone prompts and deploy without availability zones (default behavior):
 
 ```bash
 ./scripts/deploy-ccws.sh --subscription-id <sub-id> --resource-group <rg> --location eastus \
   --ssh-public-key-file ~/.ssh/id_rsa.pub --admin-password 'YourP@ssw0rd!' \
-  --htc-sku Standard_F2s_v2 --hpc-sku Standard_HB176rs_v4 --gpu-sku Standard_ND96amsr_A100_v4 --deploy
+  --htc-sku Standard_F2s_v2 --hpc-sku Standard_HB176rs_v4 --gpu-sku Standard_ND96amsr_A100_v4 \
+  --deploy
+```
+
+To explicitly disable availability zones:
+
+```bash
+./scripts/deploy-ccws.sh --subscription-id <sub-id> --resource-group <rg> --location eastus \
+  --ssh-public-key-file ~/.ssh/id_rsa.pub --admin-password 'YourP@ssw0rd!' \
+  --htc-sku Standard_F2s_v2 --hpc-sku Standard_HB176rs_v4 --gpu-sku Standard_ND96amsr_A100_v4 \
+  --no-az \
+  --deploy
+```
+
+To specify zones via command line without prompts:
+
+```bash
+./scripts/deploy-ccws.sh --subscription-id <sub-id> --resource-group <rg> --location eastus \
+  --ssh-public-key-file ~/.ssh/id_rsa.pub --admin-password 'YourP@ssw0rd!' \
+  --htc-sku Standard_F2s_v2 --htc-az 1 --hpc-sku Standard_HB176rs_v4 --hpc-az 1 \
+  --gpu-sku Standard_ND96amsr_A100_v4 --gpu-az 1 \
+  --specify-az \
+  --deploy
 ```
 
 ### 3.8. Re-Running / Modifying
