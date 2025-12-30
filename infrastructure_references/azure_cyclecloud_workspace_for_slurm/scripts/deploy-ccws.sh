@@ -946,6 +946,9 @@ else
 	OOD_JSON='"ood": { "value": { "type": "disabled" } },'
 fi
 
+# Retrieve Slurm default version from workspace UI definitions file
+SLURM_VERSION=$(jq -r '.. | objects | select(.name == "slurmVersion") | .defaultValue' "$WORKSPACE_DIR/uidefinitions/createUiDefinition.json")
+
 cat >"$OUTPUT_FILE" <<EOF
 {
 	"\$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
@@ -963,7 +966,7 @@ cat >"$OUTPUT_FILE" <<EOF
 		"storagePrivateDnsZone": { "value": { "type": "new" } },
 		${DB_JSON_DATABASE_CONFIG}
 		"acceptMarketplaceTerms": { "value": ${ACCEPT_MARKETPLACE} },
-		"slurmSettings": { "value": { "startCluster": true, "version": "24.05.4-2", "healthCheckEnabled": false } },
+		"slurmSettings": { "value": { "startCluster": true, "version": "${SLURM_VERSION}", "healthCheckEnabled": false } },
 		"schedulerNode": { "value": { "sku": "${SCHEDULER_SKU}", "osImage": "cycle.image.ubuntu22" } },
 		"loginNodes": { "value": { "sku": "${LOGIN_SKU}", "osImage": "cycle.image.ubuntu22", "initialNodes": 1, "maxNodes": 1 } },
 		"htc": { "value": { "sku": "${HTC_SKU}", "maxNodes": ${HTC_MAX_NODES}, "osImage": "cycle.image.ubuntu22", "useSpot": ${HTC_USE_SPOT}, ${HTC_ZONES_JSON%%,} } },
