@@ -775,7 +775,6 @@ if [[ "$NO_AZ" == "true" ]]; then
 	HPC_AZ=""
 	GPU_AZ=""
 	ANF_AZ=""
-	AMLFS_AZ=""
 elif [[ "$SPECIFY_AZ" == "true" ]]; then
 	if region_has_zone_support; then
 		POTENTIAL_HTC_AZ="$(fetch_region_zones "$HTC_SKU")"
@@ -816,16 +815,10 @@ else
 	fi
 fi
 
-# Default AMLFS zone to 1 if none provided (unless NO_AZ is set)
+# Default AMLFS zone to 1 if none provided (AMLFS requires a zone)
 if [[ -z "${AMLFS_AZ}" ]]; then
-	if [[ "$NO_AZ" == "true" ]]; then
-		AMLFS_AZ=""
-	elif [[ "$SPECIFY_AZ" == "true" ]] && region_has_zone_support; then
-		echo "[INFO] AMLFS zone not specified; defaulting to '1'." >&2
-		AMLFS_AZ="1"
-	else
-		AMLFS_AZ=""
-	fi
+	echo "[INFO] AMLFS zone not specified; defaulting to '1'." >&2
+	AMLFS_AZ="1"
 fi
 
 # Prepare JSON fragments for optional availability zone (include leading comma when present)
