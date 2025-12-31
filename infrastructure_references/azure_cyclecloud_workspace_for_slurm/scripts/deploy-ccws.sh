@@ -82,6 +82,14 @@ OPTIONAL PARAMETERS:
     --mon-ingestion-endpoint <endpoint>  Monitoring ingestion endpoint (required with --monitoring)
     --mon-dcr-id <dcr-id>        Data Collection Rule ID (required with --monitoring)
 
+  Microsoft Entra ID:
+    --entra-id                   Enable Microsoft Entra ID (disabled by default)
+    --entra-app-umi <umi-id>     User Managed Identity resource ID used in federated credentials 
+                                 of the registered Entra ID application for user authentication 
+                                 (required with --entra-id)
+    --entra-app-id <app-id>      Application (client) ID of the registered Entra ID application 
+                                 used to authenticate users (required with --entra-id)
+
   Database Configuration (Slurm Accounting):
     Mode 1 - Auto-create MySQL Flexible Server:
       --create-accounting-mysql  Auto-create MySQL server (requires --db-name, --db-user, --db-password)
@@ -197,6 +205,9 @@ DATA_FILESYSTEM_ENABLED="false"
 MONITORING_ENABLED="false"
 MON_INGESTION_ENDPOINT=""
 MON_DCR_ID=""
+ENTRA_ID_ENABLED="false"
+ENTRA_APP_UMI=""
+ENTRA_APP_ID=""
 NO_AZ="true"
 SPECIFY_AZ="false"
 COMPUTE_SKUS_CACHE=""
@@ -342,6 +353,18 @@ while [[ $# -gt 0 ]]; do
 		;;
 	--mon-dcr-id)
 		MON_DCR_ID="$2"
+		shift 2
+		;;
+	--entra-id)
+		ENTRA_ID_ENABLED="true"
+		shift 1
+		;;
+	--entra-app-umi)
+		ENTRA_APP_UMI="$2"
+		shift 2
+		;;
+	--entra-app-id)
+		ENTRA_APP_ID="$2"
 		shift 2
 		;;
 	--htc-use-spot)
@@ -803,6 +826,18 @@ if [[ "$MONITORING_ENABLED" == "true" ]]; then
 	fi
 fi
 
+# Validate Entra ID requirements
+if [[ "$ENTRA_ID_ENABLED" == "true" ]]; then
+	if [[ -z "$ENTRA_APP_UMI" ]]; then
+		echo "[ERROR] --entra-id requires --entra-app-umi to be specified." >&2
+		exit 1
+	fi
+	if [[ -z "$ENTRA_APP_ID" ]]; then
+		echo "[ERROR] --entra-id requires --entra-app-id to be specified." >&2
+		exit 1
+	fi
+fi
+
 # Only load compute SKUs if we need zone discovery
 if [[ "$SPECIFY_AZ" == "true" ]]; then
 	load_compute_skus
@@ -1029,6 +1064,19 @@ else
 	MONITORING_JSON='"monitoring": { "value": { "type": "disabled" } },'
 fi
 
+# Construct Entra SSO JSON fragment (conditional on enabled flag)
+if [[ "$ENTRA_ID_ENABLED" == "true" ]]; then
+	# Get tenant ID from active subscription
+	TENANT_ID=$(az account show --query tenantId -o tsv 2>/dev/null || echo "")
+	if [[ -z "$TENANT_ID" ]]; then
+		echo "[ERROR] Unable to retrieve tenant ID from active subscription." >&2
+		exit 1
+	fi
+	ENTRA_ID_JSON='"entraIdInfo": { "value": { "type": "enabled", "managedIdentityId": "'"${ENTRA_APP_UMI}"'", "clientId": "'"${ENTRA_APP_ID}"'", "tenantId": "'"${TENANT_ID}"'" } },'
+else
+	ENTRA_ID_JSON='"entraIdInfo": { "value": { "type": "disabled" } },'
+fi
+
 # Retrieve Slurm default version from workspace UI definitions file
 SLURM_VERSION=$(jq -r '.. | objects | select(.name == "slurmVersion") | .defaultValue' "$WORKSPACE_DIR/uidefinitions/createUiDefinition.json")
 
@@ -1057,6 +1105,7 @@ cat >"$OUTPUT_FILE" <<EOF
 		"gpu": { "value": { "sku": "${GPU_SKU}", "maxNodes": ${GPU_MAX_NODES}, "osImage": "cycle.image.ubuntu22"${GPU_ZONES_JSON} } },
 		${OOD_JSON}
 		${MONITORING_JSON}
+		${ENTRA_ID_JSON}
 		"tags": { "value": {} }
 	}
 }
@@ -1107,6 +1156,11 @@ echo "Monitoring Enabled:     ${MONITORING_ENABLED}"
 if [[ "$MONITORING_ENABLED" == "true" ]]; then
 	echo "Mon Ingestion Endpoint: ${MON_INGESTION_ENDPOINT}"
 	echo "Mon DCR ID:             ${MON_DCR_ID}"
+fi
+echo "Entra ID Enabled:       ${ENTRA_ID_ENABLED}"
+if [[ "$ENTRA_ID_ENABLED" == "true" ]]; then
+	echo "Entra App UMI:          ${ENTRA_APP_UMI}"
+	echo "Entra App ID:           ${ENTRA_APP_ID}"
 fi
 echo "Accept Marketplace:     ${ACCEPT_MARKETPLACE}"
 echo "Network Address Space:  ${NETWORK_ADDRESS_SPACE}"

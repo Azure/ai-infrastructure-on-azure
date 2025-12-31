@@ -315,6 +315,26 @@ AMLFS provides an additional high-performance data filesystem. It is **disabled 
   - Required when `--monitoring` is enabled
   - Format: `/subscriptions/<sub-id>/resourceGroups/<rg-name>/providers/Microsoft.Insights/dataCollectionRules/<dcr-name>`
 
+#### Microsoft Entra ID Configuration
+
+- **`--entra-id`**
+  - Enable Microsoft Entra ID authentication
+  - Flag parameter (no value required)
+  - Default: disabled
+  - When enabled, requires `--entra-app-umi` and `--entra-app-id`
+
+- **`--entra-app-umi <umi-id>`**
+  - User Managed Identity resource ID used in federated credentials of the registered Entra ID application for user authentication
+  - Required when `--entra-id` is enabled
+  - Format: `/subscriptions/<sub-id>/resourceGroups/<rg-name>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/<identity-name>`
+  - Example: `/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/myResourceGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/myIdentity`
+
+- **`--entra-app-id <app-id>`**
+  - Application (client) ID of the registered Entra ID application used to authenticate users
+  - Required when `--entra-id` is enabled
+  - Format: GUID
+  - Example: `12345678-1234-1234-1234-123456789abc`
+
 #### Database Configuration (Slurm Accounting)
 
 The script supports two modes for database configuration:
@@ -471,6 +491,9 @@ If none of the database flags are provided, `databaseConfig` defaults to:
   --monitoring \
   --mon-ingestion-endpoint https://ccw-mon-xxxxx.swedencentral-1.metrics.ingest.monitor.azure.com/dataCollectionRules/dcr-xxxxx/streams/Microsoft-PrometheusMetrics/api/v1/write?api-version=2023-04-24 \
   --mon-dcr-id /subscriptions/12345678/resourceGroups/myRG/providers/Microsoft.Insights/dataCollectionRules/myDCR \
+  --entra-id \
+  --entra-app-umi /subscriptions/12345678/resourceGroups/myRG/providers/Microsoft.ManagedIdentity/userAssignedIdentities/myIdentity \
+  --entra-app-id 12345678-1234-1234-1234-123456789abc \
   --create-accounting-mysql \
   --db-name myccdb \
   --db-user dbadmin \
