@@ -418,7 +418,18 @@ If none of the database flags are provided, `databaseConfig` defaults to:
   - Only included in parameters when `--open-ondemand` is enabled
   - Must contain at least one dot and no spaces if provided
   - Example: `ood.contoso.com`
-  - Note: The Entra ID Application (client) ID is automatically taken from `--entra-app-id` and the User Managed Identity is taken from `--entra-app-umi`
+
+- **`--ood-no-start`**
+
+  - Do not start the Open OnDemand cluster automatically
+  - Flag parameter (no value required)
+  - Default: cluster starts automatically
+  - Useful when you want to configure the cluster before starting it
+
+**Note:** The following values are automatically taken from Entra ID configuration:
+- Application (client) ID from `--entra-app-id`
+- User Managed Identity from `--entra-app-umi`
+- Tenant ID is automatically retrieved from the active Azure subscription
 
 #### Deployment Control
 

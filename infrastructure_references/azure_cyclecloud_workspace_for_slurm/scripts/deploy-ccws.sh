@@ -111,6 +111,7 @@ OPTIONAL PARAMETERS:
     --ood-sku <sku>              OOD VM SKU (default: Standard_D4as_v5)
     --ood-user-domain <domain>   User domain for OOD authentication (required with --open-ondemand)
     --ood-fqdn <fqdn>            Fully Qualified Domain Name for OOD (optional)
+    --ood-no-start               Do not start OOD cluster automatically (default: start cluster)
 
   Deployment Control:
     --accept-marketplace         Accept marketplace terms automatically
@@ -224,6 +225,7 @@ OOD_ENABLED="false"
 OOD_SKU="Standard_D4as_v5"
 OOD_USER_DOMAIN=""
 OOD_FQDN=""
+OOD_START_CLUSTER="true"
 CREATE_ACCOUNTING_MYSQL="false"
 DB_GENERATE_NAME="false"
 
@@ -381,6 +383,10 @@ while [[ $# -gt 0 ]]; do
 	--ood-fqdn)
 		OOD_FQDN="$2"
 		shift 2
+		;;
+	--ood-no-start)
+		OOD_START_CLUSTER="false"
+		shift 1
 		;;
 	--htc-max-nodes)
 		HTC_MAX_NODES="$2"
@@ -1021,7 +1027,7 @@ fi
 
 # Construct Open OnDemand JSON fragment (minimal when disabled)
 if [[ "$OOD_ENABLED" == "true" ]]; then
-	OOD_JSON='"ood": { "value": { "type": "enabled", "startCluster": true, "sku": "'"${OOD_SKU}"'", "osImage": "cycle.image.ubuntu22", "userDomain": "'"${OOD_USER_DOMAIN}"'", "fqdn": "'"${OOD_FQDN}"'", "registerEntraIDApp": false, "appId": "'"${ENTRA_APP_ID}"'", "appManagedIdentityId": "'"${ENTRA_APP_UMI}"'", "appTenantId": "'"${TENANT_ID}"'" } },'
+	OOD_JSON='"ood": { "value": { "type": "enabled", "startCluster": '"${OOD_START_CLUSTER}"', "sku": "'"${OOD_SKU}"'", "osImage": "cycle.image.ubuntu22", "userDomain": "'"${OOD_USER_DOMAIN}"'", "fqdn": "'"${OOD_FQDN}"'", "registerEntraIDApp": false, "appId": "'"${ENTRA_APP_ID}"'", "appManagedIdentityId": "'"${ENTRA_APP_UMI}"'", "appTenantId": "'"${TENANT_ID}"'" } },'
 else
 	OOD_JSON='"ood": { "value": { "type": "disabled" } },'
 fi
@@ -1112,6 +1118,7 @@ echo "Open OnDemand Enabled:  ${OOD_ENABLED}"
 echo "Open OnDemand SKU:      ${OOD_SKU}"
 echo "Open OnDemand Domain:   ${OOD_USER_DOMAIN:-<none>}"
 echo "Open OnDemand FQDN:     ${OOD_FQDN:-<none>}"
+echo "OOD Start Cluster:      ${OOD_START_CLUSTER}"
 echo "HPC SKU / AZ / Max:     ${HPC_SKU} / ${HPC_AZ:-<none>} / ${HPC_MAX_NODES}"
 echo "GPU SKU / AZ / Max:     ${GPU_SKU} / ${GPU_AZ:-<none>} / ${GPU_MAX_NODES}"
 echo "ANF Tier / Size / AZ:   ${ANF_SKU} / ${ANF_SIZE} / ${ANF_AZ:-<none>}"
