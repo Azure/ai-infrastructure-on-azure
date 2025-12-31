@@ -614,14 +614,14 @@ load_compute_skus() {
 		exit 1
 	fi
 	echo "[INFO] Discovering VM SKUs and zones for region '${LOCATION}'..." >&2
-	
+
 	# Build JMESPath query to filter SKUs (only htc, hpc, gpu partitions)
 	local query_filter=""
 	local filter_parts=()
 	if [[ -n "$HTC_SKU" ]]; then filter_parts+=("name=='$HTC_SKU'"); fi
 	if [[ -n "$HPC_SKU" ]]; then filter_parts+=("name=='$HPC_SKU'"); fi
 	if [[ -n "$GPU_SKU" ]]; then filter_parts+=("name=='$GPU_SKU'"); fi
-	
+
 	if [[ ${#filter_parts[@]} -eq 0 ]]; then
 		echo "[DEBUG] No partition SKUs defined yet; loading all SKUs." >&2
 		query_filter="value[?locationInfo!=null]"
@@ -826,7 +826,7 @@ elif [[ "$SPECIFY_AZ" == "true" ]]; then
 	GPU_AZ="$(prompt_zone GPU "${GPU_SKU}" "${GPU_AZ:-}" "${POTENTIAL_GPU_AZ}")"
 
 	ANF_AZ="$(prompt_zone_manual ANF "${ANF_AZ:-}")"
-	
+
 	# Only prompt for AMLFS zone if data filesystem is enabled
 	if [[ "$DATA_FILESYSTEM_ENABLED" == "true" ]]; then
 		AMLFS_AZ="$(prompt_zone_manual AMLFS "${AMLFS_AZ:-}")"
