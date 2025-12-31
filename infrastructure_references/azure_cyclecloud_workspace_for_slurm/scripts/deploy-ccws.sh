@@ -61,6 +61,7 @@ OPTIONAL PARAMETERS:
     --hpc-max-nodes <count>      Maximum nodes for HPC partition (interactive if omitted)
     --gpu-max-nodes <count>      Maximum nodes for GPU partition (interactive if omitted)
     --htc-use-spot               Use Spot (preemptible) VMs for HTC partition (flag)
+    --slurm-no-start             Do not start Slurm cluster automatically (default: start cluster)
 
   Network Configuration:
     --network-address-space <cidr>  Virtual network CIDR (default: 10.0.0.0/24)
@@ -221,6 +222,7 @@ HTC_MAX_NODES=""
 HPC_MAX_NODES=""
 GPU_MAX_NODES=""
 HTC_USE_SPOT="false"
+SLURM_START_CLUSTER="true"
 OOD_ENABLED="false"
 OOD_SKU="Standard_D4as_v5"
 OOD_USER_DOMAIN=""
@@ -366,6 +368,10 @@ while [[ $# -gt 0 ]]; do
 		;;
 	--htc-use-spot)
 		HTC_USE_SPOT="true"
+		shift 1
+		;;
+	--slurm-no-start)
+		SLURM_START_CLUSTER="false"
 		shift 1
 		;;
 	--open-ondemand)
@@ -1073,7 +1079,7 @@ cat >"$OUTPUT_FILE" <<EOF
 		"storagePrivateDnsZone": { "value": { "type": "new" } },
 		${DB_JSON_DATABASE_CONFIG}
 		"acceptMarketplaceTerms": { "value": ${ACCEPT_MARKETPLACE} },
-		"slurmSettings": { "value": { "startCluster": true, "version": "${SLURM_VERSION}", "healthCheckEnabled": false } },
+		"slurmSettings": { "value": { "startCluster": ${SLURM_START_CLUSTER}, "version": "${SLURM_VERSION}", "healthCheckEnabled": false } },
 		"schedulerNode": { "value": { "sku": "${SCHEDULER_SKU}", "osImage": "cycle.image.ubuntu22" } },
 		"loginNodes": { "value": { "sku": "${LOGIN_SKU}", "osImage": "cycle.image.ubuntu22", "initialNodes": 1, "maxNodes": 1 } },
 		"htc": { "value": { "sku": "${HTC_SKU}", "maxNodes": ${HTC_MAX_NODES}, "osImage": "cycle.image.ubuntu22", "useSpot": ${HTC_USE_SPOT}${HTC_ZONES_JSON} } },
@@ -1112,6 +1118,7 @@ echo "Workspace Ref:          ${WORKSPACE_REF}"
 echo "Workspace Commit:       ${WORKSPACE_COMMIT:-<none>}"
 echo "Scheduler SKU:          ${SCHEDULER_SKU}"
 echo "Login SKU:              ${LOGIN_SKU}"
+echo "Slurm Start Cluster:    ${SLURM_START_CLUSTER}"
 echo "HTC SKU / AZ / Max:     ${HTC_SKU} / ${HTC_AZ:-<none>} / ${HTC_MAX_NODES}"
 echo "HTC Use Spot:           ${HTC_USE_SPOT}"
 echo "Open OnDemand Enabled:  ${OOD_ENABLED}"

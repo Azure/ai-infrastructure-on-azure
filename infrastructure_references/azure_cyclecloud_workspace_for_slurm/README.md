@@ -232,6 +232,12 @@ parameters:
   - Default: disabled (use regular on-demand VMs)
   - Provides cost savings with interruption tolerance
 
+- **`--slurm-no-start`**
+  - Do not start the Slurm cluster automatically after deployment
+  - Flag parameter (no value required)
+  - Default: cluster starts automatically
+  - Useful when you want to configure the cluster before starting it
+
 #### Network Configuration
 
 - **`--network-address-space <cidr>`** (default: `10.0.0.0/24`)
