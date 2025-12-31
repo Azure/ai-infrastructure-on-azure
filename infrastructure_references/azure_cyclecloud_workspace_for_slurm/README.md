@@ -121,7 +121,7 @@ region-level (non-zonal) placement. AMLFS will default to zone `1`.
   --hpc-sku Standard_HB176rs_v4 \
   --gpu-sku Standard_ND96amsr_A100_v4 \
   --anf-sku Premium --anf-size 2 \
-  --amlfs-sku AMLFS-Durable-Premium-500 --amlfs-size 4 \
+  --data-filesystem --amlfs-sku AMLFS-Durable-Premium-500 --amlfs-size 4 \
   --accept-marketplace \
   --deploy
 ```
@@ -177,26 +177,34 @@ parameters:
 
 #### Availability Zones
 
+- **`--no-az`**
+
+  - Explicitly disable availability zones for all resources (default behavior)
+  - When set, all availability zone configurations are omitted from deployment
+  - This is the default if neither `--no-az` nor `--specify-az` is provided
+
 - **`--specify-az`**
 
   - Enable interactive prompts for availability zones
   - Only prompts if the region supports zonal SKUs
-  - If omitted, deployment uses region-level (non-zonal) placement
+  - Mutually exclusive with `--no-az`
 
 - **`--htc-az <zone>`**
 
   - Explicitly set availability zone for HTC partition (e.g., `1`, `2`, `3`)
   - Suppresses interactive prompt for HTC partition
-  - Leave empty for non-zonal deployment
+  - Requires `--specify-az` to be set
 
 - **`--hpc-az <zone>`**
 
   - Explicitly set availability zone for HPC partition
   - Suppresses interactive prompt for HPC partition
+  - Requires `--specify-az` to be set
 
 - **`--gpu-az <zone>`**
   - Explicitly set availability zone for GPU partition
   - Suppresses interactive prompt for GPU partition
+  - Requires `--specify-az` to be set
 
 #### Compute Partition Configuration
 
@@ -261,11 +269,18 @@ All ANF parameters must be provided together to enable ANF storage:
 
 #### Azure Managed Lustre File System (AMLFS) Configuration
 
-All AMLFS parameters must be provided together to enable AMLFS storage:
+AMLFS provides an additional high-performance data filesystem. It is **disabled by default**.
+
+- **`--data-filesystem`**
+
+  - Enable Azure Managed Lustre data filesystem
+  - Flag parameter (no value required)
+  - Default: disabled
+  - When enabled, AMLFS will be deployed with the parameters below
 
 - **`--amlfs-sku <sku>`** (default: `AMLFS-Durable-Premium-500`)
 
-  - AMLFS SKU type
+  - AMLFS SKU type (only used when `--data-filesystem` is enabled)
   - Available options: `AMLFS-Durable-Premium-40`, `AMLFS-Durable-Premium-125`,
     `AMLFS-Durable-Premium-250`, `AMLFS-Durable-Premium-500`
   - Number indicates MB/s/TiB throughput
@@ -273,14 +288,13 @@ All AMLFS parameters must be provided together to enable AMLFS storage:
 
 - **`--amlfs-size <size_in_TiB>`** (default: `4`)
 
-  - File system size in TiB
+  - File system size in TiB (only used when `--data-filesystem` is enabled)
   - Must be an integer ≥ 4 TiB
   - Example: `8` for 8 TiB
 
 - **`--amlfs-az <zone>`**
-  - Availability zone for AMLFS deployment
-  - Should match compute partition zones for optimal latency
-  - Defaults to zone `1` if not specified and region supports zones
+  - Availability zone for AMLFS deployment (only used when `--data-filesystem` is enabled)
+  - Defaults to zone `1` if not specified
   - Example: `1`
 
 #### Database Configuration (Slurm Accounting)
@@ -579,13 +593,34 @@ SECURITY NOTES:
 
 ### 3.7. Non-Interactive Deployment
 
-To avoid interactive zone prompts entirely, omit `--specify-az` or specify them
-with the corresponding command line options:
+To avoid interactive zone prompts and deploy without availability zones (default behavior):
 
 ```bash
 ./scripts/deploy-ccws.sh --subscription-id <sub-id> --resource-group <rg> --location eastus \
   --ssh-public-key-file ~/.ssh/id_rsa.pub --admin-password 'YourP@ssw0rd!' \
-  --htc-sku Standard_F2s_v2 --hpc-sku Standard_HB176rs_v4 --gpu-sku Standard_ND96amsr_A100_v4 --deploy
+  --htc-sku Standard_F2s_v2 --hpc-sku Standard_HB176rs_v4 --gpu-sku Standard_ND96amsr_A100_v4 \
+  --deploy
+```
+
+To explicitly disable availability zones:
+
+```bash
+./scripts/deploy-ccws.sh --subscription-id <sub-id> --resource-group <rg> --location eastus \
+  --ssh-public-key-file ~/.ssh/id_rsa.pub --admin-password 'YourP@ssw0rd!' \
+  --htc-sku Standard_F2s_v2 --hpc-sku Standard_HB176rs_v4 --gpu-sku Standard_ND96amsr_A100_v4 \
+  --no-az \
+  --deploy
+```
+
+To specify zones via command line without prompts:
+
+```bash
+./scripts/deploy-ccws.sh --subscription-id <sub-id> --resource-group <rg> --location eastus \
+  --ssh-public-key-file ~/.ssh/id_rsa.pub --admin-password 'YourP@ssw0rd!' \
+  --htc-sku Standard_F2s_v2 --htc-az 1 --hpc-sku Standard_HB176rs_v4 --hpc-az 1 \
+  --gpu-sku Standard_ND96amsr_A100_v4 --gpu-az 1 \
+  --specify-az \
+  --deploy
 ```
 
 ### 3.8. Re-Running / Modifying

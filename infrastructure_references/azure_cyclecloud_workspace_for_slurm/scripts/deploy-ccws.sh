@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 set -euo pipefail
-
 ###############################################
 # Azure CycleCloud Workspace for Slurm Deployment Helper
 # Generates an output.json parameters file for Bicep deployment
@@ -51,6 +50,7 @@ OPTIONAL PARAMETERS:
     --output-file <path>         Output parameters file path (default: ${DEFAULT_OUTPUT_FILE})
 
   Availability Zones:
+    --no-az                      Disable availability zones entirely (default behavior)
     --specify-az                 Enable interactive AZ prompting (only if region has zonal SKUs)
     --htc-az <zone>              Explicit AZ for HTC partition (suppresses interactive prompt)
     --hpc-az <zone>              Explicit AZ for HPC partition (suppresses interactive prompt)
@@ -72,9 +72,10 @@ OPTIONAL PARAMETERS:
     --anf-az <zone>              Availability zone for ANF (optional; interactive if omitted)
 
   Storage - Azure Managed Lustre:
+    --data-filesystem            Enable Azure Managed Lustre data filesystem (disabled by default)
     --amlfs-sku <tier>           AMLFS tier: AMLFS-Durable-Premium-{40|125|250|500} (default: 500)
     --amlfs-size <TiB>           AMLFS capacity in TiB (integer, default: 4, minimum: 4)
-    --amlfs-az <zone>            Availability zone for AMLFS (defaults to 1 if region supports zones)
+    --amlfs-az <zone>            Availability zone for AMLFS (defaults to 1)
 
   Database Configuration (Slurm Accounting):
     Mode 1 - Auto-create MySQL Flexible Server:
@@ -150,7 +151,7 @@ EXAMPLES:
        --gpu-sku Standard_ND96amsr_A100_v4 --gpu-az 1 --gpu-max-nodes 20 \\
        --network-address-space 10.1.0.0/16 --bastion \\
        --anf-sku Premium --anf-size 4 --anf-az 1 \\
-       --amlfs-sku AMLFS-Durable-Premium-500 --amlfs-size 8 --amlfs-az 1 \\
+       --data-filesystem --amlfs-sku AMLFS-Durable-Premium-500 --amlfs-size 8 --amlfs-az 1 \\
        --create-accounting-mysql --db-name myccdb --db-user dbadmin --db-password 'DbP@ss!' \\
        --open-ondemand --ood-user-domain contoso.com --ood-fqdn ood.contoso.com \\
        --ood-auto-register --accept-marketplace --deploy
@@ -175,7 +176,7 @@ LOGIN_SKU="Standard_D2as_v5"
 HTC_SKU=""
 HPC_SKU=""
 GPU_SKU=""
-WORKSPACE_REF="${WORKSPACE_REF:-main}" # allow pre-set env var to override default
+WORKSPACE_REF="${WORKSPACE_REF:-2025.12.01}" # allow pre-set env var to override default
 WORKSPACE_COMMIT=""
 OUTPUT_FILE="${DEFAULT_OUTPUT_FILE}"
 WORKSPACE_DIR="${SCRIPT_DIR}/cyclecloud-slurm-workspace"
@@ -187,6 +188,8 @@ ANF_AZ=""
 AMLFS_SKU="AMLFS-Durable-Premium-500"
 AMLFS_SIZE="4"
 AMLFS_AZ=""
+DATA_FILESYSTEM_ENABLED="false"
+NO_AZ="true"
 SPECIFY_AZ="false"
 COMPUTE_SKUS_CACHE=""
 DB_NAME=""
@@ -317,6 +320,10 @@ while [[ $# -gt 0 ]]; do
 		NETWORK_BASTION="true"
 		shift 1
 		;;
+	--data-filesystem)
+		DATA_FILESYSTEM_ENABLED="true"
+		shift 1
+		;;
 	--htc-use-spot)
 		HTC_USE_SPOT="true"
 		shift 1
@@ -385,13 +392,14 @@ while [[ $# -gt 0 ]]; do
 		DB_GENERATE_NAME="true"
 		shift 1
 		;;
-	--specify-az)
-		SPECIFY_AZ="true"
+	--no-az)
+		NO_AZ="true"
+		SPECIFY_AZ="false"
 		shift 1
 		;;
-	--no-az)
-		echo "[WARN] --no-az deprecated; use --specify-az for prompting zones (invert semantics)." >&2
+	--specify-az)
 		SPECIFY_AZ="true"
+		NO_AZ="false"
 		shift 1
 		;;
 	--accept-marketplace)
@@ -606,16 +614,40 @@ load_compute_skus() {
 		exit 1
 	fi
 	echo "[INFO] Discovering VM SKUs and zones for region '${LOCATION}'..." >&2
+	
+	# Build JMESPath query to filter SKUs (only htc, hpc, gpu partitions)
+	local query_filter=""
+	local filter_parts=()
+	if [[ -n "$HTC_SKU" ]]; then filter_parts+=("name=='$HTC_SKU'"); fi
+	if [[ -n "$HPC_SKU" ]]; then filter_parts+=("name=='$HPC_SKU'"); fi
+	if [[ -n "$GPU_SKU" ]]; then filter_parts+=("name=='$GPU_SKU'"); fi
+	
+	if [[ ${#filter_parts[@]} -eq 0 ]]; then
+		echo "[DEBUG] No partition SKUs defined yet; loading all SKUs." >&2
+		query_filter="value[?locationInfo!=null]"
+	else
+		# Build OR condition by joining with ||
+		local condition=""
+		for part in "${filter_parts[@]}"; do
+			if [[ -z "$condition" ]]; then
+				condition="$part"
+			else
+				condition="$condition || $part"
+			fi
+		done
+		query_filter="value[?$condition]"
+		echo "[DEBUG] Loading only SKUs: HTC=$HTC_SKU, HPC=$HPC_SKU, GPU=$GPU_SKU" >&2
+	fi
 	local raw
-	if ! raw="$(az vm list-skus --location "${LOCATION}" --resource-type virtualMachines -o json 2>/dev/null)"; then
-		echo "[ERROR] az vm list-skus failed; zone discovery cannot proceed." >&2
+	if ! raw=$(az rest --method get --url "/subscriptions/{subscriptionId}/providers/Microsoft.Compute/skus?api-version=2021-07-01&\$filter=location eq '${LOCATION}'" --query "$query_filter" -o json 2>/dev/null); then
+		echo "[ERROR] az rest call to list SKUs failed; zone discovery cannot proceed." >&2
 		COMPUTE_SKUS_CACHE=""
 		return 1
 	fi
+
 	# Build mapping SKU:space_separated_zones (empty after colon if none)
 	COMPUTE_SKUS_CACHE="$(echo "$raw" | jq -r '
 		.[]
-		| select(.locationInfo!=null)
 		| . as $sku
 		| ($sku.locationInfo
 			| map(select(.zones!=null))
@@ -654,12 +686,14 @@ fetch_region_zones() {
 	line="$(echo "$COMPUTE_SKUS_CACHE" | grep -E "^${sku}:" || true)"
 	if [[ -z "$line" ]]; then
 		echo "[DEBUG] SKU '${sku}' not found in cached list (cache lines: $(echo "$COMPUTE_SKUS_CACHE" | wc -l | tr -d ' '))." >&2
-		exit 1
+		echo ""
+		return 0
 	fi
 	zones="${line#*:}"
 	if [[ -z "$zones" ]]; then
 		echo "[DEBUG] SKU '${sku}' found but zones list empty (non‑zonal SKU or discovery limitation)." >&2
-		exit 1
+		echo ""
+		return 0
 	fi
 	echo "[DEBUG] SKU '${sku}' zones resolved: ${zones}" >&2
 	echo "$zones"
@@ -668,9 +702,8 @@ fetch_region_zones() {
 # Determine if the current region appears to have any availability zone capable VM SKUs.
 # Returns 0 (success) if at least one SKU lists one or more zones; 1 otherwise.
 # Usage: if region_has_zone_support; then echo "Region supports AZ"; else echo "No AZ support"; fi
+# Assumes load_compute_skus has already been called when SPECIFY_AZ is true.
 region_has_zone_support() {
-	# Ensure cache is loaded (will handle missing az/jq gracefully).
-	load_compute_skus
 	if [[ -z "$COMPUTE_SKUS_CACHE" ]]; then
 		# No data -> assume no zone support (could also be tooling missing).
 		return 1
@@ -738,7 +771,10 @@ prompt_zone_manual() {
 	if [[ -n "$sel" ]]; then echo "$sel"; else echo ""; fi
 }
 
-load_compute_skus
+# Only load compute SKUs if we need zone discovery
+if [[ "$SPECIFY_AZ" == "true" ]]; then
+	load_compute_skus
+fi
 
 # Prompt for SKUs if missing
 if [[ -z "${HTC_SKU:-}" ]]; then
@@ -768,30 +804,32 @@ if ! validate_max_nodes "$GPU_MAX_NODES" "GPU"; then
 	prompt_for_max_nodes GPU_MAX_NODES "GPU"
 fi
 
-if [[ "$SPECIFY_AZ" == "true" ]]; then
-	if region_has_zone_support; then
-		POTENTIAL_HTC_AZ="$(fetch_region_zones "$HTC_SKU")"
-		POTENTIAL_HPC_AZ="$(fetch_region_zones "$HPC_SKU")"
-		POTENTIAL_GPU_AZ="$(fetch_region_zones "$GPU_SKU")"
+if [[ "$NO_AZ" == "true" ]]; then
+	echo "[INFO] --no-az specified; disabling all availability zones." >&2
+	HTC_AZ=""
+	HPC_AZ=""
+	GPU_AZ=""
+	ANF_AZ=""
+elif [[ "$SPECIFY_AZ" == "true" ]]; then
+	# User explicitly requested zone prompting - always prompt even if auto-discovery doesn't find zones
+	POTENTIAL_HTC_AZ="$(fetch_region_zones "$HTC_SKU")"
+	POTENTIAL_HPC_AZ="$(fetch_region_zones "$HPC_SKU")"
+	POTENTIAL_GPU_AZ="$(fetch_region_zones "$GPU_SKU")"
 
-		if [[ -n "$POTENTIAL_HTC_AZ" ]]; then echo "[INFO] HTC array $HTC_SKU available zones: $POTENTIAL_HTC_AZ" >&2; else echo "[INFO] $HTC_SKU has no zonal availability in region $LOCATION" >&2; fi
-		if [[ -n "$POTENTIAL_HPC_AZ" ]]; then echo "[INFO] HPC array $HPC_SKU available zones: $POTENTIAL_HPC_AZ" >&2; else echo "[INFO] $HPC_SKU has no zonal availability in region $LOCATION" >&2; fi
-		if [[ -n "$POTENTIAL_GPU_AZ" ]]; then echo "[INFO] GPU array $GPU_SKU available zones: $POTENTIAL_GPU_AZ" >&2; else echo "[INFO] $GPU_SKU has no zonal availability in region $LOCATION" >&2; fi
+	if [[ -n "$POTENTIAL_HTC_AZ" ]]; then echo "[INFO] HTC array $HTC_SKU available zones: $POTENTIAL_HTC_AZ" >&2; else echo "[INFO] $HTC_SKU has no zonal availability in region $LOCATION (manual entry allowed)" >&2; fi
+	if [[ -n "$POTENTIAL_HPC_AZ" ]]; then echo "[INFO] HPC array $HPC_SKU available zones: $POTENTIAL_HPC_AZ" >&2; else echo "[INFO] $HPC_SKU has no zonal availability in region $LOCATION (manual entry allowed)" >&2; fi
+	if [[ -n "$POTENTIAL_GPU_AZ" ]]; then echo "[INFO] GPU array $GPU_SKU available zones: $POTENTIAL_GPU_AZ" >&2; else echo "[INFO] $GPU_SKU has no zonal availability in region $LOCATION (manual entry allowed)" >&2; fi
 
-		# Only prompt for partitions where a zone wasn't provided on CLI
-		HTC_AZ="$(prompt_zone HTC "${HTC_SKU}" "${HTC_AZ:-}" "${POTENTIAL_HTC_AZ}")"
-		HPC_AZ="$(prompt_zone HPC "${HPC_SKU}" "${HPC_AZ:-}" "${POTENTIAL_HPC_AZ}")"
-		GPU_AZ="$(prompt_zone GPU "${GPU_SKU}" "${GPU_AZ:-}" "${POTENTIAL_GPU_AZ}")"
+	# Only prompt for partitions where a zone wasn't provided on CLI
+	HTC_AZ="$(prompt_zone HTC "${HTC_SKU}" "${HTC_AZ:-}" "${POTENTIAL_HTC_AZ}")"
+	HPC_AZ="$(prompt_zone HPC "${HPC_SKU}" "${HPC_AZ:-}" "${POTENTIAL_HPC_AZ}")"
+	GPU_AZ="$(prompt_zone GPU "${GPU_SKU}" "${GPU_AZ:-}" "${POTENTIAL_GPU_AZ}")"
 
-		ANF_AZ="$(prompt_zone_manual ANF "${ANF_AZ:-}")"
+	ANF_AZ="$(prompt_zone_manual ANF "${ANF_AZ:-}")"
+	
+	# Only prompt for AMLFS zone if data filesystem is enabled
+	if [[ "$DATA_FILESYSTEM_ENABLED" == "true" ]]; then
 		AMLFS_AZ="$(prompt_zone_manual AMLFS "${AMLFS_AZ:-}")"
-	else
-		echo "[INFO] Region $LOCATION appears to have no zone-capable VM SKUs (or discovery unavailable); skipping AZ prompts." >&2
-		HTC_AZ=""
-		HPC_AZ=""
-		GPU_AZ=""
-		ANF_AZ=""
-		AMLFS_AZ=""
 	fi
 else
 	# SPECIFY_AZ not true
@@ -808,23 +846,20 @@ else
 	fi
 fi
 
-# Default AMLFS zone to 1 if none provided
-if [[ -z "${AMLFS_AZ}" ]]; then
-	echo "[INFO] AMLFS zone not specified; defaulting to '1'." >&2
-	if region_has_zone_support; then
+# Default AMLFS zone to 1 if none provided (AMLFS requires a zone)
+if [[ "$DATA_FILESYSTEM_ENABLED" == "true" ]]; then
+	if [[ -z "${AMLFS_AZ}" ]]; then
+		echo "[INFO] AMLFS zone not specified; defaulting to '1'." >&2
 		AMLFS_AZ="1"
-	else
-		echo "[INFO] Region $LOCATION appears to have no zone-capable VM SKUs (or discovery unavailable); skipping AMLFS AZ default." >&2
-		AMLFS_AZ=""
 	fi
 fi
 
-# Prepare JSON fragments for optional availability zone (renamed to availabilityZone)
-if [[ -n "${HTC_AZ}" ]]; then HTC_ZONES_JSON="\"availabilityZone\": [\"${HTC_AZ}\"],"; else HTC_ZONES_JSON="\"availabilityZone\": [],"; fi
-if [[ -n "${HPC_AZ}" ]]; then HPC_ZONES_JSON="\"availabilityZone\": [\"${HPC_AZ}\"],"; else HPC_ZONES_JSON="\"availabilityZone\": [],"; fi
-if [[ -n "${GPU_AZ}" ]]; then GPU_ZONES_JSON="\"availabilityZone\": [\"${GPU_AZ}\"],"; else GPU_ZONES_JSON="\"availabilityZone\": [],"; fi
-if [[ -n "${ANF_AZ}" ]]; then ANF_ZONES_JSON="\"availabilityZone\": [\"${ANF_AZ}\"],"; else ANF_ZONES_JSON="\"availabilityZone\": [],"; fi
-if [[ -n "${AMLFS_AZ}" ]]; then AMLFS_ZONES_JSON="\"availabilityZone\": [\"${AMLFS_AZ}\"],"; else AMLFS_ZONES_JSON="\"availabilityZone\": [],"; fi
+# Prepare JSON fragments for optional availability zone (include leading comma when present)
+if [[ -n "${HTC_AZ}" ]]; then HTC_ZONES_JSON=", \"availabilityZone\": [\"${HTC_AZ}\"]"; else HTC_ZONES_JSON=""; fi
+if [[ -n "${HPC_AZ}" ]]; then HPC_ZONES_JSON=", \"availabilityZone\": [\"${HPC_AZ}\"]"; else HPC_ZONES_JSON=""; fi
+if [[ -n "${GPU_AZ}" ]]; then GPU_ZONES_JSON=", \"availabilityZone\": [\"${GPU_AZ}\"]"; else GPU_ZONES_JSON=""; fi
+if [[ -n "${ANF_AZ}" ]]; then ANF_ZONES_JSON=", \"availabilityZone\": [\"${ANF_AZ}\"]"; else ANF_ZONES_JSON=""; fi
+if [[ -n "${AMLFS_AZ}" ]]; then AMLFS_ZONES_JSON=", \"availabilityZone\": [\"${AMLFS_AZ}\"]"; else AMLFS_ZONES_JSON=""; fi
 
 # Validate ANF inputs
 if ! [[ "$ANF_SIZE" =~ ^[0-9]+$ ]]; then
@@ -843,22 +878,24 @@ Standard | Premium | Ultra) ;;
 	;;
 esac
 
-# Validate AMLFS inputs
-if ! [[ "$AMLFS_SIZE" =~ ^[0-9]+$ ]]; then
-	echo "[ERROR] --amlfs-size must be an integer (TiB). Provided: $AMLFS_SIZE" >&2
-	exit 1
+# Validate AMLFS inputs (only if data filesystem is enabled)
+if [[ "$DATA_FILESYSTEM_ENABLED" == "true" ]]; then
+	if ! [[ "$AMLFS_SIZE" =~ ^[0-9]+$ ]]; then
+		echo "[ERROR] --amlfs-size must be an integer (TiB). Provided: $AMLFS_SIZE" >&2
+		exit 1
+	fi
+	if ((AMLFS_SIZE < 4)); then
+		echo "[ERROR] --amlfs-size must be >= 4 TiB. Provided: $AMLFS_SIZE" >&2
+		exit 1
+	fi
+	case "$AMLFS_SKU" in
+	AMLFS-Durable-Premium-40 | AMLFS-Durable-Premium-125 | AMLFS-Durable-Premium-250 | AMLFS-Durable-Premium-500) ;;
+	*)
+		echo "[ERROR] --amlfs-sku must be one of AMLFS-Durable-Premium-40|AMLFS-Durable-Premium-125|AMLFS-Durable-Premium-250|AMLFS-Durable-Premium-500. Provided: $AMLFS_SKU" >&2
+		exit 1
+		;;
+	esac
 fi
-if ((AMLFS_SIZE < 4)); then
-	echo "[ERROR] --amlfs-size must be >= 4 TiB. Provided: $AMLFS_SIZE" >&2
-	exit 1
-fi
-case "$AMLFS_SKU" in
-AMLFS-Durable-Premium-40 | AMLFS-Durable-Premium-125 | AMLFS-Durable-Premium-250 | AMLFS-Durable-Premium-500) ;;
-*)
-	echo "[ERROR] --amlfs-sku must be one of AMLFS-Durable-Premium-40|AMLFS-Durable-Premium-125|AMLFS-Durable-Premium-250|AMLFS-Durable-Premium-500. Provided: $AMLFS_SKU" >&2
-	exit 1
-	;;
-esac
 
 # Validate Open OnDemand requirements
 if [[ "$OOD_ENABLED" == "true" ]]; then
@@ -906,7 +943,7 @@ fi
 
 pushd "$WORKSPACE_DIR" >/dev/null
 echo "[INFO] Checking out ref $WORKSPACE_REF"
-git fetch --all --tags
+git fetch --all --tags --force
 if [[ -n "$WORKSPACE_COMMIT" ]]; then
 	echo "[INFO] Workspace commit override specified: $WORKSPACE_COMMIT"
 	# Verify commit exists
@@ -946,6 +983,16 @@ else
 	OOD_JSON='"ood": { "value": { "type": "disabled" } },'
 fi
 
+# Construct AMLFS JSON fragment (conditional on enabled flag)
+if [[ "$DATA_FILESYSTEM_ENABLED" == "true" ]]; then
+	AMLFS_JSON='"additionalFilesystem": { "value": { "type": "aml-new", "lustreTier": "'"${AMLFS_SKU}"'", "lustreCapacityInTib": '${AMLFS_SIZE}', "mountPath": "/data"'"${AMLFS_ZONES_JSON}"' } },'
+else
+	AMLFS_JSON='"additionalFilesystem": { "value": { "type": "disabled" } },'
+fi
+
+# Retrieve Slurm default version from workspace UI definitions file
+SLURM_VERSION=$(jq -r '.. | objects | select(.name == "slurmVersion") | .defaultValue' "$WORKSPACE_DIR/uidefinitions/createUiDefinition.json")
+
 cat >"$OUTPUT_FILE" <<EOF
 {
 	"\$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
@@ -957,18 +1004,18 @@ cat >"$OUTPUT_FILE" <<EOF
 		"ccVMName": { "value": "ccw-cyclecloud-vm" },
 		"ccVMSize": { "value": "${SCHEDULER_SKU}" },
 		"resourceGroup": { "value": "${RESOURCE_GROUP}" },
-		"sharedFilesystem": { "value": { "type": "anf-new", "anfServiceTier": "${ANF_SKU}", "anfCapacityInTiB": ${ANF_SIZE}, ${ANF_ZONES_JSON%%,} } },
-		"additionalFilesystem": { "value": { "type": "aml-new", "lustreTier": "${AMLFS_SKU}", "lustreCapacityInTib": ${AMLFS_SIZE}, "mountPath": "/data", ${AMLFS_ZONES_JSON%%,} } },
+		"sharedFilesystem": { "value": { "type": "anf-new", "anfServiceTier": "${ANF_SKU}", "anfCapacityInTiB": ${ANF_SIZE}${ANF_ZONES_JSON} } },
+		${AMLFS_JSON}
 		"network": { "value": { "type": "new", "addressSpace": "${NETWORK_ADDRESS_SPACE}", "bastion": ${NETWORK_BASTION}, "createNatGateway": true } },
 		"storagePrivateDnsZone": { "value": { "type": "new" } },
 		${DB_JSON_DATABASE_CONFIG}
 		"acceptMarketplaceTerms": { "value": ${ACCEPT_MARKETPLACE} },
-		"slurmSettings": { "value": { "startCluster": true, "version": "24.05.4-2", "healthCheckEnabled": false } },
+		"slurmSettings": { "value": { "startCluster": true, "version": "${SLURM_VERSION}", "healthCheckEnabled": false } },
 		"schedulerNode": { "value": { "sku": "${SCHEDULER_SKU}", "osImage": "cycle.image.ubuntu22" } },
 		"loginNodes": { "value": { "sku": "${LOGIN_SKU}", "osImage": "cycle.image.ubuntu22", "initialNodes": 1, "maxNodes": 1 } },
-		"htc": { "value": { "sku": "${HTC_SKU}", "maxNodes": ${HTC_MAX_NODES}, "osImage": "cycle.image.ubuntu22", "useSpot": ${HTC_USE_SPOT}, ${HTC_ZONES_JSON%%,} } },
-		"hpc": { "value": { "sku": "${HPC_SKU}", "maxNodes": ${HPC_MAX_NODES}, "osImage": "cycle.image.ubuntu22", ${HPC_ZONES_JSON%%,} } },
-		"gpu": { "value": { "sku": "${GPU_SKU}", "maxNodes": ${GPU_MAX_NODES}, "osImage": "cycle.image.ubuntu22", ${GPU_ZONES_JSON%%,} } },
+		"htc": { "value": { "sku": "${HTC_SKU}", "maxNodes": ${HTC_MAX_NODES}, "osImage": "cycle.image.ubuntu22", "useSpot": ${HTC_USE_SPOT}${HTC_ZONES_JSON} } },
+		"hpc": { "value": { "sku": "${HPC_SKU}", "maxNodes": ${HPC_MAX_NODES}, "osImage": "cycle.image.ubuntu22"${HPC_ZONES_JSON} } },
+		"gpu": { "value": { "sku": "${GPU_SKU}", "maxNodes": ${GPU_MAX_NODES}, "osImage": "cycle.image.ubuntu22"${GPU_ZONES_JSON} } },
 		${OOD_JSON}
 		"tags": { "value": {} }
 	}
@@ -1012,7 +1059,10 @@ echo "OOD Managed Identity:   ${OOD_MANAGED_IDENTITY_ID:-<none>}"
 echo "HPC SKU / AZ / Max:     ${HPC_SKU} / ${HPC_AZ:-<none>} / ${HPC_MAX_NODES}"
 echo "GPU SKU / AZ / Max:     ${GPU_SKU} / ${GPU_AZ:-<none>} / ${GPU_MAX_NODES}"
 echo "ANF Tier / Size / AZ:   ${ANF_SKU} / ${ANF_SIZE} / ${ANF_AZ:-<none>}"
-echo "AMLFS Tier / Size / AZ: ${AMLFS_SKU} / ${AMLFS_SIZE} / ${AMLFS_AZ:-<none>}"
+echo "Data Filesystem:        ${DATA_FILESYSTEM_ENABLED}"
+if [[ "$DATA_FILESYSTEM_ENABLED" == "true" ]]; then
+	echo "AMLFS Tier / Size / AZ: ${AMLFS_SKU} / ${AMLFS_SIZE} / ${AMLFS_AZ:-<none>}"
+fi
 echo "Accept Marketplace:     ${ACCEPT_MARKETPLACE}"
 echo "Network Address Space:  ${NETWORK_ADDRESS_SPACE}"
 echo "Bastion Enabled:        ${NETWORK_BASTION}"
