@@ -77,6 +77,11 @@ OPTIONAL PARAMETERS:
     --amlfs-size <TiB>           AMLFS capacity in TiB (integer, default: 4, minimum: 4)
     --amlfs-az <zone>            Availability zone for AMLFS (defaults to 1)
 
+  Monitoring:
+    --monitoring                 Enable monitoring (disabled by default)
+    --mon-ingestion-endpoint <endpoint>  Monitoring ingestion endpoint (required with --monitoring)
+    --mon-dcr-id <dcr-id>        Data Collection Rule ID (required with --monitoring)
+
   Database Configuration (Slurm Accounting):
     Mode 1 - Auto-create MySQL Flexible Server:
       --create-accounting-mysql  Auto-create MySQL server (requires --db-name, --db-user, --db-password)
@@ -189,6 +194,9 @@ AMLFS_SKU="AMLFS-Durable-Premium-500"
 AMLFS_SIZE="4"
 AMLFS_AZ=""
 DATA_FILESYSTEM_ENABLED="false"
+MONITORING_ENABLED="false"
+MON_INGESTION_ENDPOINT=""
+MON_DCR_ID=""
 NO_AZ="true"
 SPECIFY_AZ="false"
 COMPUTE_SKUS_CACHE=""
@@ -323,6 +331,18 @@ while [[ $# -gt 0 ]]; do
 	--data-filesystem)
 		DATA_FILESYSTEM_ENABLED="true"
 		shift 1
+		;;
+	--monitoring)
+		MONITORING_ENABLED="true"
+		shift 1
+		;;
+	--mon-ingestion-endpoint)
+		MON_INGESTION_ENDPOINT="$2"
+		shift 2
+		;;
+	--mon-dcr-id)
+		MON_DCR_ID="$2"
+		shift 2
 		;;
 	--htc-use-spot)
 		HTC_USE_SPOT="true"
@@ -771,6 +791,18 @@ prompt_zone_manual() {
 	if [[ -n "$sel" ]]; then echo "$sel"; else echo ""; fi
 }
 
+# Validate monitoring requirements early (before AZ checks)
+if [[ "$MONITORING_ENABLED" == "true" ]]; then
+	if [[ -z "$MON_INGESTION_ENDPOINT" ]]; then
+		echo "[ERROR] --monitoring requires --mon-ingestion-endpoint to be specified." >&2
+		exit 1
+	fi
+	if [[ -z "$MON_DCR_ID" ]]; then
+		echo "[ERROR] --monitoring requires --mon-dcr-id to be specified." >&2
+		exit 1
+	fi
+fi
+
 # Only load compute SKUs if we need zone discovery
 if [[ "$SPECIFY_AZ" == "true" ]]; then
 	load_compute_skus
@@ -990,6 +1022,13 @@ else
 	AMLFS_JSON='"additionalFilesystem": { "value": { "type": "disabled" } },'
 fi
 
+# Construct monitoring JSON fragment (conditional on enabled flag)
+if [[ "$MONITORING_ENABLED" == "true" ]]; then
+	MONITORING_JSON='"monitoring": { "value": { "type": "enabled", "ingestionEndpoint": "'"${MON_INGESTION_ENDPOINT}"'", "dcrId": "'"${MON_DCR_ID}"'" } },'
+else
+	MONITORING_JSON='"monitoring": { "value": { "type": "disabled" } },'
+fi
+
 # Retrieve Slurm default version from workspace UI definitions file
 SLURM_VERSION=$(jq -r '.. | objects | select(.name == "slurmVersion") | .defaultValue' "$WORKSPACE_DIR/uidefinitions/createUiDefinition.json")
 
@@ -1017,6 +1056,7 @@ cat >"$OUTPUT_FILE" <<EOF
 		"hpc": { "value": { "sku": "${HPC_SKU}", "maxNodes": ${HPC_MAX_NODES}, "osImage": "cycle.image.ubuntu22"${HPC_ZONES_JSON} } },
 		"gpu": { "value": { "sku": "${GPU_SKU}", "maxNodes": ${GPU_MAX_NODES}, "osImage": "cycle.image.ubuntu22"${GPU_ZONES_JSON} } },
 		${OOD_JSON}
+		${MONITORING_JSON}
 		"tags": { "value": {} }
 	}
 }
@@ -1062,6 +1102,11 @@ echo "ANF Tier / Size / AZ:   ${ANF_SKU} / ${ANF_SIZE} / ${ANF_AZ:-<none>}"
 echo "Data Filesystem:        ${DATA_FILESYSTEM_ENABLED}"
 if [[ "$DATA_FILESYSTEM_ENABLED" == "true" ]]; then
 	echo "AMLFS Tier / Size / AZ: ${AMLFS_SKU} / ${AMLFS_SIZE} / ${AMLFS_AZ:-<none>}"
+fi
+echo "Monitoring Enabled:     ${MONITORING_ENABLED}"
+if [[ "$MONITORING_ENABLED" == "true" ]]; then
+	echo "Mon Ingestion Endpoint: ${MON_INGESTION_ENDPOINT}"
+	echo "Mon DCR ID:             ${MON_DCR_ID}"
 fi
 echo "Accept Marketplace:     ${ACCEPT_MARKETPLACE}"
 echo "Network Address Space:  ${NETWORK_ADDRESS_SPACE}"

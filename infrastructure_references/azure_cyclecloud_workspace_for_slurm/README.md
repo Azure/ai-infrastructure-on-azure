@@ -297,6 +297,24 @@ AMLFS provides an additional high-performance data filesystem. It is **disabled 
   - Defaults to zone `1` if not specified
   - Example: `1`
 
+#### Monitoring Configuration
+
+- **`--monitoring`**
+  - Enable monitoring for the cluster
+  - Flag parameter (no value required)
+  - Default: disabled
+  - When enabled, requires `--mon-ingestion-endpoint` and `--mon-dcr-id`
+
+- **`--mon-ingestion-endpoint <endpoint>`**
+  - Monitoring ingestion endpoint URL
+  - Required when `--monitoring` is enabled
+  - Example: `https://your-monitor-xxxxx.region-1.metrics.ingest.monitor.azure.com/dataCollectionRules/dcr-xxxxx/streams/Microsoft-PrometheusMetrics/api/v1/write?api-version=2023-04-24`
+
+- **`--mon-dcr-id <dcr-id>`**
+  - Data Collection Rule resource ID
+  - Required when `--monitoring` is enabled
+  - Format: `/subscriptions/<sub-id>/resourceGroups/<rg-name>/providers/Microsoft.Insights/dataCollectionRules/<dcr-name>`
+
 #### Database Configuration (Slurm Accounting)
 
 The script supports two modes for database configuration:
@@ -450,6 +468,9 @@ If none of the database flags are provided, `databaseConfig` defaults to:
   --amlfs-sku AMLFS-Durable-Premium-500 \
   --amlfs-size 8 \
   --amlfs-az 1 \
+  --monitoring \
+  --mon-ingestion-endpoint https://ccw-mon-xxxxx.swedencentral-1.metrics.ingest.monitor.azure.com/dataCollectionRules/dcr-xxxxx/streams/Microsoft-PrometheusMetrics/api/v1/write?api-version=2023-04-24 \
+  --mon-dcr-id /subscriptions/12345678/resourceGroups/myRG/providers/Microsoft.Insights/dataCollectionRules/myDCR \
   --create-accounting-mysql \
   --db-name myccdb \
   --db-user dbadmin \
