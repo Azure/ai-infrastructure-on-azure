@@ -107,12 +107,10 @@ OPTIONAL PARAMETERS:
 
   Open OnDemand Portal:
     --open-ondemand              Enable Open OnDemand web portal (flag)
+                                 Requires --entra-id to be enabled
     --ood-sku <sku>              OOD VM SKU (default: Standard_D4as_v5)
     --ood-user-domain <domain>   User domain for OOD authentication (required with --open-ondemand)
     --ood-fqdn <fqdn>            Fully Qualified Domain Name for OOD (optional)
-    --ood-auto-register          Auto-register new Entra ID application (flag)
-    --ood-app-id <appId>         Existing Entra ID app ID (when not auto-registering)
-    --ood-managed-identity-id <id>  Existing managed identity resource ID (when not auto-registering)
 
   Deployment Control:
     --accept-marketplace         Accept marketplace terms automatically
@@ -167,7 +165,7 @@ EXAMPLES:
        --data-filesystem --amlfs-sku AMLFS-Durable-Premium-500 --amlfs-size 8 --amlfs-az 1 \\
        --create-accounting-mysql --db-name myccdb --db-user dbadmin --db-password 'DbP@ss!' \\
        --open-ondemand --ood-user-domain contoso.com --ood-fqdn ood.contoso.com \\
-       --ood-auto-register --accept-marketplace --deploy
+       --accept-marketplace --deploy
 
   With existing database and custom workspace commit:
     $0 --subscription-id SUB --resource-group rg-ccw --location eastus \\
@@ -226,9 +224,6 @@ OOD_ENABLED="false"
 OOD_SKU="Standard_D4as_v5"
 OOD_USER_DOMAIN=""
 OOD_FQDN=""
-OOD_AUTO_REGISTER="false"
-OOD_APP_ID=""
-OOD_MANAGED_IDENTITY_ID=""
 CREATE_ACCOUNTING_MYSQL="false"
 DB_GENERATE_NAME="false"
 
@@ -385,18 +380,6 @@ while [[ $# -gt 0 ]]; do
 		;;
 	--ood-fqdn)
 		OOD_FQDN="$2"
-		shift 2
-		;;
-	--ood-auto-register)
-		OOD_AUTO_REGISTER="true"
-		shift 1
-		;;
-	--ood-app-id)
-		OOD_APP_ID="$2"
-		shift 2
-		;;
-	--ood-managed-identity-id)
-		OOD_MANAGED_IDENTITY_ID="$2"
 		shift 2
 		;;
 	--htc-max-nodes)
@@ -836,6 +819,39 @@ if [[ "$ENTRA_ID_ENABLED" == "true" ]]; then
 		echo "[ERROR] --entra-id requires --entra-app-id to be specified." >&2
 		exit 1
 	fi
+	# Get tenant ID from active subscription (used for both Entra ID and OOD)
+	TENANT_ID=$(az account show --query tenantId -o tsv 2>/dev/null || echo "")
+	if [[ -z "$TENANT_ID" ]]; then
+		echo "[ERROR] Unable to retrieve tenant ID from active subscription." >&2
+		exit 1
+	fi
+	echo "[INFO] Retrieved tenant ID: ${TENANT_ID}" >&2
+fi
+
+# Validate Open OnDemand requirements early (before AZ checks)
+if [[ "$OOD_ENABLED" == "true" ]]; then
+	if [[ "$ENTRA_ID_ENABLED" != "true" ]]; then
+		echo "[ERROR] --open-ondemand requires --entra-id to be enabled." >&2
+		exit 1
+	fi
+	if [[ -z "$OOD_USER_DOMAIN" ]]; then
+		echo "[ERROR] --open-ondemand requires --ood-user-domain to be specified." >&2
+		exit 1
+	fi
+	if [[ -z "$OOD_SKU" ]]; then
+		echo "[ERROR] --ood-sku may not be empty when Open OnDemand is enabled." >&2
+		exit 1
+	fi
+	# Basic FQDN validation (optional): if provided, must contain at least one dot and no spaces
+	if [[ -n "$OOD_FQDN" ]]; then
+		if [[ "$OOD_FQDN" =~ [[:space:]] ]]; then
+			echo "[ERROR] --ood-fqdn may not contain whitespace. Provided: $OOD_FQDN" >&2
+			exit 1
+		fi
+		if [[ ! "$OOD_FQDN" =~ \. ]]; then
+			echo "[WARN] --ood-fqdn '$OOD_FQDN' does not appear to be a FQDN (missing dot). Proceeding anyway." >&2
+		fi
+	fi
 fi
 
 # Only load compute SKUs if we need zone discovery
@@ -964,42 +980,6 @@ if [[ "$DATA_FILESYSTEM_ENABLED" == "true" ]]; then
 	esac
 fi
 
-# Validate Open OnDemand requirements
-if [[ "$OOD_ENABLED" == "true" ]]; then
-	if [[ -z "$OOD_USER_DOMAIN" ]]; then
-		echo "[ERROR] --open-ondemand requires --ood-user-domain to be specified." >&2
-		exit 1
-	fi
-	if [[ -z "$OOD_SKU" ]]; then
-		echo "[ERROR] --ood-sku may not be empty when Open OnDemand is enabled." >&2
-		exit 1
-	fi
-	# Basic FQDN validation (optional): if provided, must contain at least one dot and no spaces
-	if [[ -n "$OOD_FQDN" ]]; then
-		if [[ "$OOD_FQDN" =~ [[:space:]] ]]; then
-			echo "[ERROR] --ood-fqdn may not contain whitespace. Provided: $OOD_FQDN" >&2
-			exit 1
-		fi
-		if [[ ! "$OOD_FQDN" =~ \. ]]; then
-			echo "[WARN] --ood-fqdn '$OOD_FQDN' does not appear to be a FQDN (missing dot). Proceeding anyway." >&2
-		fi
-	fi
-	if [[ "$OOD_AUTO_REGISTER" == "true" ]]; then
-		if [[ -n "$OOD_APP_ID" || -n "$OOD_MANAGED_IDENTITY_ID" ]]; then
-			echo "[WARN] --ood-app-id / --ood-managed-identity-id provided but --ood-auto-register set; IDs will be ignored and a new Entra ID app will be registered." >&2
-		fi
-	else
-		if [[ -z "$OOD_APP_ID" || -z "$OOD_MANAGED_IDENTITY_ID" ]]; then
-			echo "[ERROR] Manual registration mode requires --ood-app-id and --ood-managed-identity-id (omit --ood-auto-register)." >&2
-			exit 1
-		fi
-	fi
-else
-	if [[ -n "$OOD_FQDN" ]]; then
-		echo "[WARN] --ood-fqdn provided but Open OnDemand not enabled; value will be ignored." >&2
-	fi
-fi
-
 # Clone workspace repo if not present
 if [[ -d "$WORKSPACE_DIR/.git" ]]; then
 	echo "[INFO] Workspace repo already present at $WORKSPACE_DIR"
@@ -1041,11 +1021,7 @@ fi
 
 # Construct Open OnDemand JSON fragment (minimal when disabled)
 if [[ "$OOD_ENABLED" == "true" ]]; then
-	if [[ "$OOD_AUTO_REGISTER" == "true" ]]; then
-		OOD_JSON='"ood": { "value": { "type": "enabled", "startCluster": true, "sku": "'"${OOD_SKU}"'", "osImage": "cycle.image.ubuntu22", "userDomain": "'"${OOD_USER_DOMAIN}"'", "fqdn": "'"${OOD_FQDN}"'", "registerEntraIDApp": true, "appId": "", "appManagedIdentityId": "" } },'
-	else
-		OOD_JSON='"ood": { "value": { "type": "enabled", "startCluster": true, "sku": "'"${OOD_SKU}"'", "osImage": "cycle.image.ubuntu22", "userDomain": "'"${OOD_USER_DOMAIN}"'", "fqdn": "'"${OOD_FQDN}"'", "registerEntraIDApp": false, "appId": "'"${OOD_APP_ID}"'", "appManagedIdentityId": "'"${OOD_MANAGED_IDENTITY_ID}"'" } },'
-	fi
+	OOD_JSON='"ood": { "value": { "type": "enabled", "startCluster": true, "sku": "'"${OOD_SKU}"'", "osImage": "cycle.image.ubuntu22", "userDomain": "'"${OOD_USER_DOMAIN}"'", "fqdn": "'"${OOD_FQDN}"'", "registerEntraIDApp": false, "appId": "'"${ENTRA_APP_ID}"'", "appManagedIdentityId": "'"${ENTRA_APP_UMI}"'", "appTenantId": "'"${TENANT_ID}"'" } },'
 else
 	OOD_JSON='"ood": { "value": { "type": "disabled" } },'
 fi
@@ -1066,12 +1042,6 @@ fi
 
 # Construct Entra SSO JSON fragment (conditional on enabled flag)
 if [[ "$ENTRA_ID_ENABLED" == "true" ]]; then
-	# Get tenant ID from active subscription
-	TENANT_ID=$(az account show --query tenantId -o tsv 2>/dev/null || echo "")
-	if [[ -z "$TENANT_ID" ]]; then
-		echo "[ERROR] Unable to retrieve tenant ID from active subscription." >&2
-		exit 1
-	fi
 	ENTRA_ID_JSON='"entraIdInfo": { "value": { "type": "enabled", "managedIdentityId": "'"${ENTRA_APP_UMI}"'", "clientId": "'"${ENTRA_APP_ID}"'", "tenantId": "'"${TENANT_ID}"'" } },'
 else
 	ENTRA_ID_JSON='"entraIdInfo": { "value": { "type": "disabled" } },'
@@ -1142,9 +1112,6 @@ echo "Open OnDemand Enabled:  ${OOD_ENABLED}"
 echo "Open OnDemand SKU:      ${OOD_SKU}"
 echo "Open OnDemand Domain:   ${OOD_USER_DOMAIN:-<none>}"
 echo "Open OnDemand FQDN:     ${OOD_FQDN:-<none>}"
-echo "OOD Auto Register:      ${OOD_AUTO_REGISTER}"
-echo "OOD App ID:             ${OOD_APP_ID:-<none>}"
-echo "OOD Managed Identity:   ${OOD_MANAGED_IDENTITY_ID:-<none>}"
 echo "HPC SKU / AZ / Max:     ${HPC_SKU} / ${HPC_AZ:-<none>} / ${HPC_MAX_NODES}"
 echo "GPU SKU / AZ / Max:     ${GPU_SKU} / ${GPU_AZ:-<none>} / ${GPU_MAX_NODES}"
 echo "ANF Tier / Size / AZ:   ${ANF_SKU} / ${ANF_SIZE} / ${ANF_AZ:-<none>}"

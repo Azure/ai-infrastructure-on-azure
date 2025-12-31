@@ -397,6 +397,7 @@ If none of the database flags are provided, `databaseConfig` defaults to:
   - Enable Open OnDemand web portal deployment
   - Flag parameter (no value required)
   - Default: disabled
+  - **Requires `--entra-id` to be enabled**
   - Requires `--ood-user-domain` when enabled
 
 - **`--ood-sku <sku>`** (default: `Standard_D4as_v5`)
@@ -417,26 +418,7 @@ If none of the database flags are provided, `databaseConfig` defaults to:
   - Only included in parameters when `--open-ondemand` is enabled
   - Must contain at least one dot and no spaces if provided
   - Example: `ood.contoso.com`
-
-- **`--ood-auto-register`**
-
-  - Automatically register a new Entra ID application for Open OnDemand
-  - Flag parameter (no value required)
-  - Default: manual registration (requires `--ood-app-id` and
-    `--ood-managed-identity-id`)
-
-- **`--ood-app-id <app_id>`**
-
-  - Existing Entra ID Application (client) ID
-  - Required when NOT using `--ood-auto-register`
-  - Used for Open OnDemand authentication
-  - Example: `12345678-1234-1234-1234-123456789abc`
-
-- **`--ood-managed-identity-id <resource_id>`**
-  - Existing User Assigned Managed Identity resource ID
-  - Required when NOT using `--ood-auto-register`
-  - Format:
-    `/subscriptions/<sub-id>/resourceGroups/<rg-name>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/<identity-name>`
+  - Note: The Entra ID Application (client) ID is automatically taken from `--entra-app-id` and the User Managed Identity is taken from `--entra-app-umi`
 
 #### Deployment Control
 
@@ -502,7 +484,7 @@ If none of the database flags are provided, `databaseConfig` defaults to:
   --ood-sku Standard_D8as_v5 \
   --ood-user-domain contoso.com \
   --ood-fqdn ood.contoso.com \
-  --ood-auto-register \
+
   --workspace-ref main \
   --workspace-commit a1b2c3d4 \
   --output-file my-deployment-params.json \
