@@ -395,10 +395,12 @@ while [[ $# -gt 0 ]]; do
 		;;
 	--no-az)
 		NO_AZ="true"
+		SPECIFY_AZ="false"
 		shift 1
 		;;
 	--specify-az)
 		SPECIFY_AZ="true"
+		NO_AZ="false"
 		shift 1
 		;;
 	--accept-marketplace)
@@ -678,12 +680,14 @@ fetch_region_zones() {
 	line="$(echo "$COMPUTE_SKUS_CACHE" | grep -E "^${sku}:" || true)"
 	if [[ -z "$line" ]]; then
 		echo "[DEBUG] SKU '${sku}' not found in cached list (cache lines: $(echo "$COMPUTE_SKUS_CACHE" | wc -l | tr -d ' '))." >&2
-		exit 1
+		echo ""
+		return 0
 	fi
 	zones="${line#*:}"
 	if [[ -z "$zones" ]]; then
 		echo "[DEBUG] SKU '${sku}' found but zones list empty (non‑zonal SKU or discovery limitation)." >&2
-		exit 1
+		echo ""
+		return 0
 	fi
 	echo "[DEBUG] SKU '${sku}' zones resolved: ${zones}" >&2
 	echo "$zones"
@@ -692,9 +696,8 @@ fetch_region_zones() {
 # Determine if the current region appears to have any availability zone capable VM SKUs.
 # Returns 0 (success) if at least one SKU lists one or more zones; 1 otherwise.
 # Usage: if region_has_zone_support; then echo "Region supports AZ"; else echo "No AZ support"; fi
+# Assumes load_compute_skus has already been called when SPECIFY_AZ is true.
 region_has_zone_support() {
-	# Ensure cache is loaded (will handle missing az/jq gracefully).
-	load_compute_skus
 	if [[ -z "$COMPUTE_SKUS_CACHE" ]]; then
 		# No data -> assume no zone support (could also be tooling missing).
 		return 1
