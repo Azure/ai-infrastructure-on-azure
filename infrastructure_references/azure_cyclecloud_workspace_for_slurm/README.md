@@ -488,10 +488,10 @@ If none of the database flags are provided, `databaseConfig` defaults to:
   --amlfs-size 8 \
   --amlfs-az 1 \
   --monitoring \
-  --mon-ingestion-endpoint https://ccw-mon-xxxxx.swedencentral-1.metrics.ingest.monitor.azure.com/dataCollectionRules/dcr-xxxxx/streams/Microsoft-PrometheusMetrics/api/v1/write?api-version=2023-04-24 \
-  --mon-dcr-id /subscriptions/12345678/resourceGroups/myRG/providers/Microsoft.Insights/dataCollectionRules/myDCR \
+  --mon-ingestion-endpoint "https://ccw-mon-xxxxx.swedencentral-1.metrics.ingest.monitor.azure.com/dataCollectionRules/dcr-xxxxx/streams/Microsoft-PrometheusMetrics/api/v1/write?api-version=2023-04-24" \
+  --mon-dcr-id "/subscriptions/12345678/resourceGroups/myRG/providers/Microsoft.Insights/dataCollectionRules/myDCR" \
   --entra-id \
-  --entra-app-umi /subscriptions/12345678/resourceGroups/myRG/providers/Microsoft.ManagedIdentity/userAssignedIdentities/myIdentity \
+  --entra-app-umi "/subscriptions/12345678/resourceGroups/myRG/providers/Microsoft.ManagedIdentity/userAssignedIdentities/myIdentity" \
   --entra-app-id 12345678-1234-1234-1234-123456789abc \
   --create-accounting-mysql \
   --db-name myccdb \
@@ -554,20 +554,24 @@ OPTIONAL PARAMETERS:
   --login-sku              Login node VM SKU (default: Standard_D2as_v5)
 
   # Workspace Repository
-  --workspace-ref <ref>    Git ref (branch/tag) to checkout (default: main)
+  --workspace-ref <ref>    Git ref (branch/tag) to checkout (default: 2025.12.01)
   --workspace-commit <sha> Explicit commit (detached HEAD override)
   --workspace-dir <path>   Clone destination (default: ./cyclecloud-slurm-workspace under script dir)
   --output-file <path>     Output parameters file path (default: output.json in script dir)
 
   # Availability Zones
+  --no-az                  Disable availability zones entirely (default behavior)
   --specify-az             Enable interactive AZ prompting (only if region has zonal SKUs)
-  --htc-az / --hpc-az / --gpu-az  Explicit AZ override; suppresses interactive prompt
+  --htc-az <zone>          Explicit AZ for HTC partition (suppresses interactive prompt)
+  --hpc-az <zone>          Explicit AZ for HPC partition (suppresses interactive prompt)
+  --gpu-az <zone>          Explicit AZ for GPU partition (suppresses interactive prompt)
 
   # Compute Partitions
   --htc-max-nodes <count>  Maximum nodes for HTC partition (interactive if omitted)
   --hpc-max-nodes <count>  Maximum nodes for HPC partition (interactive if omitted)
   --gpu-max-nodes <count>  Maximum nodes for GPU partition (interactive if omitted)
   --htc-use-spot           Use Spot (preemptible) VMs for HTC partition (flag)
+  --slurm-no-start         Do not start Slurm cluster automatically (default: start cluster)
 
   # Network Configuration
   --network-address-space <cidr>  Virtual network CIDR (default: 10.0.0.0/24)
@@ -575,13 +579,27 @@ OPTIONAL PARAMETERS:
 
   # Storage - Azure NetApp Files
   --anf-sku <tier>         NetApp Files service level: Standard|Premium|Ultra (default: Premium)
-  --anf-size <TiB>         NetApp Files capacity in TiB (default: 2)
+  --anf-size <TiB>         NetApp Files capacity in TiB (default: 2, minimum: 1)
   --anf-az <zone>          Availability zone for ANF (optional; interactive if omitted)
 
   # Storage - Azure Managed Lustre
+  --data-filesystem        Enable Azure Managed Lustre data filesystem (disabled by default)
   --amlfs-sku <tier>       Lustre tier: AMLFS-Durable-Premium-{40|125|250|500} (default: 500)
-  --amlfs-size <TiB>       Lustre capacity in TiB (default: 4)
-  --amlfs-az <zone>        Availability zone for AMLFS (optional; defaults to 1 if region supports zones)
+  --amlfs-size <TiB>       Lustre capacity in TiB (default: 4, minimum: 4)
+  --amlfs-az <zone>        Availability zone for AMLFS (defaults to 1)
+
+  # Monitoring
+  --monitoring             Enable monitoring (disabled by default)
+  --mon-ingestion-endpoint <endpoint>  Monitoring ingestion endpoint (required with --monitoring)
+  --mon-dcr-id <dcr-id>    Data Collection Rule ID (required with --monitoring)
+
+  # Microsoft Entra ID
+  --entra-id               Enable Microsoft Entra ID (disabled by default)
+  --entra-app-umi <umi-id> User Managed Identity resource ID used in federated credentials 
+                           of the registered Entra ID application for user authentication 
+                           (required with --entra-id)
+  --entra-app-id <app-id>  Application (client) ID of the registered Entra ID application 
+                           used to authenticate users (required with --entra-id)
 
   # Database Configuration (Slurm Accounting)
   --create-accounting-mysql    Auto-create MySQL Flexible Server (requires --db-name, --db-user, --db-password)
@@ -589,16 +607,17 @@ OPTIONAL PARAMETERS:
   --db-name <name>             MySQL server name
   --db-user <username>         Database admin username
   --db-password <password>     Database admin password
-  --db-id <resourceId>         Existing MySQL server resource ID (for existing server mode)
+  --db-id <resourceId>         Full Azure resource ID of existing MySQL server
+                               (all four parameters required together for existing server mode)
 
   # Open OnDemand Portal
-  --open-ondemand              Enable Open OnDemand web portal (flag)
-  --ood-sku <sku>              Open OnDemand VM SKU (default: Standard_D4as_v5)
+  --open-ondemand          Enable Open OnDemand web portal (flag, requires --entra-id to be enabled)
+  --ood-sku <sku>          Open OnDemand VM SKU (default: Standard_D4as_v5)
   --ood-user-domain <domain>   User domain for OOD authentication (required with --open-ondemand)
-  --ood-fqdn <fqdn>            Fully Qualified Domain Name for OOD (optional)
-  --ood-auto-register          Auto-register new Entra ID application (flag)
-  --ood-app-id <appId>         Existing Entra ID app ID (when not auto-registering)
-  --ood-managed-identity-id <id>  Existing managed identity resource ID (when not auto-registering)
+  --ood-fqdn <fqdn>        Fully Qualified Domain Name for OOD (optional)
+  --ood-no-start           Do not start OOD cluster automatically (default: start cluster)
+                           Note: App ID, Managed Identity, and Tenant ID are automatically 
+                           taken from --entra-app-id, --entra-app-umi, and active subscription
 
   # Deployment Control
   --accept-marketplace     Accept marketplace terms automatically
@@ -632,6 +651,40 @@ SECURITY NOTES:
   * Avoid committing generated output.json containing passwords.
   * Prefer environment variables for sensitive values.
   * Admin and database passwords must be passed via CLI during deployment.
+
+EXAMPLES:
+  # Basic deployment with interactive zone prompts
+  deploy-ccws.sh --subscription-id SUB --resource-group rg-ccw --location eastus \
+    --ssh-public-key-file ~/.ssh/id_rsa.pub --admin-password 'YourP@ssw0rd!' \
+    --htc-sku Standard_F2s_v2 --hpc-sku Standard_HB176rs_v4 \
+    --gpu-sku Standard_ND96amsr_A100_v4 --specify-az
+
+  # Full deployment with all features
+  deploy-ccws.sh --subscription-id SUB --resource-group rg-ccw --location eastus \
+    --ssh-public-key-file ~/.ssh/id_rsa.pub --admin-password 'YourP@ssw0rd!' \
+    --htc-sku Standard_F2s_v2 --htc-az 1 --htc-max-nodes 100 --htc-use-spot \
+    --hpc-sku Standard_HB176rs_v4 --hpc-az 1 --hpc-max-nodes 50 \
+    --gpu-sku Standard_ND96amsr_A100_v4 --gpu-az 1 --gpu-max-nodes 20 \
+    --network-address-space 10.1.0.0/16 --bastion \
+    --anf-sku Premium --anf-size 4 --anf-az 1 \
+    --data-filesystem --amlfs-sku AMLFS-Durable-Premium-500 --amlfs-size 8 --amlfs-az 1 \
+    --monitoring \
+    --mon-ingestion-endpoint "https://example.metrics.ingest.monitor.azure.com/..." \
+    --mon-dcr-id "/subscriptions/SUB/resourceGroups/RG/providers/Microsoft.Insights/dataCollectionRules/myDCR" \
+    --entra-id \
+    --entra-app-umi "/subscriptions/SUB/resourceGroups/RG/providers/Microsoft.ManagedIdentity/userAssignedIdentities/myUMI" \
+    --entra-app-id "12345678-1234-1234-1234-123456789abc" \
+    --create-accounting-mysql --db-name myccdb --db-user dbadmin --db-password 'DbP@ss!' \
+    --open-ondemand --ood-user-domain contoso.com --ood-fqdn ood.contoso.com \
+    --accept-marketplace --deploy
+
+  # With existing database and custom workspace commit
+  deploy-ccws.sh --subscription-id SUB --resource-group rg-ccw --location eastus \
+    --ssh-public-key-file ~/.ssh/id_rsa.pub --admin-password 'YourP@ssw0rd!' \
+    --htc-sku Standard_F2s_v2 --hpc-sku Standard_HB176rs_v4 --gpu-sku Standard_ND96amsr_A100_v4 \
+    --db-name myccdb --db-user dbadmin --db-password 'DbP@ss!' \
+    --db-id "/subscriptions/SUB/resourceGroups/RG/providers/Microsoft.DBforMySQL/flexibleServers/myccdb" \
+    --workspace-commit a1b2c3d4e5f6 --deploy
 ```
 
 ### 3.7. Non-Interactive Deployment
