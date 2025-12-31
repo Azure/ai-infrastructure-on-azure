@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 set -euo pipefail
-
 ###############################################
 # Azure CycleCloud Workspace for Slurm Deployment Helper
 # Generates an output.json parameters file for Bicep deployment
@@ -625,20 +624,27 @@ load_compute_skus() {
 	
 	if [[ ${#filter_parts[@]} -eq 0 ]]; then
 		echo "[DEBUG] No partition SKUs defined yet; loading all SKUs." >&2
-		query_filter="[?locationInfo!=null]"
+		query_filter="value[?locationInfo!=null]"
 	else
-		local condition
-		condition=$(IFS='||'; echo "${filter_parts[*]}")
-		query_filter="[?locationInfo!=null && ($condition)]"
+		# Build OR condition by joining with ||
+		local condition=""
+		for part in "${filter_parts[@]}"; do
+			if [[ -z "$condition" ]]; then
+				condition="$part"
+			else
+				condition="$condition || $part"
+			fi
+		done
+		query_filter="value[?$condition]"
 		echo "[DEBUG] Loading only SKUs: HTC=$HTC_SKU, HPC=$HPC_SKU, GPU=$GPU_SKU" >&2
 	fi
-	
 	local raw
-	if ! raw="$(az vm list-skus --location "${LOCATION}" --resource-type virtualMachines --query "$query_filter" -o json 2>/dev/null)"; then
-		echo "[ERROR] az vm list-skus failed; zone discovery cannot proceed." >&2
+	if ! raw=$(az rest --method get --url "/subscriptions/{subscriptionId}/providers/Microsoft.Compute/skus?api-version=2021-07-01&\$filter=location eq '${LOCATION}'" --query "$query_filter" -o json 2>/dev/null); then
+		echo "[ERROR] az rest call to list SKUs failed; zone discovery cannot proceed." >&2
 		COMPUTE_SKUS_CACHE=""
 		return 1
 	fi
+
 	# Build mapping SKU:space_separated_zones (empty after colon if none)
 	COMPUTE_SKUS_CACHE="$(echo "$raw" | jq -r '
 		.[]
@@ -805,29 +811,25 @@ if [[ "$NO_AZ" == "true" ]]; then
 	GPU_AZ=""
 	ANF_AZ=""
 elif [[ "$SPECIFY_AZ" == "true" ]]; then
-	if region_has_zone_support; then
-		POTENTIAL_HTC_AZ="$(fetch_region_zones "$HTC_SKU")"
-		POTENTIAL_HPC_AZ="$(fetch_region_zones "$HPC_SKU")"
-		POTENTIAL_GPU_AZ="$(fetch_region_zones "$GPU_SKU")"
+	# User explicitly requested zone prompting - always prompt even if auto-discovery doesn't find zones
+	POTENTIAL_HTC_AZ="$(fetch_region_zones "$HTC_SKU")"
+	POTENTIAL_HPC_AZ="$(fetch_region_zones "$HPC_SKU")"
+	POTENTIAL_GPU_AZ="$(fetch_region_zones "$GPU_SKU")"
 
-		if [[ -n "$POTENTIAL_HTC_AZ" ]]; then echo "[INFO] HTC array $HTC_SKU available zones: $POTENTIAL_HTC_AZ" >&2; else echo "[INFO] $HTC_SKU has no zonal availability in region $LOCATION" >&2; fi
-		if [[ -n "$POTENTIAL_HPC_AZ" ]]; then echo "[INFO] HPC array $HPC_SKU available zones: $POTENTIAL_HPC_AZ" >&2; else echo "[INFO] $HPC_SKU has no zonal availability in region $LOCATION" >&2; fi
-		if [[ -n "$POTENTIAL_GPU_AZ" ]]; then echo "[INFO] GPU array $GPU_SKU available zones: $POTENTIAL_GPU_AZ" >&2; else echo "[INFO] $GPU_SKU has no zonal availability in region $LOCATION" >&2; fi
+	if [[ -n "$POTENTIAL_HTC_AZ" ]]; then echo "[INFO] HTC array $HTC_SKU available zones: $POTENTIAL_HTC_AZ" >&2; else echo "[INFO] $HTC_SKU has no zonal availability in region $LOCATION (manual entry allowed)" >&2; fi
+	if [[ -n "$POTENTIAL_HPC_AZ" ]]; then echo "[INFO] HPC array $HPC_SKU available zones: $POTENTIAL_HPC_AZ" >&2; else echo "[INFO] $HPC_SKU has no zonal availability in region $LOCATION (manual entry allowed)" >&2; fi
+	if [[ -n "$POTENTIAL_GPU_AZ" ]]; then echo "[INFO] GPU array $GPU_SKU available zones: $POTENTIAL_GPU_AZ" >&2; else echo "[INFO] $GPU_SKU has no zonal availability in region $LOCATION (manual entry allowed)" >&2; fi
 
-		# Only prompt for partitions where a zone wasn't provided on CLI
-		HTC_AZ="$(prompt_zone HTC "${HTC_SKU}" "${HTC_AZ:-}" "${POTENTIAL_HTC_AZ}")"
-		HPC_AZ="$(prompt_zone HPC "${HPC_SKU}" "${HPC_AZ:-}" "${POTENTIAL_HPC_AZ}")"
-		GPU_AZ="$(prompt_zone GPU "${GPU_SKU}" "${GPU_AZ:-}" "${POTENTIAL_GPU_AZ}")"
+	# Only prompt for partitions where a zone wasn't provided on CLI
+	HTC_AZ="$(prompt_zone HTC "${HTC_SKU}" "${HTC_AZ:-}" "${POTENTIAL_HTC_AZ}")"
+	HPC_AZ="$(prompt_zone HPC "${HPC_SKU}" "${HPC_AZ:-}" "${POTENTIAL_HPC_AZ}")"
+	GPU_AZ="$(prompt_zone GPU "${GPU_SKU}" "${GPU_AZ:-}" "${POTENTIAL_GPU_AZ}")"
 
-		ANF_AZ="$(prompt_zone_manual ANF "${ANF_AZ:-}")"
+	ANF_AZ="$(prompt_zone_manual ANF "${ANF_AZ:-}")"
+	
+	# Only prompt for AMLFS zone if data filesystem is enabled
+	if [[ "$DATA_FILESYSTEM_ENABLED" == "true" ]]; then
 		AMLFS_AZ="$(prompt_zone_manual AMLFS "${AMLFS_AZ:-}")"
-	else
-		echo "[INFO] Region $LOCATION appears to have no zone-capable VM SKUs (or discovery unavailable); skipping AZ prompts." >&2
-		HTC_AZ=""
-		HPC_AZ=""
-		GPU_AZ=""
-		ANF_AZ=""
-		AMLFS_AZ=""
 	fi
 else
 	# SPECIFY_AZ not true
