@@ -63,6 +63,10 @@ on:
         default: false
         type: boolean
 
+permissions:
+    id-token: write
+    contents: read
+        
 jobs:
   deploy:
     uses: ./.github/workflows/deploy-ccws-callable.yml
