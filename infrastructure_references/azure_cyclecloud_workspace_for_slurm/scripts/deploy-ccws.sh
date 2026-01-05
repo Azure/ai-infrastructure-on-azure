@@ -84,7 +84,7 @@ OPTIONAL PARAMETERS:
     --data-filesystem            Enable Azure Managed Lustre data filesystem (disabled by default)
     --amlfs-sku <tier>           AMLFS tier: AMLFS-Durable-Premium-{40|125|250|500} (default: 500)
     --amlfs-size <TiB>           AMLFS capacity in TiB (integer, default: 4, minimum: 4)
-    --amlfs-az <zone>            Availability zone for AMLFS (defaults to 1 when --data-filesystem is enabled and zones are not disabled)
+    --amlfs-az <zone>            Availability zone for AMLFS (defaults to 1)
 
   Monitoring:
     --monitoring                 Enable monitoring (disabled by default)
@@ -997,8 +997,8 @@ else
 	fi
 fi
 
-# Default AMLFS zone to 1 if none provided (AMLFS requires a zone) and zones are not disabled
-if [[ "$DATA_FILESYSTEM_ENABLED" == "true" && "$NO_AZ" != "true" ]]; then
+# Default AMLFS zone to 1 if none provided (AMLFS requires a zone)
+if [[ "$DATA_FILESYSTEM_ENABLED" == "true" ]]; then
 	if [[ -z "${AMLFS_AZ}" ]]; then
 		echo "[INFO] AMLFS zone not specified; defaulting to '1'." >&2
 		AMLFS_AZ="1"
