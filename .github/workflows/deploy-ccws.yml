@@ -196,4 +196,19 @@ jobs:
         
         if [ -f "infrastructure_references/azure_cyclecloud_workspace_for_slurm/scripts/output.json" ]; then
           echo "✅ Parameters file generated successfully" >> $GITHUB_STEP_SUMMARY
+          echo "=================================="
+          jq . infrastructure_references/azure_cyclecloud_workspace_for_slurm/scripts/output.json
+          echo "=================================="          
+        fi
+
+    - name: Cleanup resource group after successful deployment
+      if: success() && steps.defaults.outputs.deploy_immediately == 'true'
+      run: |
+        echo "Cleaning up resource group: ${{ steps.rg_name.outputs.resource_group }}"
+        if az group exists --name "${{ steps.rg_name.outputs.resource_group }}" --output tsv 2>/dev/null | grep -q "true"; then
+          echo "Resource group exists, deleting..."
+          az group delete --name "${{ steps.rg_name.outputs.resource_group }}" --yes --no-wait
+          echo "✅ Resource group deletion initiated" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "Resource group does not exist, nothing to clean up"
         fi
