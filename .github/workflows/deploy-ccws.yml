@@ -133,6 +133,14 @@ jobs:
           echo "deploy_immediately=${{ inputs.deploy_immediately }}" >> $GITHUB_OUTPUT
         fi
 
+    - name: Accept Azure Marketplace terms
+      if: steps.defaults.outputs.deploy_immediately == 'true'
+      run: |
+        echo "Deployment enabled - accepting Azure CycleCloud marketplace terms..."
+        az vm image terms accept --publisher azurecyclecloud --offer azure-cyclecloud --plan cyclecloud8-gen2 || {
+          echo "Failed to accept marketplace terms, but continuing..."
+        }
+
     - name: Create SSH public key file
       run: |
         mkdir -p ~/.ssh
