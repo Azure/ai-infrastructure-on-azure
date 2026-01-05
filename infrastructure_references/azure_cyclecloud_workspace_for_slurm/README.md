@@ -512,6 +512,13 @@ If none of the database flags are provided, `databaseConfig` defaults to:
   - Skips interactive confirmation prompt
   - Useful for automated/scripted deployments
 
+- **`--non-interactive`**
+
+  - Skip interactive confirmation prompts without deploying
+  - Generates parameters file but exits without deployment
+  - Useful for CI/CD pipelines where parameters need to be generated for review
+  - Default behavior when `--deploy` is not set is to prompt for confirmation
+
 - **`--output-file <path>`**
   - Custom path for the generated parameters file
   - Default: `output.json` in script directory
@@ -749,6 +756,23 @@ EXAMPLES:
 
 ### 3.8. Non-Interactive Deployment
 
+There are several ways to avoid interactive prompts during deployment:
+
+#### 3.8.1. Generate Parameters Only (No Deployment)
+
+To generate the `output.json` parameters file without any interactive confirmation prompts and without deploying:
+
+```bash
+./scripts/deploy-ccws.sh --subscription-id <sub-id> --resource-group <rg> --location eastus \
+  --ssh-public-key-file ~/.ssh/id_rsa.pub --admin-password 'YourP@ssw0rd!' \
+  --htc-sku Standard_F2s_v2 --hpc-sku Standard_HB176rs_v4 --gpu-sku Standard_ND96amsr_A100_v4 \
+  --non-interactive
+```
+
+This is useful for CI/CD pipelines where you want to generate parameters for review before deployment.
+
+#### 3.8.2. Deploy Without Confirmation Prompts
+
 To avoid interactive zone prompts and deploy without availability zones (default behavior):
 
 ```bash
@@ -757,6 +781,8 @@ To avoid interactive zone prompts and deploy without availability zones (default
   --htc-sku Standard_F2s_v2 --hpc-sku Standard_HB176rs_v4 --gpu-sku Standard_ND96amsr_A100_v4 \
   --deploy
 ```
+
+#### 3.8.3. Explicitly Disable Availability Zones
 
 To explicitly disable availability zones:
 
@@ -767,6 +793,8 @@ To explicitly disable availability zones:
   --no-az \
   --deploy
 ```
+
+#### 3.8.4. Specify Zones Without Prompts
 
 To specify zones via command line without prompts:
 

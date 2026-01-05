@@ -172,7 +172,7 @@ jobs:
         fi
         
         # Always enable bastion, accept marketplace terms and disable AZ prompts for non-interactive execution
-        cmd="$cmd --bastion --accept-marketplace --no-az"
+        cmd="$cmd --bastion --accept-marketplace --no-az --non-interactive"
         
         echo "command=$cmd" >> $GITHUB_OUTPUT
 

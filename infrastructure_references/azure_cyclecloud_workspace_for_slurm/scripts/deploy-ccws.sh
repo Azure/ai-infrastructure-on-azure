@@ -125,6 +125,7 @@ OPTIONAL PARAMETERS:
   Deployment Control:
     --accept-marketplace         Accept marketplace terms automatically
     --deploy                     Perform deployment after generating output.json
+    --non-interactive            Skip interactive confirmation prompts (default: interactive when --deploy not set)
     --help                       Show this usage information
 
 INTERACTIVE PROMPTS:
@@ -136,7 +137,7 @@ BEHAVIOR:
   * Auto-discovers zonal availability using 'az vm list-skus' + 'jq'
   * Skips AZ prompts if region lacks zonal SKUs or tools are missing
   * Generates parameter file with conditional database and storage sections
-  * Interactive confirmation unless --deploy provided
+  * Interactive confirmation unless --deploy or --non-interactive provided
   * Passwords (admin and database) are NOT persisted in output.json for security
 
 DATABASE MODES:
@@ -258,6 +259,7 @@ OOD_FQDN=""
 OOD_START_CLUSTER="true"
 CREATE_ACCOUNTING_MYSQL="false"
 DB_GENERATE_NAME="false"
+NON_INTERACTIVE="false"
 
 # Parse args
 while [[ $# -gt 0 ]]; do
@@ -498,6 +500,10 @@ while [[ $# -gt 0 ]]; do
 		;;
 	--deploy)
 		DO_DEPLOY="true"
+		shift 1
+		;;
+	--non-interactive)
+		NON_INTERACTIVE="true"
 		shift 1
 		;;
 	--help | -h)
@@ -1246,27 +1252,31 @@ fi
 echo "=================================================================="
 echo ""
 if [[ "$DO_DEPLOY" != "true" ]]; then
-	echo "[INFO] Deployment flag not set. Prompting for interactive confirmation..." >&2
-	COMMIT_DISPLAY="${WORKSPACE_COMMIT:-$WORKSPACE_REF}"
-	if [[ -n "${WORKSPACE_COMMIT}" ]]; then
-		COMMIT_URL="https://github.com/azure/cyclecloud-slurm-workspace/commit/${WORKSPACE_COMMIT}"
+	if [[ "$NON_INTERACTIVE" == "true" ]]; then
+		echo "[INFO] Non-interactive mode enabled. Skipping deployment confirmation." >&2
 	else
-		COMMIT_URL="https://github.com/azure/cyclecloud-slurm-workspace/tree/${WORKSPACE_REF}"
+		echo "[INFO] Deployment flag not set. Prompting for interactive confirmation..." >&2
+		COMMIT_DISPLAY="${WORKSPACE_COMMIT:-$WORKSPACE_REF}"
+		if [[ -n "${WORKSPACE_COMMIT}" ]]; then
+			COMMIT_URL="https://github.com/azure/cyclecloud-slurm-workspace/commit/${WORKSPACE_COMMIT}"
+		else
+			COMMIT_URL="https://github.com/azure/cyclecloud-slurm-workspace/tree/${WORKSPACE_REF}"
+		fi
+		echo "[INFO] About to deploy using repository ref: ${COMMIT_DISPLAY}" >&2
+		echo "[INFO] Commit/Ref URL: ${COMMIT_URL}" >&2
+		echo "[INFO] Verify this commit contains required hotfixes before proceeding." >&2
+		read -r -p "Confirm deployment of ${COMMIT_DISPLAY}? (y/N): " REPLY
+		case "$REPLY" in
+		[yY])
+			echo "[INFO] User confirmed interactive deployment."
+			DO_DEPLOY="true"
+			;;
+		*)
+			echo "[INFO] User did not confirm deployment (response: '$REPLY'). Exiting now."
+			exit 0
+			;;
+		esac
 	fi
-	echo "[INFO] About to deploy using repository ref: ${COMMIT_DISPLAY}" >&2
-	echo "[INFO] Commit/Ref URL: ${COMMIT_URL}" >&2
-	echo "[INFO] Verify this commit contains required hotfixes before proceeding." >&2
-	read -r -p "Confirm deployment of ${COMMIT_DISPLAY}? (y/N): " REPLY
-	case "$REPLY" in
-	[yY])
-		echo "[INFO] User confirmed interactive deployment."
-		DO_DEPLOY="true"
-		;;
-	*)
-		echo "[INFO] User did not confirm deployment (response: '$REPLY'). Exiting now."
-		exit 0
-		;;
-	esac
 fi
 
 if [[ "$DO_DEPLOY" == "true" ]]; then
