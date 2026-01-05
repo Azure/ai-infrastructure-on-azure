@@ -95,39 +95,8 @@ jobs:
         echo "resource_group=${rg_name}" >> $GITHUB_OUTPUT
         echo "Generated resource group name: ${rg_name}"
 
-    - name: Set default values for push triggers
-      id: defaults
-      run: |
-        # Set default values when workflow is triggered by push (inputs are not available)
-        if [ "${{ github.event_name }}" = "push" ]; then
-          echo "location=westus3" >> $GITHUB_OUTPUT
-          echo "htc_sku=Standard_F2s_v2" >> $GITHUB_OUTPUT
-          echo "hpc_sku=Standard_HB176rs_v4" >> $GITHUB_OUTPUT
-          echo "gpu_sku=Standard_ND96amsr_A100_v4" >> $GITHUB_OUTPUT
-          echo "scheduler_sku=Standard_D4as_v5" >> $GITHUB_OUTPUT
-          echo "login_sku=Standard_D2as_v5" >> $GITHUB_OUTPUT
-          echo "workspace_ref=2025.12.01" >> $GITHUB_OUTPUT
-          echo "htc_max_nodes=100" >> $GITHUB_OUTPUT
-          echo "hpc_max_nodes=50" >> $GITHUB_OUTPUT
-          echo "gpu_max_nodes=20" >> $GITHUB_OUTPUT
-          echo "deploy_immediately=true" >> $GITHUB_OUTPUT
-        else
-          # Use inputs from workflow_dispatch
-          echo "location=${{ inputs.location }}" >> $GITHUB_OUTPUT
-          echo "htc_sku=${{ inputs.htc_sku }}" >> $GITHUB_OUTPUT
-          echo "hpc_sku=${{ inputs.hpc_sku }}" >> $GITHUB_OUTPUT
-          echo "gpu_sku=${{ inputs.gpu_sku }}" >> $GITHUB_OUTPUT
-          echo "scheduler_sku=${{ inputs.scheduler_sku }}" >> $GITHUB_OUTPUT
-          echo "login_sku=${{ inputs.login_sku }}" >> $GITHUB_OUTPUT
-          echo "workspace_ref=${{ inputs.workspace_ref }}" >> $GITHUB_OUTPUT
-          echo "htc_max_nodes=${{ inputs.htc_max_nodes }}" >> $GITHUB_OUTPUT
-          echo "hpc_max_nodes=${{ inputs.hpc_max_nodes }}" >> $GITHUB_OUTPUT
-          echo "gpu_max_nodes=${{ inputs.gpu_max_nodes }}" >> $GITHUB_OUTPUT
-          echo "deploy_immediately=${{ inputs.deploy_immediately }}" >> $GITHUB_OUTPUT
-        fi
-
     - name: Accept Azure Marketplace terms
-      if: steps.defaults.outputs.deploy_immediately == 'true'
+      if: inputs.deploy_immediately == true
       run: |
         echo "Deployment enabled - accepting Azure CycleCloud marketplace terms..."
         az vm image terms accept --publisher azurecyclecloud --offer azure-cyclecloud --plan cyclecloud8-gen2 || {
@@ -151,24 +120,24 @@ jobs:
         cmd="./infrastructure_references/azure_cyclecloud_workspace_for_slurm/scripts/deploy-ccws.sh"
         cmd="$cmd --subscription-id '${{ secrets.AZURE_SUBSCRIPTION_ID }}'"
         cmd="$cmd --resource-group '${{ steps.rg_name.outputs.resource_group }}'"
-        cmd="$cmd --location '${{ steps.defaults.outputs.location }}'"
+        cmd="$cmd --location '${{ inputs.location }}'"
         cmd="$cmd --ssh-public-key-file ~/.ssh/id_rsa.pub"
         cmd="$cmd --admin-password '${{ secrets.ADMIN_PASSWORD }}'"
-        cmd="$cmd --htc-sku '${{ steps.defaults.outputs.htc_sku }}'"
-        cmd="$cmd --hpc-sku '${{ steps.defaults.outputs.hpc_sku }}'"
-        cmd="$cmd --gpu-sku '${{ steps.defaults.outputs.gpu_sku }}'"
+        cmd="$cmd --htc-sku '${{ inputs.htc_sku }}'"
+        cmd="$cmd --hpc-sku '${{ inputs.hpc_sku }}'"
+        cmd="$cmd --gpu-sku '${{ inputs.gpu_sku }}'"
         
         # Optional parameters
         cmd="$cmd --admin-username 'hpcadmin'"
-        cmd="$cmd --scheduler-sku '${{ steps.defaults.outputs.scheduler_sku }}'"
-        cmd="$cmd --login-sku '${{ steps.defaults.outputs.login_sku }}'"
-        cmd="$cmd --workspace-ref '${{ steps.defaults.outputs.workspace_ref }}'"
-        cmd="$cmd --htc-max-nodes '${{ steps.defaults.outputs.htc_max_nodes }}'"
-        cmd="$cmd --hpc-max-nodes '${{ steps.defaults.outputs.hpc_max_nodes }}'"
-        cmd="$cmd --gpu-max-nodes '${{ steps.defaults.outputs.gpu_max_nodes }}'"
+        cmd="$cmd --scheduler-sku '${{ inputs.scheduler_sku }}'"
+        cmd="$cmd --login-sku '${{ inputs.login_sku }}'"
+        cmd="$cmd --workspace-ref '${{ inputs.workspace_ref }}'"
+        cmd="$cmd --htc-max-nodes '${{ inputs.htc_max_nodes }}'"
+        cmd="$cmd --hpc-max-nodes '${{ inputs.hpc_max_nodes }}'"
+        cmd="$cmd --gpu-max-nodes '${{ inputs.gpu_max_nodes }}'"
         
         # Conditional flags
-        if [ "${{ steps.defaults.outputs.deploy_immediately }}" = "true" ]; then
+        if [ "${{ inputs.deploy_immediately }}" = "true" ]; then
           cmd="$cmd --deploy"
         fi
         
@@ -189,11 +158,11 @@ jobs:
         echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
         echo "- **Subscription ID**: ${{ secrets.AZURE_SUBSCRIPTION_ID }}" >> $GITHUB_STEP_SUMMARY
         echo "- **Resource Group**: ${{ steps.rg_name.outputs.resource_group }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **Location**: ${{ steps.defaults.outputs.location }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **HTC SKU**: ${{ steps.defaults.outputs.htc_sku }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **HPC SKU**: ${{ steps.defaults.outputs.hpc_sku }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **GPU SKU**: ${{ steps.defaults.outputs.gpu_sku }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **Deploy Immediately**: ${{ steps.defaults.outputs.deploy_immediately }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Location**: ${{ inputs.location }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **HTC SKU**: ${{ inputs.htc_sku }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **HPC SKU**: ${{ inputs.hpc_sku }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **GPU SKU**: ${{ inputs.gpu_sku }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Deploy Immediately**: ${{ inputs.deploy_immediately }}" >> $GITHUB_STEP_SUMMARY
         
         if [ -f "infrastructure_references/azure_cyclecloud_workspace_for_slurm/scripts/output.json" ]; then
           echo "✅ Parameters file generated successfully" >> $GITHUB_STEP_SUMMARY
@@ -203,7 +172,7 @@ jobs:
         fi
 
     - name: Cleanup resource group after deployment
-      if: always() && steps.defaults.outputs.deploy_immediately == 'true'
+      if: always() && inputs.deploy_immediately == true
       run: |
         echo "Cleaning up resource group: ${{ steps.rg_name.outputs.resource_group }}"
         if az group exists --name "${{ steps.rg_name.outputs.resource_group }}" --output tsv 2>/dev/null | grep -q "true"; then
