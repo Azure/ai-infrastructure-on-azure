@@ -219,18 +219,18 @@ parameters:
 
   - Explicitly set availability zone for HTC partition (e.g., `1`, `2`, `3`)
   - Suppresses interactive prompt for HTC partition
-  - Requires `--specify-az` to be set
+  - Only valid when `--specify-az` is set
 
 - **`--hpc-az <zone>`**
 
   - Explicitly set availability zone for HPC partition
   - Suppresses interactive prompt for HPC partition
-  - Requires `--specify-az` to be set
+  - Only valid when `--specify-az` is set
 
 - **`--gpu-az <zone>`**
   - Explicitly set availability zone for GPU partition
   - Suppresses interactive prompt for GPU partition
-  - Requires `--specify-az` to be set
+  - Only valid when `--specify-az` is set
 
 #### Compute Partition Configuration
 
