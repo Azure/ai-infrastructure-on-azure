@@ -59,7 +59,7 @@ OPTIONAL PARAMETERS:
 
   Availability Zones:
     --no-az                      Disable availability zones entirely (default behavior)
-    --specify-az                 Enable interactive AZ prompting (only if region has zonal SKUs)
+    --specify-az                 Enable interactive AZ prompting (allows manual zone entry even if auto-discovery fails)
     --htc-az <zone>              Explicit AZ for HTC partition (suppresses interactive prompt)
     --hpc-az <zone>              Explicit AZ for HPC partition (suppresses interactive prompt)
     --gpu-az <zone>              Explicit AZ for GPU partition (suppresses interactive prompt)
@@ -185,8 +185,9 @@ EXAMPLES:
        --anf-sku Premium --anf-size 4 --anf-az 1 \\
        --data-filesystem --amlfs-sku AMLFS-Durable-Premium-500 --amlfs-size 8 --amlfs-az 1 \\
        --create-accounting-mysql --db-name myccdb --db-user dbadmin --db-password 'DbP@ss!' \\
+       --entra-id --entra-app-umi YOUR_UMI_RESOURCE_ID --entra-app-id YOUR_ENTRA_APP_ID \\
        --open-ondemand --ood-user-domain contoso.com --ood-fqdn ood.contoso.com \\
-       --accept-marketplace --deploy
+       --accept-marketplace --specify-az --deploy
 
   With existing database and custom workspace commit:
     $0 --subscription-id SUB --resource-group rg-ccw --location eastus \\
@@ -1116,13 +1117,13 @@ fi
 
 # Retrieve Slurm default version from workspace UI definitions file
 if ! SLURM_VERSION=$(jq -r '.. | objects | select(.name == "slurmVersion") | .defaultValue' "$WORKSPACE_DIR/uidefinitions/createUiDefinition.json"); then
-	echo "ERROR: Failed to extract Slurm default version from '$WORKSPACE_DIR/uidefinitions/createUiDefinition.json' using jq." >&2
+	echo "[ERROR] Failed to extract Slurm default version from '$WORKSPACE_DIR/uidefinitions/createUiDefinition.json' using jq." >&2
 	echo "Please ensure the file exists, is valid JSON, and contains an entry with name \"slurmVersion\" and a defaultValue." >&2
 	exit 1
 fi
 
 if [[ -z "${SLURM_VERSION}" || "${SLURM_VERSION}" == "null" ]]; then
-	echo "ERROR: Extracted Slurm default version is empty or null from '$WORKSPACE_DIR/uidefinitions/createUiDefinition.json'." >&2
+	echo "[ERROR] Extracted Slurm default version is empty or null from '$WORKSPACE_DIR/uidefinitions/createUiDefinition.json'." >&2
 	echo "Please verify the 'slurmVersion' entry has a non-empty defaultValue." >&2
 	exit 1
 fi
@@ -1210,6 +1211,12 @@ fi
 echo "Accept Marketplace:     ${ACCEPT_MARKETPLACE}"
 echo "Network Address Space:  ${NETWORK_ADDRESS_SPACE}"
 echo "Bastion Enabled:        ${NETWORK_BASTION}"
+echo "Scheduler Image:        ${SCHEDULER_IMAGE}"
+echo "Login Image:            ${LOGIN_IMAGE}"
+echo "HTC Image:              ${HTC_IMAGE}"
+echo "HPC Image:              ${HPC_IMAGE}"
+echo "GPU Image:              ${GPU_IMAGE}"
+echo "Open OnDemand Image:    ${OOD_IMAGE}"
 echo "HTC Max Nodes:          ${HTC_MAX_NODES}"
 echo "HPC Max Nodes:          ${HPC_MAX_NODES}"
 echo "GPU Max Nodes:          ${GPU_MAX_NODES}"
