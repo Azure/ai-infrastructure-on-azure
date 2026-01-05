@@ -949,6 +949,11 @@ if ! validate_max_nodes "$GPU_MAX_NODES" "GPU"; then
 fi
 
 if [[ "$NO_AZ" == "true" ]]; then
+	# Check if user specified any zone parameters along with --no-az
+	if [[ -n "${HTC_AZ:-}" || -n "${HPC_AZ:-}" || -n "${GPU_AZ:-}" || -n "${ANF_AZ:-}" || -n "${AMLFS_AZ:-}" ]]; then
+		echo "[ERROR] --no-az and zone specifications (--htc-az, --hpc-az, --gpu-az, --anf-az, --amlfs-az) are mutually exclusive. Please remove either --no-az or the zone parameters." >&2
+		exit 1
+	fi
 	echo "[INFO] --no-az specified; disabling all availability zones." >&2
 	HTC_AZ=""
 	HPC_AZ=""
