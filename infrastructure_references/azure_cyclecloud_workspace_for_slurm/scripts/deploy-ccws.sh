@@ -188,6 +188,7 @@ EXAMPLES:
        --create-accounting-mysql --db-name myccdb --db-user dbadmin --db-password 'DbP@ss!' \\
        --entra-id --entra-app-umi YOUR_UMI_RESOURCE_ID --entra-app-id YOUR_ENTRA_APP_ID \\
        --open-ondemand --ood-user-domain contoso.com --ood-fqdn ood.contoso.com \\
+       --entra-id --entra-app-umi YOUR_UMI_RESOURCE_ID --entra-app-id YOUR_ENTRA_APP_ID \\
        --accept-marketplace --specify-az --deploy
 
   With existing database and custom workspace commit:
