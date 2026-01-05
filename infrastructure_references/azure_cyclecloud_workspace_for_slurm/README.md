@@ -8,13 +8,14 @@
    1. [Basic Usage](#31-basic-usage)
    2. [Selecting Availability Zones](#32-selecting-availability-zones)
    3. [Example With Marketplace Acceptance and Automatic Deployment](#33-example-with-marketplace-acceptance-and-automatic-deployment)
-   4. [Generated Artifacts](#34-generated-artifacts)
-   5. [Optional Parameters](#35-optional-parameters)
-   6. [Script Reference (Docstring Style)](#36-script-reference-docstring-style)
-   7. [Non-Interactive Deployment](#37-non-interactive-deployment)
-   8. [Re-Running / Modifying](#38-re-running--modifying)
-   9. [Troubleshooting](#39-troubleshooting)
-   10. [Manual Deployment (Optional)](#310-manual-deployment-optional)
+   4. [Example With Custom OS Images](#34-example-with-custom-os-images)
+   5. [Generated Artifacts](#35-generated-artifacts)
+   6. [Optional Parameters](#36-optional-parameters)
+   7. [Script Reference (Docstring Style)](#37-script-reference-docstring-style)
+   8. [Non-Interactive Deployment](#38-non-interactive-deployment)
+   9. [Re-Running / Modifying](#39-re-running--modifying)
+   10. [Troubleshooting](#310-troubleshooting)
+   11. [Manual Deployment (Optional)](#311-manual-deployment-optional)
 
 ## 1. Overview
 
@@ -121,18 +122,43 @@ region-level (non-zonal) placement. AMLFS will default to zone `1`.
   --hpc-sku Standard_HB176rs_v4 \
   --gpu-sku Standard_ND96amsr_A100_v4 \
   --anf-sku Premium --anf-size 2 \
-  --amlfs-sku AMLFS-Durable-Premium-500 --amlfs-size 4 \
+  --data-filesystem --amlfs-sku AMLFS-Durable-Premium-500 --amlfs-size 4 \
   --accept-marketplace \
   --deploy
 ```
 
-### 3.4. Generated Artifacts
+### 3.4. Example With Custom OS Images
+
+This example shows how to deploy with Ubuntu 22.04 images across all node types:
+
+```bash
+./scripts/deploy-ccws.sh \
+  --subscription-id <sub-id> \
+  --resource-group <rg-name> \
+  --location eastus \
+  --ssh-public-key-file ~/.ssh/id_rsa.pub \
+  --admin-password 'YourP@ssw0rd!' \
+  --htc-sku Standard_F2s_v2 \
+  --hpc-sku Standard_HB176rs_v4 \
+  --gpu-sku Standard_ND96amsr_A100_v4 \
+  --scheduler-image cycle.image.ubuntu22 \
+  --login-image cycle.image.ubuntu22 \
+  --htc-image cycle.image.ubuntu22 \
+  --hpc-image cycle.image.ubuntu22 \
+  --gpu-image cycle.image.ubuntu22 \
+  --accept-marketplace \
+  --deploy
+```
+
+> **Note:** All OS images default to `cycle.image.ubuntu24` if not specified. You can mix and match different OS versions for different node types based on your workload requirements.
+
+### 3.5. Generated Artifacts
 
 - `output.json` – parameter file used for the Bicep deployment.
 - Random deployment name previewed in the summary section.
 - Summary of chosen SKUs and zones printed for validation.
 
-### 3.5. Optional Parameters
+### 3.6. Optional Parameters
 
 The `deploy-ccws.sh` script supports numerous optional flags to customize the
 deployment. Below is a comprehensive reference for all available optional
@@ -177,26 +203,34 @@ parameters:
 
 #### Availability Zones
 
+- **`--no-az`**
+
+  - Explicitly disable availability zones for all resources (default behavior)
+  - When set, all availability zone configurations are omitted from deployment
+  - This is the default if neither `--no-az` nor `--specify-az` is provided
+
 - **`--specify-az`**
 
   - Enable interactive prompts for availability zones
   - Only prompts if the region supports zonal SKUs
-  - If omitted, deployment uses region-level (non-zonal) placement
+  - Mutually exclusive with `--no-az`
 
 - **`--htc-az <zone>`**
 
   - Explicitly set availability zone for HTC partition (e.g., `1`, `2`, `3`)
   - Suppresses interactive prompt for HTC partition
-  - Leave empty for non-zonal deployment
+  - Only valid when `--specify-az` is set
 
 - **`--hpc-az <zone>`**
 
   - Explicitly set availability zone for HPC partition
   - Suppresses interactive prompt for HPC partition
+  - Only valid when `--specify-az` is set
 
 - **`--gpu-az <zone>`**
   - Explicitly set availability zone for GPU partition
   - Suppresses interactive prompt for GPU partition
+  - Only valid when `--specify-az` is set
 
 #### Compute Partition Configuration
 
@@ -223,6 +257,46 @@ parameters:
   - Flag parameter (no value required)
   - Default: disabled (use regular on-demand VMs)
   - Provides cost savings with interruption tolerance
+
+- **`--slurm-no-start`**
+  - Do not start the Slurm cluster automatically after deployment
+  - Flag parameter (no value required)
+  - Default: cluster starts automatically
+  - Useful when you want to configure the cluster before starting it
+
+#### OS Image Configuration
+
+All OS image parameters default to `cycle.image.ubuntu24` if not specified:
+
+- **`--scheduler-image <image>`** (default: `cycle.image.ubuntu24`)
+  - OS image for the CycleCloud scheduler node
+  - Common values: `cycle.image.ubuntu24`, `cycle.image.ubuntu22`
+  - Example: `cycle.image.ubuntu22`
+
+- **`--login-image <image>`** (default: `cycle.image.ubuntu24`)
+  - OS image for the login node
+  - Should typically match scheduler image for consistency
+  - Example: `cycle.image.ubuntu22`
+
+- **`--ood-image <image>`** (default: `cycle.image.ubuntu24`)
+  - OS image for Open OnDemand web portal nodes
+  - Only applies when `--open-ondemand` is enabled
+  - Example: `cycle.image.ubuntu22`
+
+- **`--htc-image <image>`** (default: `cycle.image.ubuntu24`)
+  - OS image for HTC (High Throughput Computing) partition nodes
+  - Choose based on workload requirements and software compatibility
+  - Example: `cycle.image.ubuntu22`
+
+- **`--hpc-image <image>`** (default: `cycle.image.ubuntu24`)
+  - OS image for HPC (High Performance Computing) partition nodes
+  - Consider HPC-optimized images for performance-critical workloads
+  - Example: `cycle.image.ubuntu22`
+
+- **`--gpu-image <image>`** (default: `cycle.image.ubuntu24`)
+  - OS image for GPU partition nodes
+  - Ensure CUDA/driver compatibility with chosen image
+  - Example: `cycle.image.ubuntu22`
 
 #### Network Configuration
 
@@ -261,11 +335,18 @@ All ANF parameters must be provided together to enable ANF storage:
 
 #### Azure Managed Lustre File System (AMLFS) Configuration
 
-All AMLFS parameters must be provided together to enable AMLFS storage:
+AMLFS provides an additional high-performance data filesystem. It is **disabled by default**.
+
+- **`--data-filesystem`**
+
+  - Enable Azure Managed Lustre data filesystem
+  - Flag parameter (no value required)
+  - Default: disabled
+  - When enabled, AMLFS will be deployed with the parameters below
 
 - **`--amlfs-sku <sku>`** (default: `AMLFS-Durable-Premium-500`)
 
-  - AMLFS SKU type
+  - AMLFS SKU type (only used when `--data-filesystem` is enabled)
   - Available options: `AMLFS-Durable-Premium-40`, `AMLFS-Durable-Premium-125`,
     `AMLFS-Durable-Premium-250`, `AMLFS-Durable-Premium-500`
   - Number indicates MB/s/TiB throughput
@@ -273,15 +354,52 @@ All AMLFS parameters must be provided together to enable AMLFS storage:
 
 - **`--amlfs-size <size_in_TiB>`** (default: `4`)
 
-  - File system size in TiB
+  - File system size in TiB (only used when `--data-filesystem` is enabled)
   - Must be an integer ≥ 4 TiB
   - Example: `8` for 8 TiB
 
 - **`--amlfs-az <zone>`**
-  - Availability zone for AMLFS deployment
-  - Should match compute partition zones for optimal latency
-  - Defaults to zone `1` if not specified and region supports zones
+  - Availability zone for AMLFS deployment (only used when `--data-filesystem` is enabled)
+  - Defaults to zone `1` if not specified
   - Example: `1`
+
+#### Monitoring Configuration
+
+- **`--monitoring`**
+  - Enable monitoring for the cluster
+  - Flag parameter (no value required)
+  - Default: disabled
+  - When enabled, requires `--mon-ingestion-endpoint` and `--mon-dcr-id`
+
+- **`--mon-ingestion-endpoint <endpoint>`**
+  - Monitoring ingestion endpoint URL
+  - Required when `--monitoring` is enabled
+  - Example: `https://your-monitor-xxxxx.region-1.metrics.ingest.monitor.azure.com/dataCollectionRules/dcr-xxxxx/streams/Microsoft-PrometheusMetrics/api/v1/write?api-version=2023-04-24`
+
+- **`--mon-dcr-id <dcr-id>`**
+  - Data Collection Rule resource ID
+  - Required when `--monitoring` is enabled
+  - Format: `/subscriptions/<sub-id>/resourceGroups/<rg-name>/providers/Microsoft.Insights/dataCollectionRules/<dcr-name>`
+
+#### Microsoft Entra ID Configuration
+
+- **`--entra-id`**
+  - Enable Microsoft Entra ID authentication
+  - Flag parameter (no value required)
+  - Default: disabled
+  - When enabled, requires `--entra-app-umi` and `--entra-app-id`
+
+- **`--entra-app-umi <umi-id>`**
+  - User Managed Identity resource ID used in federated credentials of the registered Entra ID application for user authentication
+  - Required when `--entra-id` is enabled
+  - Format: `/subscriptions/<sub-id>/resourceGroups/<rg-name>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/<identity-name>`
+  - Example: `/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/myResourceGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/myIdentity`
+
+- **`--entra-app-id <app-id>`**
+  - Application (client) ID of the registered Entra ID application used to authenticate users
+  - Required when `--entra-id` is enabled
+  - Format: GUID
+  - Example: `12345678-1234-1234-1234-123456789abc`
 
 #### Database Configuration (Slurm Accounting)
 
@@ -345,6 +463,7 @@ If none of the database flags are provided, `databaseConfig` defaults to:
   - Enable Open OnDemand web portal deployment
   - Flag parameter (no value required)
   - Default: disabled
+  - **Requires `--entra-id` to be enabled**
   - Requires `--ood-user-domain` when enabled
 
 - **`--ood-sku <sku>`** (default: `Standard_D4as_v5`)
@@ -366,25 +485,17 @@ If none of the database flags are provided, `databaseConfig` defaults to:
   - Must contain at least one dot and no spaces if provided
   - Example: `ood.contoso.com`
 
-- **`--ood-auto-register`**
+- **`--ood-no-start`**
 
-  - Automatically register a new Entra ID application for Open OnDemand
+  - Do not start the Open OnDemand cluster automatically
   - Flag parameter (no value required)
-  - Default: manual registration (requires `--ood-app-id` and
-    `--ood-managed-identity-id`)
+  - Default: cluster starts automatically
+  - Useful when you want to configure the cluster before starting it
 
-- **`--ood-app-id <app_id>`**
-
-  - Existing Entra ID Application (client) ID
-  - Required when NOT using `--ood-auto-register`
-  - Used for Open OnDemand authentication
-  - Example: `12345678-1234-1234-1234-123456789abc`
-
-- **`--ood-managed-identity-id <resource_id>`**
-  - Existing User Assigned Managed Identity resource ID
-  - Required when NOT using `--ood-auto-register`
-  - Format:
-    `/subscriptions/<sub-id>/resourceGroups/<rg-name>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/<identity-name>`
+**Note:** The following values are automatically taken from Entra ID configuration:
+- Application (client) ID from `--entra-app-id`
+- User Managed Identity from `--entra-app-umi`
+- Tenant ID is automatically retrieved from the active Azure subscription
 
 #### Deployment Control
 
@@ -433,9 +544,16 @@ If none of the database flags are provided, `databaseConfig` defaults to:
   --anf-sku Premium \
   --anf-size 4 \
   --anf-az 1 \
+  --data-filesystem \
   --amlfs-sku AMLFS-Durable-Premium-500 \
   --amlfs-size 8 \
   --amlfs-az 1 \
+  --monitoring \
+  --mon-ingestion-endpoint "https://ccw-mon-xxxxx.swedencentral-1.metrics.ingest.monitor.azure.com/dataCollectionRules/dcr-xxxxx/streams/Microsoft-PrometheusMetrics/api/v1/write?api-version=2023-04-24" \
+  --mon-dcr-id "/subscriptions/12345678/resourceGroups/myRG/providers/Microsoft.Insights/dataCollectionRules/myDCR" \
+  --entra-id \
+  --entra-app-umi "/subscriptions/12345678/resourceGroups/myRG/providers/Microsoft.ManagedIdentity/userAssignedIdentities/myIdentity" \
+  --entra-app-id 12345678-1234-1234-1234-123456789abc \
   --create-accounting-mysql \
   --db-name myccdb \
   --db-user dbadmin \
@@ -444,7 +562,6 @@ If none of the database flags are provided, `databaseConfig` defaults to:
   --ood-sku Standard_D8as_v5 \
   --ood-user-domain contoso.com \
   --ood-fqdn ood.contoso.com \
-  --ood-auto-register \
   --workspace-ref main \
   --workspace-commit a1b2c3d4 \
   --output-file my-deployment-params.json \
@@ -467,7 +584,7 @@ If none of the database flags are provided, `databaseConfig` defaults to:
 >   tolerate interruptions
 > - Enable `--bastion` for secure access without public IPs on VMs
 
-### 3.6. Script Reference (Docstring Style)
+### 3.7. Script Reference (Docstring Style)
 
 Below is a docstring-style summary of `deploy-ccws.sh` for quick reference:
 
@@ -497,20 +614,24 @@ OPTIONAL PARAMETERS:
   --login-sku              Login node VM SKU (default: Standard_D2as_v5)
 
   # Workspace Repository
-  --workspace-ref <ref>    Git ref (branch/tag) to checkout (default: main)
+  --workspace-ref <ref>    Git ref (branch/tag) to checkout (default: 2025.12.01)
   --workspace-commit <sha> Explicit commit (detached HEAD override)
   --workspace-dir <path>   Clone destination (default: ./cyclecloud-slurm-workspace under script dir)
   --output-file <path>     Output parameters file path (default: output.json in script dir)
 
   # Availability Zones
+  --no-az                  Disable availability zones entirely (default behavior)
   --specify-az             Enable interactive AZ prompting (only if region has zonal SKUs)
-  --htc-az / --hpc-az / --gpu-az  Explicit AZ override; suppresses interactive prompt
+  --htc-az <zone>          Explicit AZ for HTC partition (suppresses interactive prompt)
+  --hpc-az <zone>          Explicit AZ for HPC partition (suppresses interactive prompt)
+  --gpu-az <zone>          Explicit AZ for GPU partition (suppresses interactive prompt)
 
   # Compute Partitions
   --htc-max-nodes <count>  Maximum nodes for HTC partition (interactive if omitted)
   --hpc-max-nodes <count>  Maximum nodes for HPC partition (interactive if omitted)
   --gpu-max-nodes <count>  Maximum nodes for GPU partition (interactive if omitted)
   --htc-use-spot           Use Spot (preemptible) VMs for HTC partition (flag)
+  --slurm-no-start         Do not start Slurm cluster automatically (default: start cluster)
 
   # Network Configuration
   --network-address-space <cidr>  Virtual network CIDR (default: 10.0.0.0/24)
@@ -518,13 +639,27 @@ OPTIONAL PARAMETERS:
 
   # Storage - Azure NetApp Files
   --anf-sku <tier>         NetApp Files service level: Standard|Premium|Ultra (default: Premium)
-  --anf-size <TiB>         NetApp Files capacity in TiB (default: 2)
+  --anf-size <TiB>         NetApp Files capacity in TiB (default: 2, minimum: 1)
   --anf-az <zone>          Availability zone for ANF (optional; interactive if omitted)
 
   # Storage - Azure Managed Lustre
+  --data-filesystem        Enable Azure Managed Lustre data filesystem (disabled by default)
   --amlfs-sku <tier>       Lustre tier: AMLFS-Durable-Premium-{40|125|250|500} (default: 500)
-  --amlfs-size <TiB>       Lustre capacity in TiB (default: 4)
-  --amlfs-az <zone>        Availability zone for AMLFS (optional; defaults to 1 if region supports zones)
+  --amlfs-size <TiB>       Lustre capacity in TiB (default: 4, minimum: 4)
+  --amlfs-az <zone>        Availability zone for AMLFS (defaults to 1)
+
+  # Monitoring
+  --monitoring             Enable monitoring (disabled by default)
+  --mon-ingestion-endpoint <endpoint>  Monitoring ingestion endpoint (required with --monitoring)
+  --mon-dcr-id <dcr-id>    Data Collection Rule ID (required with --monitoring)
+
+  # Microsoft Entra ID
+  --entra-id               Enable Microsoft Entra ID (disabled by default)
+  --entra-app-umi <umi-id> User Managed Identity resource ID used in federated credentials 
+                           of the registered Entra ID application for user authentication 
+                           (required with --entra-id)
+  --entra-app-id <app-id>  Application (client) ID of the registered Entra ID application 
+                           used to authenticate users (required with --entra-id)
 
   # Database Configuration (Slurm Accounting)
   --create-accounting-mysql    Auto-create MySQL Flexible Server (requires --db-name, --db-user, --db-password)
@@ -532,16 +667,17 @@ OPTIONAL PARAMETERS:
   --db-name <name>             MySQL server name
   --db-user <username>         Database admin username
   --db-password <password>     Database admin password
-  --db-id <resourceId>         Existing MySQL server resource ID (for existing server mode)
+  --db-id <resourceId>         Full Azure resource ID of existing MySQL server
+                               (all four parameters required together for existing server mode)
 
   # Open OnDemand Portal
-  --open-ondemand              Enable Open OnDemand web portal (flag)
-  --ood-sku <sku>              Open OnDemand VM SKU (default: Standard_D4as_v5)
+  --open-ondemand          Enable Open OnDemand web portal (flag, requires --entra-id to be enabled)
+  --ood-sku <sku>          Open OnDemand VM SKU (default: Standard_D4as_v5)
   --ood-user-domain <domain>   User domain for OOD authentication (required with --open-ondemand)
-  --ood-fqdn <fqdn>            Fully Qualified Domain Name for OOD (optional)
-  --ood-auto-register          Auto-register new Entra ID application (flag)
-  --ood-app-id <appId>         Existing Entra ID app ID (when not auto-registering)
-  --ood-managed-identity-id <id>  Existing managed identity resource ID (when not auto-registering)
+  --ood-fqdn <fqdn>        Fully Qualified Domain Name for OOD (optional)
+  --ood-no-start           Do not start OOD cluster automatically (default: start cluster)
+                           Note: App ID, Managed Identity, and Tenant ID are automatically 
+                           taken from --entra-app-id, --entra-app-umi, and active subscription
 
   # Deployment Control
   --accept-marketplace     Accept marketplace terms automatically
@@ -575,26 +711,81 @@ SECURITY NOTES:
   * Avoid committing generated output.json containing passwords.
   * Prefer environment variables for sensitive values.
   * Admin and database passwords must be passed via CLI during deployment.
+
+EXAMPLES:
+  # Basic deployment with interactive zone prompts
+  deploy-ccws.sh --subscription-id SUB --resource-group rg-ccw --location eastus \
+    --ssh-public-key-file ~/.ssh/id_rsa.pub --admin-password 'YourP@ssw0rd!' \
+    --htc-sku Standard_F2s_v2 --hpc-sku Standard_HB176rs_v4 \
+    --gpu-sku Standard_ND96amsr_A100_v4 --specify-az
+
+  # Full deployment with all features
+  deploy-ccws.sh --subscription-id SUB --resource-group rg-ccw --location eastus \
+    --ssh-public-key-file ~/.ssh/id_rsa.pub --admin-password 'YourP@ssw0rd!' \
+    --htc-sku Standard_F2s_v2 --htc-az 1 --htc-max-nodes 100 --htc-use-spot \
+    --hpc-sku Standard_HB176rs_v4 --hpc-az 1 --hpc-max-nodes 50 \
+    --gpu-sku Standard_ND96amsr_A100_v4 --gpu-az 1 --gpu-max-nodes 20 \
+    --network-address-space 10.1.0.0/16 --bastion \
+    --anf-sku Premium --anf-size 4 --anf-az 1 \
+    --data-filesystem --amlfs-sku AMLFS-Durable-Premium-500 --amlfs-size 8 --amlfs-az 1 \
+    --monitoring \
+    --mon-ingestion-endpoint "https://example.metrics.ingest.monitor.azure.com/..." \
+    --mon-dcr-id "/subscriptions/SUB/resourceGroups/RG/providers/Microsoft.Insights/dataCollectionRules/myDCR" \
+    --entra-id \
+    --entra-app-umi "/subscriptions/SUB/resourceGroups/RG/providers/Microsoft.ManagedIdentity/userAssignedIdentities/myUMI" \
+    --entra-app-id "12345678-1234-1234-1234-123456789abc" \
+    --create-accounting-mysql --db-name myccdb --db-user dbadmin --db-password 'DbP@ss!' \
+    --open-ondemand --ood-user-domain contoso.com --ood-fqdn ood.contoso.com \
+    --accept-marketplace --deploy
+
+  # With existing database and custom workspace commit
+  deploy-ccws.sh --subscription-id SUB --resource-group rg-ccw --location eastus \
+    --ssh-public-key-file ~/.ssh/id_rsa.pub --admin-password 'YourP@ssw0rd!' \
+    --htc-sku Standard_F2s_v2 --hpc-sku Standard_HB176rs_v4 --gpu-sku Standard_ND96amsr_A100_v4 \
+    --db-name myccdb --db-user dbadmin --db-password 'DbP@ss!' \
+    --db-id "/subscriptions/SUB/resourceGroups/RG/providers/Microsoft.DBforMySQL/flexibleServers/myccdb" \
+    --workspace-commit a1b2c3d4e5f6 --deploy
 ```
 
-### 3.7. Non-Interactive Deployment
+### 3.8. Non-Interactive Deployment
 
-To avoid interactive zone prompts entirely, omit `--specify-az` or specify them
-with the corresponding command line options:
+To avoid interactive zone prompts and deploy without availability zones (default behavior):
 
 ```bash
 ./scripts/deploy-ccws.sh --subscription-id <sub-id> --resource-group <rg> --location eastus \
   --ssh-public-key-file ~/.ssh/id_rsa.pub --admin-password 'YourP@ssw0rd!' \
-  --htc-sku Standard_F2s_v2 --hpc-sku Standard_HB176rs_v4 --gpu-sku Standard_ND96amsr_A100_v4 --deploy
+  --htc-sku Standard_F2s_v2 --hpc-sku Standard_HB176rs_v4 --gpu-sku Standard_ND96amsr_A100_v4 \
+  --deploy
 ```
 
-### 3.8. Re-Running / Modifying
+To explicitly disable availability zones:
+
+```bash
+./scripts/deploy-ccws.sh --subscription-id <sub-id> --resource-group <rg> --location eastus \
+  --ssh-public-key-file ~/.ssh/id_rsa.pub --admin-password 'YourP@ssw0rd!' \
+  --htc-sku Standard_F2s_v2 --hpc-sku Standard_HB176rs_v4 --gpu-sku Standard_ND96amsr_A100_v4 \
+  --no-az \
+  --deploy
+```
+
+To specify zones via command line without prompts:
+
+```bash
+./scripts/deploy-ccws.sh --subscription-id <sub-id> --resource-group <rg> --location eastus \
+  --ssh-public-key-file ~/.ssh/id_rsa.pub --admin-password 'YourP@ssw0rd!' \
+  --htc-sku Standard_F2s_v2 --htc-az 1 --hpc-sku Standard_HB176rs_v4 --hpc-az 1 \
+  --gpu-sku Standard_ND96amsr_A100_v4 --gpu-az 1 \
+  --specify-az \
+  --deploy
+```
+
+### 3.9. Re-Running / Modifying
 
 User can re-run the script with different SKUs or zone selections; it will
 regenerate `output.json`. Delete or move the file if user wants to keep multiple
 versions.
 
-### 3.9. Troubleshooting
+### 3.10. Troubleshooting
 
 - Missing zones: Ensure `jq` is installed and that your Azure CLI is up to date.
 - Permission errors: Verify subscription context (`az account show`) and role
@@ -602,7 +793,7 @@ versions.
 - Marketplace errors: Include `--accept-marketplace` if required for first-time
   OS SKU usage.
 
-### 3.10. Manual Deployment (Optional)
+### 3.11. Manual Deployment (Optional)
 
 If the user only wants the parameters file and prefer manual deployment:
 
