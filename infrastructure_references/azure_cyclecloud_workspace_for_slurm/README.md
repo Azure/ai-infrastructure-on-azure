@@ -8,13 +8,14 @@
    1. [Basic Usage](#31-basic-usage)
    2. [Selecting Availability Zones](#32-selecting-availability-zones)
    3. [Example With Marketplace Acceptance and Automatic Deployment](#33-example-with-marketplace-acceptance-and-automatic-deployment)
-   4. [Generated Artifacts](#34-generated-artifacts)
-   5. [Optional Parameters](#35-optional-parameters)
-   6. [Script Reference (Docstring Style)](#36-script-reference-docstring-style)
-   7. [Non-Interactive Deployment](#37-non-interactive-deployment)
-   8. [Re-Running / Modifying](#38-re-running--modifying)
-   9. [Troubleshooting](#39-troubleshooting)
-   10. [Manual Deployment (Optional)](#310-manual-deployment-optional)
+   4. [Example With Custom OS Images](#34-example-with-custom-os-images)
+   5. [Generated Artifacts](#35-generated-artifacts)
+   6. [Optional Parameters](#36-optional-parameters)
+   7. [Script Reference (Docstring Style)](#37-script-reference-docstring-style)
+   8. [Non-Interactive Deployment](#38-non-interactive-deployment)
+   9. [Re-Running / Modifying](#39-re-running--modifying)
+   10. [Troubleshooting](#310-troubleshooting)
+   11. [Manual Deployment (Optional)](#311-manual-deployment-optional)
 
 ## 1. Overview
 
@@ -126,13 +127,38 @@ region-level (non-zonal) placement. AMLFS will default to zone `1`.
   --deploy
 ```
 
-### 3.4. Generated Artifacts
+### 3.4. Example With Custom OS Images
+
+This example shows how to deploy with Ubuntu 22.04 images across all node types:
+
+```bash
+./scripts/deploy-ccws.sh \
+  --subscription-id <sub-id> \
+  --resource-group <rg-name> \
+  --location eastus \
+  --ssh-public-key-file ~/.ssh/id_rsa.pub \
+  --admin-password 'YourP@ssw0rd!' \
+  --htc-sku Standard_F2s_v2 \
+  --hpc-sku Standard_HB176rs_v4 \
+  --gpu-sku Standard_ND96amsr_A100_v4 \
+  --scheduler-image cycle.image.ubuntu22 \
+  --login-image cycle.image.ubuntu22 \
+  --htc-image cycle.image.ubuntu22 \
+  --hpc-image cycle.image.ubuntu22 \
+  --gpu-image cycle.image.ubuntu22 \
+  --accept-marketplace \
+  --deploy
+```
+
+> **Note:** All OS images default to `cycle.image.ubuntu24` if not specified. You can mix and match different OS versions for different node types based on your workload requirements.
+
+### 3.5. Generated Artifacts
 
 - `output.json` – parameter file used for the Bicep deployment.
 - Random deployment name previewed in the summary section.
 - Summary of chosen SKUs and zones printed for validation.
 
-### 3.5. Optional Parameters
+### 3.6. Optional Parameters
 
 The `deploy-ccws.sh` script supports numerous optional flags to customize the
 deployment. Below is a comprehensive reference for all available optional
@@ -237,6 +263,40 @@ parameters:
   - Flag parameter (no value required)
   - Default: cluster starts automatically
   - Useful when you want to configure the cluster before starting it
+
+#### OS Image Configuration
+
+All OS image parameters default to `cycle.image.ubuntu24` if not specified:
+
+- **`--scheduler-image <image>`** (default: `cycle.image.ubuntu24`)
+  - OS image for the CycleCloud scheduler node
+  - Common values: `cycle.image.ubuntu24`, `cycle.image.ubuntu22`
+  - Example: `cycle.image.ubuntu22`
+
+- **`--login-image <image>`** (default: `cycle.image.ubuntu24`)
+  - OS image for the login node
+  - Should typically match scheduler image for consistency
+  - Example: `cycle.image.ubuntu22`
+
+- **`--ood-image <image>`** (default: `cycle.image.ubuntu24`)
+  - OS image for Open OnDemand web portal nodes
+  - Only applies when `--open-ondemand` is enabled
+  - Example: `cycle.image.ubuntu22`
+
+- **`--htc-image <image>`** (default: `cycle.image.ubuntu24`)
+  - OS image for HTC (High Throughput Computing) partition nodes
+  - Choose based on workload requirements and software compatibility
+  - Example: `cycle.image.ubuntu22`
+
+- **`--hpc-image <image>`** (default: `cycle.image.ubuntu24`)
+  - OS image for HPC (High Performance Computing) partition nodes
+  - Consider HPC-optimized images for performance-critical workloads
+  - Example: `cycle.image.ubuntu22`
+
+- **`--gpu-image <image>`** (default: `cycle.image.ubuntu24`)
+  - OS image for GPU partition nodes
+  - Ensure CUDA/driver compatibility with chosen image
+  - Example: `cycle.image.ubuntu22`
 
 #### Network Configuration
 
@@ -524,7 +584,7 @@ If none of the database flags are provided, `databaseConfig` defaults to:
 >   tolerate interruptions
 > - Enable `--bastion` for secure access without public IPs on VMs
 
-### 3.6. Script Reference (Docstring Style)
+### 3.7. Script Reference (Docstring Style)
 
 Below is a docstring-style summary of `deploy-ccws.sh` for quick reference:
 
@@ -687,7 +747,7 @@ EXAMPLES:
     --workspace-commit a1b2c3d4e5f6 --deploy
 ```
 
-### 3.7. Non-Interactive Deployment
+### 3.8. Non-Interactive Deployment
 
 To avoid interactive zone prompts and deploy without availability zones (default behavior):
 
@@ -719,13 +779,13 @@ To specify zones via command line without prompts:
   --deploy
 ```
 
-### 3.8. Re-Running / Modifying
+### 3.9. Re-Running / Modifying
 
 User can re-run the script with different SKUs or zone selections; it will
 regenerate `output.json`. Delete or move the file if user wants to keep multiple
 versions.
 
-### 3.9. Troubleshooting
+### 3.10. Troubleshooting
 
 - Missing zones: Ensure `jq` is installed and that your Azure CLI is up to date.
 - Permission errors: Verify subscription context (`az account show`) and role
@@ -733,7 +793,7 @@ versions.
 - Marketplace errors: Include `--accept-marketplace` if required for first-time
   OS SKU usage.
 
-### 3.10. Manual Deployment (Optional)
+### 3.11. Manual Deployment (Optional)
 
 If the user only wants the parameters file and prefer manual deployment:
 

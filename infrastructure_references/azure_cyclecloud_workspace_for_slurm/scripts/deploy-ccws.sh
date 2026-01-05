@@ -43,6 +43,14 @@ OPTIONAL PARAMETERS:
     --scheduler-sku <sku>        Scheduler node VM SKU (default: Standard_D4as_v5)
     --login-sku <sku>            Login node VM SKU (default: Standard_D2as_v5)
 
+  OS Image Configuration:
+    --scheduler-image <image>    Scheduler node OS image (default: cycle.image.ubuntu24)
+    --login-image <image>        Login node OS image (default: cycle.image.ubuntu24)
+    --ood-image <image>          Open OnDemand node OS image (default: cycle.image.ubuntu24)
+    --htc-image <image>          HTC partition OS image (default: cycle.image.ubuntu24)
+    --hpc-image <image>          HPC partition OS image (default: cycle.image.ubuntu24)
+    --gpu-image <image>          GPU partition OS image (default: cycle.image.ubuntu24)
+
   Workspace Repository:
     --workspace-ref <ref>        Git ref (branch/tag) to checkout (default: main)
     --workspace-commit <sha>     Explicit commit (detached HEAD override)
@@ -156,6 +164,17 @@ EXAMPLES:
        --htc-sku Standard_F2s_v2 --hpc-sku Standard_HB176rs_v4 \\
        --gpu-sku Standard_ND96amsr_A100_v4 --specify-az
 
+  Deployment with custom OS images:
+    $0 --subscription-id SUB --resource-group rg-ccw --location eastus \\
+       --ssh-public-key-file ~/.ssh/id_rsa.pub --admin-password 'YourP@ssw0rd!' \\
+       --htc-sku Standard_F2s_v2 --hpc-sku Standard_HB176rs_v4 \\
+       --gpu-sku Standard_ND96amsr_A100_v4 \\
+       --scheduler-image cycle.image.ubuntu22 \\
+       --login-image cycle.image.ubuntu22 \\
+       --htc-image cycle.image.ubuntu22 \\
+       --hpc-image cycle.image.ubuntu22 \\
+       --gpu-image cycle.image.ubuntu22
+
   Full deployment with all features:
     $0 --subscription-id SUB --resource-group rg-ccw --location eastus \\
        --ssh-public-key-file ~/.ssh/id_rsa.pub --admin-password 'YourP@ssw0rd!' \\
@@ -189,6 +208,12 @@ LOGIN_SKU="Standard_D2as_v5"
 HTC_SKU=""
 HPC_SKU=""
 GPU_SKU=""
+SCHEDULER_IMAGE="cycle.image.ubuntu24"
+LOGIN_IMAGE="cycle.image.ubuntu24"
+OOD_IMAGE="cycle.image.ubuntu24"
+HTC_IMAGE="cycle.image.ubuntu24"
+HPC_IMAGE="cycle.image.ubuntu24"
+GPU_IMAGE="cycle.image.ubuntu24"
 WORKSPACE_REF="${WORKSPACE_REF:-2025.12.01}" # allow pre-set env var to override default
 WORKSPACE_COMMIT=""
 OUTPUT_FILE="${DEFAULT_OUTPUT_FILE}"
@@ -282,12 +307,32 @@ while [[ $# -gt 0 ]]; do
 		GPU_AZ="$2"
 		shift 2
 		;;
+	--htc-image)
+		HTC_IMAGE="$2"
+		shift 2
+		;;
+	--hpc-image)
+		HPC_IMAGE="$2"
+		shift 2
+		;;
+	--gpu-image)
+		GPU_IMAGE="$2"
+		shift 2
+		;;
 	--scheduler-sku)
 		SCHEDULER_SKU="$2"
 		shift 2
 		;;
 	--login-sku)
 		LOGIN_SKU="$2"
+		shift 2
+		;;
+	--scheduler-image)
+		SCHEDULER_IMAGE="$2"
+		shift 2
+		;;
+	--login-image)
+		LOGIN_IMAGE="$2"
 		shift 2
 		;;
 	--workspace-ref)
@@ -380,6 +425,10 @@ while [[ $# -gt 0 ]]; do
 		;;
 	--ood-sku)
 		OOD_SKU="$2"
+		shift 2
+		;;
+	--ood-image)
+		OOD_IMAGE="$2"
 		shift 2
 		;;
 	--ood-user-domain)
@@ -1033,7 +1082,7 @@ fi
 
 # Construct Open OnDemand JSON fragment (minimal when disabled)
 if [[ "$OOD_ENABLED" == "true" ]]; then
-	OOD_JSON='"ood": { "value": { "type": "enabled", "startCluster": '"${OOD_START_CLUSTER}"', "sku": "'"${OOD_SKU}"'", "osImage": "cycle.image.ubuntu24", "userDomain": "'"${OOD_USER_DOMAIN}"'", "fqdn": "'"${OOD_FQDN}"'", "registerEntraIDApp": false, "appId": "'"${ENTRA_APP_ID}"'", "appManagedIdentityId": "'"${ENTRA_APP_UMI}"'", "appTenantId": "'"${TENANT_ID}"'" } },'
+	OOD_JSON='"ood": { "value": { "type": "enabled", "startCluster": '"${OOD_START_CLUSTER}"', "sku": "'"${OOD_SKU}"'", "osImage": "'"${OOD_IMAGE}"'", "userDomain": "'"${OOD_USER_DOMAIN}"'", "fqdn": "'"${OOD_FQDN}"'", "registerEntraIDApp": false, "appId": "'"${ENTRA_APP_ID}"'", "appManagedIdentityId": "'"${ENTRA_APP_UMI}"'", "appTenantId": "'"${TENANT_ID}"'" } },'
 else
 	OOD_JSON='"ood": { "value": { "type": "disabled" } },'
 fi
@@ -1080,11 +1129,11 @@ cat >"$OUTPUT_FILE" <<EOF
 		${DB_JSON_DATABASE_CONFIG}
 		"acceptMarketplaceTerms": { "value": ${ACCEPT_MARKETPLACE} },
 		"slurmSettings": { "value": { "startCluster": ${SLURM_START_CLUSTER}, "version": "${SLURM_VERSION}", "healthCheckEnabled": false } },
-		"schedulerNode": { "value": { "sku": "${SCHEDULER_SKU}", "osImage": "cycle.image.ubuntu24" } },
-		"loginNodes": { "value": { "sku": "${LOGIN_SKU}", "osImage": "cycle.image.ubuntu24", "initialNodes": 1, "maxNodes": 1 } },
-		"htc": { "value": { "sku": "${HTC_SKU}", "maxNodes": ${HTC_MAX_NODES}, "osImage": "cycle.image.ubuntu24", "useSpot": ${HTC_USE_SPOT}${HTC_ZONES_JSON} } },
-		"hpc": { "value": { "sku": "${HPC_SKU}", "maxNodes": ${HPC_MAX_NODES}, "osImage": "cycle.image.ubuntu24"${HPC_ZONES_JSON} } },
-		"gpu": { "value": { "sku": "${GPU_SKU}", "maxNodes": ${GPU_MAX_NODES}, "osImage": "cycle.image.ubuntu24"${GPU_ZONES_JSON} } },
+		"schedulerNode": { "value": { "sku": "${SCHEDULER_SKU}", "osImage": "${SCHEDULER_IMAGE}" } },
+		"loginNodes": { "value": { "sku": "${LOGIN_SKU}", "osImage": "${LOGIN_IMAGE}", "initialNodes": 1, "maxNodes": 1 } },
+		"htc": { "value": { "sku": "${HTC_SKU}", "maxNodes": ${HTC_MAX_NODES}, "osImage": "${HTC_IMAGE}", "useSpot": ${HTC_USE_SPOT}${HTC_ZONES_JSON} } },
+		"hpc": { "value": { "sku": "${HPC_SKU}", "maxNodes": ${HPC_MAX_NODES}, "osImage": "${HPC_IMAGE}"${HPC_ZONES_JSON} } },
+		"gpu": { "value": { "sku": "${GPU_SKU}", "maxNodes": ${GPU_MAX_NODES}, "osImage": "${GPU_IMAGE}"${GPU_ZONES_JSON} } },
 		${OOD_JSON}
 		${MONITORING_JSON}
 		${ENTRA_ID_JSON}
