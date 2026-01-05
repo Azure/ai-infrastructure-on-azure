@@ -117,7 +117,7 @@ jobs:
           echo "htc_max_nodes=100" >> $GITHUB_OUTPUT
           echo "hpc_max_nodes=50" >> $GITHUB_OUTPUT
           echo "gpu_max_nodes=20" >> $GITHUB_OUTPUT
-          echo "deploy_immediately=false" >> $GITHUB_OUTPUT
+          echo "deploy_immediately=true" >> $GITHUB_OUTPUT
         else
           # Use inputs from workflow_dispatch
           echo "location=${{ inputs.location }}" >> $GITHUB_OUTPUT
