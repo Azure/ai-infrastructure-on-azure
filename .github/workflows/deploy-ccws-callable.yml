@@ -56,8 +56,8 @@ on:
       deploy_immediately:
         description: 'Deploy immediately after generating parameters'
         required: false
-        default: false
-        type: boolean
+        default: 'false'
+        type: string
 
 jobs:
   deploy:
@@ -96,7 +96,7 @@ jobs:
         echo "Generated resource group name: ${rg_name}"
 
     - name: Accept Azure Marketplace terms
-      if: inputs.deploy_immediately == true
+      if: inputs.deploy_immediately == 'true'
       run: |
         echo "Deployment enabled - accepting Azure CycleCloud marketplace terms..."
         az vm image terms accept --publisher azurecyclecloud --offer azure-cyclecloud --plan cyclecloud8-gen2 || {
@@ -172,7 +172,7 @@ jobs:
         fi
 
     - name: Cleanup resource group after deployment
-      if: always() && inputs.deploy_immediately == true
+      if: always() && inputs.deploy_immediately == 'true'
       run: |
         echo "Cleaning up resource group: ${{ steps.rg_name.outputs.resource_group }}"
         if az group exists --name "${{ steps.rg_name.outputs.resource_group }}" --output tsv 2>/dev/null | grep -q "true"; then
