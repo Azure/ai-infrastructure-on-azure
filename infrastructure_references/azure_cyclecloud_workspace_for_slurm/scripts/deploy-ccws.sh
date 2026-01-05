@@ -1110,8 +1110,17 @@ else
 fi
 
 # Retrieve Slurm default version from workspace UI definitions file
-SLURM_VERSION=$(jq -r '.. | objects | select(.name == "slurmVersion") | .defaultValue' "$WORKSPACE_DIR/uidefinitions/createUiDefinition.json")
+if ! SLURM_VERSION=$(jq -r '.. | objects | select(.name == "slurmVersion") | .defaultValue' "$WORKSPACE_DIR/uidefinitions/createUiDefinition.json"); then
+	echo "ERROR: Failed to extract Slurm default version from '$WORKSPACE_DIR/uidefinitions/createUiDefinition.json' using jq." >&2
+	echo "Please ensure the file exists, is valid JSON, and contains an entry with name \"slurmVersion\" and a defaultValue." >&2
+	exit 1
+fi
 
+if [[ -z "${SLURM_VERSION}" || "${SLURM_VERSION}" == "null" ]]; then
+	echo "ERROR: Extracted Slurm default version is empty or null from '$WORKSPACE_DIR/uidefinitions/createUiDefinition.json'." >&2
+	echo "Please verify the 'slurmVersion' entry has a non-empty defaultValue." >&2
+	exit 1
+fi
 cat >"$OUTPUT_FILE" <<EOF
 {
 	"\$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
