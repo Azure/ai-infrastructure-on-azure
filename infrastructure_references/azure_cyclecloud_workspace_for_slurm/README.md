@@ -562,7 +562,6 @@ If none of the database flags are provided, `databaseConfig` defaults to:
   --ood-sku Standard_D8as_v5 \
   --ood-user-domain contoso.com \
   --ood-fqdn ood.contoso.com \
-
   --workspace-ref main \
   --workspace-commit a1b2c3d4 \
   --output-file my-deployment-params.json \
