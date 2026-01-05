@@ -110,7 +110,7 @@ jobs:
           echo "htc_max_nodes=${{ inputs.htc_max_nodes || '100' }}" >> $GITHUB_OUTPUT
           echo "hpc_max_nodes=${{ inputs.hpc_max_nodes || '16' }}" >> $GITHUB_OUTPUT
           echo "gpu_max_nodes=${{ inputs.gpu_max_nodes || '8' }}" >> $GITHUB_OUTPUT
-          echo "deploy_immediately=${{ inputs.deploy_immediately || false }}" >> $GITHUB_OUTPUT
+          echo "deploy_immediately=${{ inputs.deploy_immediately || 'false' }}" >> $GITHUB_OUTPUT
         fi
 
   call-deployment:
