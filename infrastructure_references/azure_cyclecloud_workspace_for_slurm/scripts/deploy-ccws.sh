@@ -1033,7 +1033,7 @@ fi
 
 # Construct Open OnDemand JSON fragment (minimal when disabled)
 if [[ "$OOD_ENABLED" == "true" ]]; then
-	OOD_JSON='"ood": { "value": { "type": "enabled", "startCluster": '"${OOD_START_CLUSTER}"', "sku": "'"${OOD_SKU}"'", "osImage": "cycle.image.ubuntu22", "userDomain": "'"${OOD_USER_DOMAIN}"'", "fqdn": "'"${OOD_FQDN}"'", "registerEntraIDApp": false, "appId": "'"${ENTRA_APP_ID}"'", "appManagedIdentityId": "'"${ENTRA_APP_UMI}"'", "appTenantId": "'"${TENANT_ID}"'" } },'
+	OOD_JSON='"ood": { "value": { "type": "enabled", "startCluster": '"${OOD_START_CLUSTER}"', "sku": "'"${OOD_SKU}"'", "osImage": "cycle.image.ubuntu24", "userDomain": "'"${OOD_USER_DOMAIN}"'", "fqdn": "'"${OOD_FQDN}"'", "registerEntraIDApp": false, "appId": "'"${ENTRA_APP_ID}"'", "appManagedIdentityId": "'"${ENTRA_APP_UMI}"'", "appTenantId": "'"${TENANT_ID}"'" } },'
 else
 	OOD_JSON='"ood": { "value": { "type": "disabled" } },'
 fi
@@ -1080,11 +1080,11 @@ cat >"$OUTPUT_FILE" <<EOF
 		${DB_JSON_DATABASE_CONFIG}
 		"acceptMarketplaceTerms": { "value": ${ACCEPT_MARKETPLACE} },
 		"slurmSettings": { "value": { "startCluster": ${SLURM_START_CLUSTER}, "version": "${SLURM_VERSION}", "healthCheckEnabled": false } },
-		"schedulerNode": { "value": { "sku": "${SCHEDULER_SKU}", "osImage": "cycle.image.ubuntu22" } },
-		"loginNodes": { "value": { "sku": "${LOGIN_SKU}", "osImage": "cycle.image.ubuntu22", "initialNodes": 1, "maxNodes": 1 } },
-		"htc": { "value": { "sku": "${HTC_SKU}", "maxNodes": ${HTC_MAX_NODES}, "osImage": "cycle.image.ubuntu22", "useSpot": ${HTC_USE_SPOT}${HTC_ZONES_JSON} } },
-		"hpc": { "value": { "sku": "${HPC_SKU}", "maxNodes": ${HPC_MAX_NODES}, "osImage": "cycle.image.ubuntu22"${HPC_ZONES_JSON} } },
-		"gpu": { "value": { "sku": "${GPU_SKU}", "maxNodes": ${GPU_MAX_NODES}, "osImage": "cycle.image.ubuntu22"${GPU_ZONES_JSON} } },
+		"schedulerNode": { "value": { "sku": "${SCHEDULER_SKU}", "osImage": "cycle.image.ubuntu24" } },
+		"loginNodes": { "value": { "sku": "${LOGIN_SKU}", "osImage": "cycle.image.ubuntu24", "initialNodes": 1, "maxNodes": 1 } },
+		"htc": { "value": { "sku": "${HTC_SKU}", "maxNodes": ${HTC_MAX_NODES}, "osImage": "cycle.image.ubuntu24", "useSpot": ${HTC_USE_SPOT}${HTC_ZONES_JSON} } },
+		"hpc": { "value": { "sku": "${HPC_SKU}", "maxNodes": ${HPC_MAX_NODES}, "osImage": "cycle.image.ubuntu24"${HPC_ZONES_JSON} } },
+		"gpu": { "value": { "sku": "${GPU_SKU}", "maxNodes": ${GPU_MAX_NODES}, "osImage": "cycle.image.ubuntu24"${GPU_ZONES_JSON} } },
 		${OOD_JSON}
 		${MONITORING_JSON}
 		${ENTRA_ID_JSON}
