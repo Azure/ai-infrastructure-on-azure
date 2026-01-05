@@ -78,3 +78,4 @@ jobs:
       hpc_max_nodes: ${{ inputs.hpc_max_nodes }}
       gpu_max_nodes: ${{ inputs.gpu_max_nodes }}
       deploy_immediately: ${{ inputs.deploy_immediately }}
+    secrets: inherit
