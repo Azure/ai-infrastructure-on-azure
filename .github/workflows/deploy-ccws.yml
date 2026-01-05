@@ -6,10 +6,6 @@ on:
       - xpillons/103    
   workflow_dispatch:
     inputs:
-      subscription_id:
-        description: 'Azure subscription ID'
-        required: true
-        type: string
       location:
         description: 'Azure region (e.g., eastus, westus2)'
         required: true
@@ -79,7 +75,7 @@ jobs:
       with:
         client-id: ${{ secrets.AZURE_CLIENT_ID }}
         tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-        subscription-id: ${{ inputs.subscription_id }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
     - name: Validate required secrets
       run: |
@@ -116,7 +112,7 @@ jobs:
       run: |
         # Base command with required parameters
         cmd="./infrastructure_references/azure_cyclecloud_workspace_for_slurm/scripts/deploy-ccws.sh"
-        cmd="$cmd --subscription-id '${{ inputs.subscription_id }}'"
+        cmd="$cmd --subscription-id '${{ secrets.AZURE_SUBSCRIPTION_ID }}'"
         cmd="$cmd --resource-group '${{ steps.rg_name.outputs.resource_group }}'"
         cmd="$cmd --location '${{ inputs.location }}'"
         cmd="$cmd --ssh-public-key-file ~/.ssh/id_rsa.pub"
@@ -154,7 +150,7 @@ jobs:
       if: success()
       run: |
         echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
-        echo "- **Subscription ID**: ${{ inputs.subscription_id }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Subscription ID**: ${{ secrets.AZURE_SUBSCRIPTION_ID }}" >> $GITHUB_STEP_SUMMARY
         echo "- **Resource Group**: ${{ steps.rg_name.outputs.resource_group }}" >> $GITHUB_STEP_SUMMARY
         echo "- **Location**: ${{ inputs.location }}" >> $GITHUB_STEP_SUMMARY
         echo "- **HTC SKU**: ${{ inputs.htc_sku }}" >> $GITHUB_STEP_SUMMARY
