@@ -7,10 +7,10 @@ on:
   workflow_dispatch:
     inputs:
       location:
-        description: 'Azure region (e.g., eastus, westus2)'
+        description: 'Azure region (e.g., westus3, westeurope, westus2)'
         required: true
         type: string
-        default: 'eastus'
+        default: 'westus3'
       htc_sku:
         description: 'HTC partition VM SKU (e.g., Standard_F2s_v2)'
         required: true
@@ -209,8 +209,8 @@ jobs:
           echo "=================================="          
         fi
 
-    - name: Cleanup resource group after successful deployment
-      if: success() && steps.defaults.outputs.deploy_immediately == 'true'
+    - name: Cleanup resource group after deployment
+      if: always() && steps.defaults.outputs.deploy_immediately == 'true'
       run: |
         echo "Cleaning up resource group: ${{ steps.rg_name.outputs.resource_group }}"
         if az group exists --name "${{ steps.rg_name.outputs.resource_group }}" --output tsv 2>/dev/null | grep -q "true"; then
