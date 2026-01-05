@@ -2,8 +2,10 @@ name: Deploy Azure CycleCloud Workspace for Slurm (CCWS)
 
 on:
   push:
-    branches:
-      - xpillons/103    
+    paths:
+      - '.github/workflows/deploy-ccws.yml'
+      - '.github/workflows/deploy-ccws-callable.yml'
+      - 'infrastructure_references/azure_cyclecloud_workspace_for_slurm/scripts/deploy-ccws.sh'
 
   workflow_dispatch:
     inputs:
