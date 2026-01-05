@@ -52,7 +52,7 @@ OPTIONAL PARAMETERS:
     --gpu-image <image>          GPU partition OS image (default: cycle.image.ubuntu24)
 
   Workspace Repository:
-    --workspace-ref <ref>        Git ref (branch/tag) to checkout (default: main)
+    --workspace-ref <ref>        Git ref (branch/tag) to checkout (default: 2025.12.01)
     --workspace-commit <sha>     Explicit commit (detached HEAD override)
     --workspace-dir <path>       Clone destination (default: ./cyclecloud-slurm-workspace)
     --output-file <path>         Output parameters file path (default: ${DEFAULT_OUTPUT_FILE})
