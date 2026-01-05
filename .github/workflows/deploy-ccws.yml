@@ -1,6 +1,9 @@
 name: Deploy Azure CycleCloud Workspace for Slurm
 
 on:
+  push:
+    branches:
+      - xpillons/103    
   workflow_dispatch:
     inputs:
       subscription_id:
