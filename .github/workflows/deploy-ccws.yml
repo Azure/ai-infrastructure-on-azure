@@ -67,15 +67,15 @@ jobs:
   deploy:
     uses: ./.github/workflows/deploy-ccws-callable.yml
     with:
-      location: ${{ inputs.location }}
-      htc_sku: ${{ inputs.htc_sku }}
-      hpc_sku: ${{ inputs.hpc_sku }}
-      gpu_sku: ${{ inputs.gpu_sku }}
-      scheduler_sku: ${{ inputs.scheduler_sku }}
-      login_sku: ${{ inputs.login_sku }}
-      workspace_ref: ${{ inputs.workspace_ref }}
-      htc_max_nodes: ${{ inputs.htc_max_nodes }}
-      hpc_max_nodes: ${{ inputs.hpc_max_nodes }}
-      gpu_max_nodes: ${{ inputs.gpu_max_nodes }}
-      deploy_immediately: ${{ inputs.deploy_immediately }}
+      location: ${{ inputs.location || 'westus3' }}
+      htc_sku: ${{ inputs.htc_sku || 'Standard_F2s_v2' }}
+      hpc_sku: ${{ inputs.hpc_sku || 'Standard_HB176rs_v4' }}
+      gpu_sku: ${{ inputs.gpu_sku || 'Standard_ND96amsr_A100_v4' }}
+      scheduler_sku: ${{ inputs.scheduler_sku || 'Standard_D4as_v5' }}
+      login_sku: ${{ inputs.login_sku || 'Standard_D2as_v5' }}
+      workspace_ref: ${{ inputs.workspace_ref || '2025.12.01' }}
+      htc_max_nodes: ${{ inputs.htc_max_nodes || '100' }}
+      hpc_max_nodes: ${{ inputs.hpc_max_nodes || '16' }}
+      gpu_max_nodes: ${{ inputs.gpu_max_nodes || '8' }}
+      deploy_immediately: ${{ inputs.deploy_immediately || false }}
     secrets: inherit
