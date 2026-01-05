@@ -173,7 +173,8 @@ EXAMPLES:
        --login-image cycle.image.ubuntu22 \\
        --htc-image cycle.image.ubuntu22 \\
        --hpc-image cycle.image.ubuntu22 \\
-       --gpu-image cycle.image.ubuntu22
+       --gpu-image cycle.image.ubuntu22 \\
+       --ood-image cycle.image.ubuntu22 --deploy
 
   Full deployment with all features:
     $0 --subscription-id SUB --resource-group rg-ccw --location eastus \\
