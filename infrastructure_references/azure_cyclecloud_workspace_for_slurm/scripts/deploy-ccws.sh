@@ -954,6 +954,7 @@ if [[ "$NO_AZ" == "true" ]]; then
 	HPC_AZ=""
 	GPU_AZ=""
 	ANF_AZ=""
+	AMLFS_AZ=""
 elif [[ "$SPECIFY_AZ" == "true" ]]; then
 	# User explicitly requested zone prompting - always prompt even if auto-discovery doesn't find zones
 	POTENTIAL_HTC_AZ="$(fetch_region_zones "$HTC_SKU")"
