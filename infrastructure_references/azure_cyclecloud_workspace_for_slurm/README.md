@@ -544,6 +544,7 @@ If none of the database flags are provided, `databaseConfig` defaults to:
   --anf-sku Premium \
   --anf-size 4 \
   --anf-az 1 \
+  --data-filesystem \
   --amlfs-sku AMLFS-Durable-Premium-500 \
   --amlfs-size 8 \
   --amlfs-az 1 \
