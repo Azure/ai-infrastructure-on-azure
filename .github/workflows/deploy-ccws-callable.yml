@@ -53,6 +53,11 @@ on:
         required: false
         default: "8"
         type: string
+      data_filesystem:
+        description: "Enable Azure Managed Lustre data filesystem"
+        required: false
+        default: "false"
+        type: string
       deploy_immediately:
         description: "Deploy immediately after generating parameters"
         required: false
@@ -134,6 +139,7 @@ jobs:
           HTC_MAX: ${{ inputs.htc_max_nodes }}
           HPC_MAX: ${{ inputs.hpc_max_nodes }}
           GPU_MAX: ${{ inputs.gpu_max_nodes }}
+          DATA_FILESYSTEM: ${{ inputs.data_filesystem }}
           DEPLOY_IMMEDIATELY: ${{ inputs.deploy_immediately }}
         run: |
           set -euo pipefail
@@ -159,6 +165,10 @@ jobs:
             --gpu-max-nodes "$GPU_MAX"
             --bastion --accept-marketplace --no-az --silent
           )
+
+          if [ "${DATA_FILESYSTEM}" = "true" ]; then
+            cmd+=(--data-filesystem)
+          fi
 
           if [ "${DEPLOY_IMMEDIATELY}" = "true" ]; then
             cmd+=(--deploy)
@@ -193,6 +203,9 @@ jobs:
             --gpu-max-nodes "${{ inputs.gpu_max_nodes }}"
             --bastion --accept-marketplace --no-az --silent
           )
+          if [ "${{ inputs.data_filesystem }}" = "true" ]; then
+            args+=(--data-filesystem)
+          fi
           if [ "${{ inputs.deploy_immediately }}" = "true" ]; then
             args+=(--deploy)
           fi
@@ -208,6 +221,7 @@ jobs:
             echo "- **Workspace Reference**: ${{ inputs.workspace_ref }}"
             echo "- **Resource Group**: ${{ steps.rg_name.outputs.resource_group }}"
             echo "- **Location**: ${{ inputs.location }}"
+            echo "- **Data Filesystem (Lustre)**: ${{ inputs.data_filesystem }}"
             echo "- **Deploy Immediately**: ${{ inputs.deploy_immediately }}"
           } >> "$GITHUB_STEP_SUMMARY"
 

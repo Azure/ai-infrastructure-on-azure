@@ -14,6 +14,11 @@ on:
         required: true
         type: string
         default: "westus3"
+      data_filesystem:
+        description: "Enable Azure Managed Lustre data filesystem"
+        required: false
+        default: false
+        type: boolean
       deploy_immediately:
         description: "Deploy immediately after generating parameters"
         required: false
@@ -29,6 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       location: ${{ steps.params.outputs.location }}
+      data_filesystem: ${{ steps.params.outputs.data_filesystem }}
       deploy_immediately: ${{ steps.params.outputs.deploy_immediately }}
 
     steps:
@@ -37,6 +43,7 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           LOCATION_IN: ${{ inputs.location }}
+          DATA_FILESYSTEM_IN: ${{ inputs.data_filesystem }}
           DEPLOY_IMMEDIATELY_IN: ${{ inputs.deploy_immediately }}
         run: |
           set -euo pipefail
@@ -45,16 +52,19 @@ jobs:
             # Push defaults (different HPC/GPU defaults per your original intent)
             {
               echo "location=westus3"
+              echo "data_filesystem=false"
               echo "deploy_immediately=false"
             } >> "$GITHUB_OUTPUT"
           else
             # Inputs with shell defaults
             location="${LOCATION_IN:-westus3}"
+            data_filesystem="${DATA_FILESYSTEM_IN:-false}"
             # Note: GitHub passes booleans as strings; default to "false"
             deploy_immediately="${DEPLOY_IMMEDIATELY_IN:-false}"
 
             {
               echo "location=${location}"
+              echo "data_filesystem=${data_filesystem}"
               echo "deploy_immediately=${deploy_immediately}"
             } >> "$GITHUB_OUTPUT"
           fi
@@ -64,5 +74,6 @@ jobs:
     uses: ./.github/workflows/deploy-ccws-callable.yml
     with:
       location: ${{ needs.init.outputs.location }}
+      data_filesystem: ${{ needs.init.outputs.data_filesystem }}
       deploy_immediately: ${{ needs.init.outputs.deploy_immediately }}
     secrets: inherit
