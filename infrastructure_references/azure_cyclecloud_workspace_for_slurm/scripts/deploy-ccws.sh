@@ -125,7 +125,7 @@ OPTIONAL PARAMETERS:
   Deployment Control:
     --accept-marketplace         Accept marketplace terms automatically
     --deploy                     Perform deployment after generating output.json
-    --non-interactive            Skip interactive confirmation prompts (default: interactive when --deploy not set)
+    --silent                     Skip interactive confirmation prompts (default: interactive when --deploy not set)
     --help                       Show this usage information
 
 INTERACTIVE PROMPTS:
@@ -137,7 +137,7 @@ BEHAVIOR:
   * Auto-discovers zonal availability using 'az vm list-skus' + 'jq'
   * Skips AZ prompts if region lacks zonal SKUs or tools are missing
   * Generates parameter file with conditional database and storage sections
-  * Interactive confirmation unless --deploy or --non-interactive provided
+  * Interactive confirmation unless --deploy or --silent provided
   * Passwords (admin and database) are NOT persisted in output.json for security
 
 DATABASE MODES:
