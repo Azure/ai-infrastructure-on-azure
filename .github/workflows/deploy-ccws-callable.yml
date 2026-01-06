@@ -217,7 +217,7 @@ jobs:
           if [ -f "infrastructure_references/azure_cyclecloud_workspace_for_slurm/scripts/output.json" ]; then
             echo "✅ Parameters file generated successfully" >> "$GITHUB_STEP_SUMMARY"
             echo "=================================="
-            jq . infrastructure_references/azure_cyclecloud_workspace_for_slurm/scripts/output.json
+            jq -c . infrastructure_references/azure_cyclecloud_workspace_for_slurm/scripts/output.json >> "$GITHUB_STEP_SUMMARY"
             echo "=================================="
           fi
 
