@@ -141,8 +141,8 @@ jobs:
           cmd="$cmd --deploy"
         fi
         
-        # Always enable bastion, accept marketplace terms and disable AZ prompts for non-interactive execution
-        cmd="$cmd --bastion --accept-marketplace --no-az --non-interactive"
+        # Always enable bastion, accept marketplace terms and disable AZ prompts for silent execution
+        cmd="$cmd --bastion --accept-marketplace --no-az --silent"
         
         echo "command=$cmd" >> $GITHUB_OUTPUT
 

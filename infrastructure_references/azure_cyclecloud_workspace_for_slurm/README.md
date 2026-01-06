@@ -512,7 +512,7 @@ If none of the database flags are provided, `databaseConfig` defaults to:
   - Skips interactive confirmation prompt
   - Useful for automated/scripted deployments
 
-- **`--non-interactive`**
+- **`--silent`**
 
   - Skip interactive confirmation prompts without deploying
   - Generates parameters file but exits without deployment
@@ -766,7 +766,7 @@ To generate the `output.json` parameters file without any interactive confirmati
 ./scripts/deploy-ccws.sh --subscription-id <sub-id> --resource-group <rg> --location eastus \
   --ssh-public-key-file ~/.ssh/id_rsa.pub --admin-password 'YourP@ssw0rd!' \
   --htc-sku Standard_F2s_v2 --hpc-sku Standard_HB176rs_v4 --gpu-sku Standard_ND96amsr_A100_v4 \
-  --non-interactive
+  --silent
 ```
 
 This is useful for CI/CD pipelines where you want to generate parameters for review before deployment.

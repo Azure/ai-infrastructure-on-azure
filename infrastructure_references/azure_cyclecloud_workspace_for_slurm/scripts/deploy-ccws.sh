@@ -259,7 +259,7 @@ OOD_FQDN=""
 OOD_START_CLUSTER="true"
 CREATE_ACCOUNTING_MYSQL="false"
 DB_GENERATE_NAME="false"
-NON_INTERACTIVE="false"
+SILENT="false"
 
 # Parse args
 while [[ $# -gt 0 ]]; do
@@ -502,8 +502,8 @@ while [[ $# -gt 0 ]]; do
 		DO_DEPLOY="true"
 		shift 1
 		;;
-	--non-interactive)
-		NON_INTERACTIVE="true"
+	--silent)
+		SILENT="true"
 		shift 1
 		;;
 	--help | -h)
@@ -1252,8 +1252,8 @@ fi
 echo "=================================================================="
 echo ""
 if [[ "$DO_DEPLOY" != "true" ]]; then
-	if [[ "$NON_INTERACTIVE" == "true" ]]; then
-		echo "[INFO] Non-interactive mode enabled. Skipping deployment confirmation." >&2
+	if [[ "$SILENT" == "true" ]]; then
+		echo "[INFO] Silent mode enabled. Skipping deployment confirmation." >&2
 	else
 		echo "[INFO] Deployment flag not set. Prompting for interactive confirmation..." >&2
 		COMMIT_DISPLAY="${WORKSPACE_COMMIT:-$WORKSPACE_REF}"
