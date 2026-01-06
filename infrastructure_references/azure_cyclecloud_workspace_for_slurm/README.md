@@ -173,7 +173,6 @@ parameters:
 #### CycleCloud Infrastructure SKUs
 
 - **`--scheduler-sku <sku>`** (default: `Standard_D4as_v5`)
-
   - VM SKU for the CycleCloud scheduler node
   - Controls the scheduler's compute capacity
 
@@ -184,13 +183,11 @@ parameters:
 #### Workspace Repository Configuration
 
 - **`--workspace-ref <branch|tag>`** (default: `main`)
-
   - Git reference (branch or tag) to checkout from the Azure CycleCloud
     Workspace for Slurm repository
   - Examples: `main`, `v2025.09.15`, `feature-branch`
 
 - **`--workspace-commit <sha>`**
-
   - Pin to a specific commit SHA (creates detached HEAD)
   - Overrides `--workspace-ref` if both are provided
   - Recommended for reproducible deployments
@@ -204,25 +201,21 @@ parameters:
 #### Availability Zones
 
 - **`--no-az`**
-
   - Explicitly disable availability zones for all resources (default behavior)
   - When set, all availability zone configurations are omitted from deployment
   - This is the default if neither `--no-az` nor `--specify-az` is provided
 
 - **`--specify-az`**
-
   - Enable interactive prompts for availability zones
   - Only prompts if the region supports zonal SKUs
   - Mutually exclusive with `--no-az`
 
 - **`--htc-az <zone>`**
-
   - Explicitly set availability zone for HTC partition (e.g., `1`, `2`, `3`)
   - Suppresses interactive prompt for HTC partition
   - Only valid when `--specify-az` is set
 
 - **`--hpc-az <zone>`**
-
   - Explicitly set availability zone for HPC partition
   - Suppresses interactive prompt for HPC partition
   - Only valid when `--specify-az` is set
@@ -235,19 +228,16 @@ parameters:
 #### Compute Partition Configuration
 
 - **`--htc-max-nodes <count>`**
-
   - Maximum number of nodes for HTC (High Throughput Computing) partition
   - Must be a positive integer
   - Interactive prompt if omitted
 
 - **`--hpc-max-nodes <count>`**
-
   - Maximum number of nodes for HPC (High Performance Computing) partition
   - Must be a positive integer
   - Interactive prompt if omitted
 
 - **`--gpu-max-nodes <count>`**
-
   - Maximum number of nodes for GPU partition
   - Must be a positive integer
   - Interactive prompt if omitted
@@ -301,7 +291,6 @@ All OS image parameters default to `cycle.image.ubuntu24` if not specified:
 #### Network Configuration
 
 - **`--network-address-space <cidr>`** (default: `10.0.0.0/24`)
-
   - Virtual network CIDR address space
   - Must be valid CIDR notation
   - Example: `10.1.0.0/16`
@@ -317,13 +306,11 @@ All OS image parameters default to `cycle.image.ubuntu24` if not specified:
 All ANF parameters must be provided together to enable ANF storage:
 
 - **`--anf-sku <sku>`** (default: `Premium`)
-
   - ANF service level: `Standard`, `Premium`, or `Ultra`
   - Determines performance tier and pricing
   - Example: `Premium`
 
 - **`--anf-size <size_in_TiB>`** (default: `2`)
-
   - Capacity pool size in TiB (minimum: 2 TiB)
   - Must be an integer ≥ 1
   - Example: `4` for 4 TiB
@@ -338,14 +325,12 @@ All ANF parameters must be provided together to enable ANF storage:
 AMLFS provides an additional high-performance data filesystem. It is **disabled by default**.
 
 - **`--data-filesystem`**
-
   - Enable Azure Managed Lustre data filesystem
   - Flag parameter (no value required)
   - Default: disabled
   - When enabled, AMLFS will be deployed with the parameters below
 
 - **`--amlfs-sku <sku>`** (default: `AMLFS-Durable-Premium-500`)
-
   - AMLFS SKU type (only used when `--data-filesystem` is enabled)
   - Available options: `AMLFS-Durable-Premium-40`, `AMLFS-Durable-Premium-125`,
     `AMLFS-Durable-Premium-250`, `AMLFS-Durable-Premium-500`
@@ -353,7 +338,6 @@ AMLFS provides an additional high-performance data filesystem. It is **disabled 
   - Example: `AMLFS-Durable-Premium-500`
 
 - **`--amlfs-size <size_in_TiB>`** (default: `4`)
-
   - File system size in TiB (only used when `--data-filesystem` is enabled)
   - Must be an integer ≥ 4 TiB
   - Example: `8` for 8 TiB
@@ -408,25 +392,21 @@ The script supports two modes for database configuration:
 **Mode 1: Auto-create MySQL Flexible Server** (use `--create-accounting-mysql`)
 
 - **`--create-accounting-mysql`**
-
   - Flag to automatically create a minimal MySQL Flexible Server
   - Requires `--db-name`, `--db-user`, `--db-password` (but NOT `--db-id`)
   - Server is created in the specified resource group and location
 
 - **`--db-generate-name`**
-
   - Automatically generate a random database name
   - Only valid with `--create-accounting-mysql`
   - Format: `ccdb-<random-hex>`
   - Ignored if `--db-name` is already provided
 
 - **`--db-name <name>`**
-
   - MySQL Flexible Server instance name (for auto-creation or existing server)
   - Example: `myccdb`
 
 - **`--db-user <username>`**
-
   - Database administrator username for Slurm accounting
   - Example: `dbadmin`
 
@@ -459,7 +439,6 @@ If none of the database flags are provided, `databaseConfig` defaults to:
 #### Open OnDemand Portal Configuration
 
 - **`--open-ondemand`**
-
   - Enable Open OnDemand web portal deployment
   - Flag parameter (no value required)
   - Default: disabled
@@ -467,18 +446,15 @@ If none of the database flags are provided, `databaseConfig` defaults to:
   - Requires `--ood-user-domain` when enabled
 
 - **`--ood-sku <sku>`** (default: `Standard_D4as_v5`)
-
   - VM SKU for the Open OnDemand portal server
   - Example: `Standard_D8as_v5`
 
 - **`--ood-user-domain <domain>`**
-
   - User domain for Open OnDemand authentication
   - Required when `--open-ondemand` is enabled
   - Example: `contoso.com`
 
 - **`--ood-fqdn <fqdn>`**
-
   - Fully Qualified Domain Name for Open OnDemand portal
   - Optional; defaults to empty string
   - Only included in parameters when `--open-ondemand` is enabled
@@ -486,13 +462,13 @@ If none of the database flags are provided, `databaseConfig` defaults to:
   - Example: `ood.contoso.com`
 
 - **`--ood-no-start`**
-
   - Do not start the Open OnDemand cluster automatically
   - Flag parameter (no value required)
   - Default: cluster starts automatically
   - Useful when you want to configure the cluster before starting it
 
 **Note:** The following values are automatically taken from Entra ID configuration:
+
 - Application (client) ID from `--entra-app-id`
 - User Managed Identity from `--entra-app-umi`
 - Tenant ID is automatically retrieved from the active Azure subscription
@@ -500,17 +476,21 @@ If none of the database flags are provided, `databaseConfig` defaults to:
 #### Deployment Control
 
 - **`--accept-marketplace`**
-
   - Automatically accept Azure Marketplace terms
   - Sets `acceptMarketplaceTerms=true` in parameters
   - Required for first-time deployment of certain OS SKUs
   - Avoids manual marketplace agreement step
 
 - **`--deploy`**
-
   - Perform deployment immediately after generating `output.json`
   - Skips interactive confirmation prompt
   - Useful for automated/scripted deployments
+
+- **`--silent`**
+  - Skip interactive confirmation prompts without deploying
+  - Generates parameters file but exits without deployment
+  - Useful for CI/CD pipelines where parameters need to be generated for review
+  - Default behavior when `--deploy` is not set is to prompt for confirmation
 
 - **`--output-file <path>`**
   - Custom path for the generated parameters file
@@ -655,10 +635,10 @@ OPTIONAL PARAMETERS:
 
   # Microsoft Entra ID
   --entra-id               Enable Microsoft Entra ID (disabled by default)
-  --entra-app-umi <umi-id> User Managed Identity resource ID used in federated credentials 
-                           of the registered Entra ID application for user authentication 
+  --entra-app-umi <umi-id> User Managed Identity resource ID used in federated credentials
+                           of the registered Entra ID application for user authentication
                            (required with --entra-id)
-  --entra-app-id <app-id>  Application (client) ID of the registered Entra ID application 
+  --entra-app-id <app-id>  Application (client) ID of the registered Entra ID application
                            used to authenticate users (required with --entra-id)
 
   # Database Configuration (Slurm Accounting)
@@ -676,7 +656,7 @@ OPTIONAL PARAMETERS:
   --ood-user-domain <domain>   User domain for OOD authentication (required with --open-ondemand)
   --ood-fqdn <fqdn>        Fully Qualified Domain Name for OOD (optional)
   --ood-no-start           Do not start OOD cluster automatically (default: start cluster)
-                           Note: App ID, Managed Identity, and Tenant ID are automatically 
+                           Note: App ID, Managed Identity, and Tenant ID are automatically
                            taken from --entra-app-id, --entra-app-umi, and active subscription
 
   # Deployment Control
@@ -749,6 +729,23 @@ EXAMPLES:
 
 ### 3.8. Non-Interactive Deployment
 
+There are several ways to avoid interactive prompts during deployment:
+
+#### 3.8.1. Generate Parameters Only (No Deployment)
+
+To generate the `output.json` parameters file without any interactive confirmation prompts and without deploying:
+
+```bash
+./scripts/deploy-ccws.sh --subscription-id <sub-id> --resource-group <rg> --location eastus \
+  --ssh-public-key-file ~/.ssh/id_rsa.pub --admin-password 'YourP@ssw0rd!' \
+  --htc-sku Standard_F2s_v2 --hpc-sku Standard_HB176rs_v4 --gpu-sku Standard_ND96amsr_A100_v4 \
+  --silent
+```
+
+This is useful for CI/CD pipelines where you want to generate parameters for review before deployment.
+
+#### 3.8.2. Deploy Without Confirmation Prompts
+
 To avoid interactive zone prompts and deploy without availability zones (default behavior):
 
 ```bash
@@ -757,6 +754,8 @@ To avoid interactive zone prompts and deploy without availability zones (default
   --htc-sku Standard_F2s_v2 --hpc-sku Standard_HB176rs_v4 --gpu-sku Standard_ND96amsr_A100_v4 \
   --deploy
 ```
+
+#### 3.8.3. Explicitly Disable Availability Zones
 
 To explicitly disable availability zones:
 
@@ -767,6 +766,8 @@ To explicitly disable availability zones:
   --no-az \
   --deploy
 ```
+
+#### 3.8.4. Specify Zones Without Prompts
 
 To specify zones via command line without prompts:
 

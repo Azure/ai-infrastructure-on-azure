@@ -1,0 +1,235 @@
+name: Deploy Azure CycleCloud Workspace for Slurm (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      location:
+        description: "Azure region (e.g., westus3, westeurope, westus2)"
+        required: false
+        type: string
+        default: "westus3"
+      htc_sku:
+        description: "HTC partition VM SKU (e.g., Standard_F2s_v2)"
+        required: false
+        type: string
+        default: "Standard_F2s_v2"
+      hpc_sku:
+        description: "HPC partition VM SKU (e.g., Standard_HB176rs_v4)"
+        required: false
+        type: string
+        default: "Standard_HB176rs_v4"
+      gpu_sku:
+        description: "GPU partition VM SKU (e.g., Standard_ND96amsr_A100_v4)"
+        required: false
+        type: string
+        default: "Standard_ND96amsr_A100_v4"
+      scheduler_sku:
+        description: "Scheduler node VM SKU"
+        required: false
+        default: "Standard_D4as_v5"
+        type: string
+      login_sku:
+        description: "Login node VM SKU"
+        required: false
+        default: "Standard_D2as_v5"
+        type: string
+      workspace_ref:
+        description: "Git ref (branch/tag) to checkout"
+        required: false
+        default: "2025.12.01"
+        type: string
+      htc_max_nodes:
+        description: "Maximum nodes for HTC partition"
+        required: false
+        default: "100"
+        type: string
+      hpc_max_nodes:
+        description: "Maximum nodes for HPC partition"
+        required: false
+        default: "16"
+        type: string
+      gpu_max_nodes:
+        description: "Maximum nodes for GPU partition"
+        required: false
+        default: "8"
+        type: string
+      deploy_immediately:
+        description: "Deploy immediately after generating parameters"
+        required: false
+        default: "false"
+        type: string
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: testing
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Validate required secrets
+        run: |
+          set -euo pipefail
+          if [ -z "${{ secrets.SSH_PUBLIC_KEY }}" ]; then
+            echo "::error::SSH_PUBLIC_KEY secret is required"
+            exit 1
+          fi
+          if [ -z "${{ secrets.ADMIN_PASSWORD }}" ]; then
+            echo "::error::ADMIN_PASSWORD secret is required"
+            exit 1
+          fi
+
+      - name: Generate resource group name
+        id: rg_name
+        run: |
+          set -euo pipefail
+          # Generate resource group name with pattern ccw_YYDDMMHHmm
+          timestamp=$(date -u +"%y%d%m%H%M")
+          rg_name="ccw_${timestamp}"
+          echo "resource_group=${rg_name}" >> "$GITHUB_OUTPUT"
+          echo "Generated resource group name: ${rg_name}"
+
+      - name: Accept Azure Marketplace terms
+        if: inputs.deploy_immediately == 'true'
+        run: |
+          set -euo pipefail
+          echo "Deployment enabled - accepting Azure CycleCloud marketplace terms..."
+          az vm image terms accept --publisher azurecyclecloud --offer azure-cyclecloud --plan cyclecloud8-gen2 || {
+            echo "Failed to accept marketplace terms, but continuing..."
+          }
+
+      - name: Create SSH public key file
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PUBLIC_KEY }}" > ~/.ssh/id_rsa.pub
+          chmod 644 ~/.ssh/id_rsa.pub
+
+      - name: Set script permissions
+        run: |
+          set -euo pipefail
+          chmod +x infrastructure_references/azure_cyclecloud_workspace_for_slurm/scripts/deploy-ccws.sh
+
+      - name: Build deployment command
+        id: build_command
+        env:
+          SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          RG_NAME: ${{ steps.rg_name.outputs.resource_group }}
+          LOCATION: ${{ inputs.location }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          HTC_SKU: ${{ inputs.htc_sku }}
+          HPC_SKU: ${{ inputs.hpc_sku }}
+          GPU_SKU: ${{ inputs.gpu_sku }}
+          SCHEDULER_SKU: ${{ inputs.scheduler_sku }}
+          LOGIN_SKU: ${{ inputs.login_sku }}
+          WORKSPACE_REF: ${{ inputs.workspace_ref }}
+          HTC_MAX: ${{ inputs.htc_max_nodes }}
+          HPC_MAX: ${{ inputs.hpc_max_nodes }}
+          GPU_MAX: ${{ inputs.gpu_max_nodes }}
+          DEPLOY_IMMEDIATELY: ${{ inputs.deploy_immediately }}
+        run: |
+          set -euo pipefail
+
+          script="./infrastructure_references/azure_cyclecloud_workspace_for_slurm/scripts/deploy-ccws.sh"
+          # Build command as an array to avoid quoting issues and eval
+          cmd=(
+            "$script"
+            --subscription-id "$SUBSCRIPTION_ID"
+            --resource-group "$RG_NAME"
+            --location "$LOCATION"
+            --ssh-public-key-file "$HOME/.ssh/id_rsa.pub"
+            --admin-password "$ADMIN_PASSWORD"
+            --htc-sku "$HTC_SKU"
+            --hpc-sku "$HPC_SKU"
+            --gpu-sku "$GPU_SKU"
+            --admin-username "hpcadmin"
+            --scheduler-sku "$SCHEDULER_SKU"
+            --login-sku "$LOGIN_SKU"
+            --workspace-ref "$WORKSPACE_REF"
+            --htc-max-nodes "$HTC_MAX"
+            --hpc-max-nodes "$HPC_MAX"
+            --gpu-max-nodes "$GPU_MAX"
+            --bastion --accept-marketplace --no-az --silent
+          )
+
+          if [ "${DEPLOY_IMMEDIATELY}" = "true" ]; then
+            cmd+=(--deploy)
+          fi
+
+          # Emit the command as a single line to outputs for visibility/logging
+          printf 'command=%q ' "${cmd[@]}" >> "$GITHUB_OUTPUT"
+          echo >> "$GITHUB_OUTPUT" # newline
+
+      - name: Run deploy-ccws.sh script
+        run: |
+          set -euo pipefail
+          cd "${{ github.workspace }}"
+          echo "Executing deployment command..."
+          # Rebuild command from outputs or just reconstruct directly (safer to run array again)
+          script="./infrastructure_references/azure_cyclecloud_workspace_for_slurm/scripts/deploy-ccws.sh"
+          args=(
+            --subscription-id "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+            --resource-group "${{ steps.rg_name.outputs.resource_group }}"
+            --location "${{ inputs.location }}"
+            --ssh-public-key-file "$HOME/.ssh/id_rsa.pub"
+            --admin-password "${{ secrets.ADMIN_PASSWORD }}"
+            --htc-sku "${{ inputs.htc_sku }}"
+            --hpc-sku "${{ inputs.hpc_sku }}"
+            --gpu-sku "${{ inputs.gpu_sku }}"
+            --admin-username "hpcadmin"
+            --scheduler-sku "${{ inputs.scheduler_sku }}"
+            --login-sku "${{ inputs.login_sku }}"
+            --workspace-ref "${{ inputs.workspace_ref }}"
+            --htc-max-nodes "${{ inputs.htc_max_nodes }}"
+            --hpc-max-nodes "${{ inputs.hpc_max_nodes }}"
+            --gpu-max-nodes "${{ inputs.gpu_max_nodes }}"
+            --bastion --accept-marketplace --no-az --silent
+          )
+          if [ "${{ inputs.deploy_immediately }}" = "true" ]; then
+            args+=(--deploy)
+          fi
+          # Execute
+          "$script" "${args[@]}"
+
+      - name: Display deployment summary
+        if: success()
+        run: |
+          set -euo pipefail
+          {
+            echo "## Deployment Summary"
+            echo "- **Subscription ID**: ${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+            echo "- **Resource Group**: ${{ steps.rg_name.outputs.resource_group }}"
+            echo "- **Location**: ${{ inputs.location }}"
+            echo "- **HTC SKU**: ${{ inputs.htc_sku }}"
+            echo "- **HPC SKU**: ${{ inputs.hpc_sku }}"
+            echo "- **GPU SKU**: ${{ inputs.gpu_sku }}"
+            echo "- **Deploy Immediately**: ${{ inputs.deploy_immediately }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -f "infrastructure_references/azure_cyclecloud_workspace_for_slurm/scripts/output.json" ]; then
+            echo "✅ Parameters file generated successfully" >> "$GITHUB_STEP_SUMMARY"
+            echo "=================================="
+            jq . infrastructure_references/azure_cyclecloud_workspace_for_slurm/scripts/output.json
+            echo "=================================="
+          fi
+
+      - name: Cleanup resource group after deployment
+        if: always() && inputs.deploy_immediately == 'true'
+        run: |
+          set -euo pipefail
+          echo "Cleaning up resource group: ${{ steps.rg_name.outputs.resource_group }}"
+          if az group exists --name "${{ steps.rg_name.outputs.resource_group }}" --output tsv 2>/dev/null | grep -q "true"; then
+            echo "Resource group exists, deleting..."
+            az group delete --name "${{ steps.rg_name.outputs.resource_group }}" --yes --no-wait
+            echo "✅ Resource group deletion initiated" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Resource group does not exist, nothing to clean up"
+          fi
