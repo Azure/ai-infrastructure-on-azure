@@ -29,11 +29,6 @@ on:
         required: true
         type: string
         default: 'Standard_ND96amsr_A100_v4'
-      workspace_ref:
-        description: 'Git ref (branch/tag) to checkout'
-        required: false
-        default: '2025.12.01'
-        type: string
       htc_max_nodes:
         description: 'Maximum nodes for HTC partition'
         required: false
@@ -67,7 +62,6 @@ jobs:
       htc_sku: ${{ steps.params.outputs.htc_sku }}
       hpc_sku: ${{ steps.params.outputs.hpc_sku }}
       gpu_sku: ${{ steps.params.outputs.gpu_sku }}
-      workspace_ref: ${{ steps.params.outputs.workspace_ref }}
       htc_max_nodes: ${{ steps.params.outputs.htc_max_nodes }}
       hpc_max_nodes: ${{ steps.params.outputs.hpc_max_nodes }}
       gpu_max_nodes: ${{ steps.params.outputs.gpu_max_nodes }}
@@ -78,25 +72,27 @@ jobs:
       run: |
         # Set default values based on trigger type
         if [ "${{ github.event_name }}" = "push" ]; then
-          echo "location=westus3" >> "$GITHUB_OUTPUT"
-          echo "htc_sku=Standard_F2s_v2" >> "$GITHUB_OUTPUT"
-          echo "hpc_sku=Standard_HB176rs_v4" >> "$GITHUB_OUTPUT"
-          echo "gpu_sku=Standard_ND96amsr_A100_v4" >> "$GITHUB_OUTPUT"
-          echo "workspace_ref=2025.12.01" >> "$GITHUB_OUTPUT"
-          echo "htc_max_nodes=100" >> "$GITHUB_OUTPUT"
-          echo "hpc_max_nodes=50" >> "$GITHUB_OUTPUT"
-          echo "gpu_max_nodes=20" >> "$GITHUB_OUTPUT"
-          echo "deploy_immediately='false'" >> "$GITHUB_OUTPUT"
+          {
+            echo "location=westus3"
+            echo "htc_sku=Standard_F2s_v2"
+            echo "hpc_sku=Standard_HB176rs_v4"
+            echo "gpu_sku=Standard_ND96amsr_A100_v4"
+            echo "htc_max_nodes=100"
+            echo "hpc_max_nodes=50"
+            echo "gpu_max_nodes=20"
+            echo "deploy_immediately='false'"
+          } >> "$GITHUB_OUTPUT"
         else
-          echo "location=${{ inputs.location || 'westus3' }}" >> "$GITHUB_OUTPUT"
-          echo "htc_sku=${{ inputs.htc_sku || 'Standard_F2s_v2' }}" >> "$GITHUB_OUTPUT"
-          echo "hpc_sku=${{ inputs.hpc_sku || 'Standard_HB176rs_v4' }}" >> "$GITHUB_OUTPUT"
-          echo "gpu_sku=${{ inputs.gpu_sku || 'Standard_ND96amsr_A100_v4' }}" >> "$GITHUB_OUTPUT"
-          echo "workspace_ref=${{ inputs.workspace_ref || '2025.12.01' }}" >> "$GITHUB_OUTPUT"
-          echo "htc_max_nodes=${{ inputs.htc_max_nodes || '100' }}" >> "$GITHUB_OUTPUT"
-          echo "hpc_max_nodes=${{ inputs.hpc_max_nodes || '16' }}" >> "$GITHUB_OUTPUT"
-          echo "gpu_max_nodes=${{ inputs.gpu_max_nodes || '8' }}" >> "$GITHUB_OUTPUT"
-          echo "deploy_immediately=${{ inputs.deploy_immediately || 'false' }}" >> "$GITHUB_OUTPUT"
+          {
+            echo "location=${{ inputs.location || 'westus3' }}"
+            echo "htc_sku=${{ inputs.htc_sku || 'Standard_F2s_v2' }}"
+            echo "hpc_sku=${{ inputs.hpc_sku || 'Standard_HB176rs_v4' }}"
+            echo "gpu_sku=${{ inputs.gpu_sku || 'Standard_ND96amsr_A100_v4' }}"
+            echo "htc_max_nodes=${{ inputs.htc_max_nodes || '100' }}"
+            echo "hpc_max_nodes=${{ inputs.hpc_max_nodes || '16' }}"
+            echo "gpu_max_nodes=${{ inputs.gpu_max_nodes || '8' }}" >>
+            echo "deploy_immediately=${{ inputs.deploy_immediately || 'false' }}"
+          } >> "$GITHUB_OUTPUT"
         fi
 
   call-deployment:
