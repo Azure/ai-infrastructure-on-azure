@@ -29,16 +29,6 @@ on:
         required: true
         type: string
         default: 'Standard_ND96amsr_A100_v4'
-      scheduler_sku:
-        description: 'Scheduler node VM SKU'
-        required: false
-        default: 'Standard_D4as_v5'
-        type: string
-      login_sku:
-        description: 'Login node VM SKU'
-        required: false
-        default: 'Standard_D2as_v5'
-        type: string
       workspace_ref:
         description: 'Git ref (branch/tag) to checkout'
         required: false
@@ -77,8 +67,6 @@ jobs:
       htc_sku: ${{ steps.params.outputs.htc_sku }}
       hpc_sku: ${{ steps.params.outputs.hpc_sku }}
       gpu_sku: ${{ steps.params.outputs.gpu_sku }}
-      scheduler_sku: ${{ steps.params.outputs.scheduler_sku }}
-      login_sku: ${{ steps.params.outputs.login_sku }}
       workspace_ref: ${{ steps.params.outputs.workspace_ref }}
       htc_max_nodes: ${{ steps.params.outputs.htc_max_nodes }}
       hpc_max_nodes: ${{ steps.params.outputs.hpc_max_nodes }}
@@ -94,8 +82,6 @@ jobs:
           echo "htc_sku=Standard_F2s_v2" >> $GITHUB_OUTPUT
           echo "hpc_sku=Standard_HB176rs_v4" >> $GITHUB_OUTPUT
           echo "gpu_sku=Standard_ND96amsr_A100_v4" >> $GITHUB_OUTPUT
-          echo "scheduler_sku=Standard_D4as_v5" >> $GITHUB_OUTPUT
-          echo "login_sku=Standard_D2as_v5" >> $GITHUB_OUTPUT
           echo "workspace_ref=2025.12.01" >> $GITHUB_OUTPUT
           echo "htc_max_nodes=100" >> $GITHUB_OUTPUT
           echo "hpc_max_nodes=50" >> $GITHUB_OUTPUT
@@ -106,8 +92,6 @@ jobs:
           echo "htc_sku=${{ inputs.htc_sku || 'Standard_F2s_v2' }}" >> $GITHUB_OUTPUT
           echo "hpc_sku=${{ inputs.hpc_sku || 'Standard_HB176rs_v4' }}" >> $GITHUB_OUTPUT
           echo "gpu_sku=${{ inputs.gpu_sku || 'Standard_ND96amsr_A100_v4' }}" >> $GITHUB_OUTPUT
-          echo "scheduler_sku=${{ inputs.scheduler_sku || 'Standard_D4as_v5' }}" >> $GITHUB_OUTPUT
-          echo "login_sku=${{ inputs.login_sku || 'Standard_D2as_v5' }}" >> $GITHUB_OUTPUT
           echo "workspace_ref=${{ inputs.workspace_ref || '2025.12.01' }}" >> $GITHUB_OUTPUT
           echo "htc_max_nodes=${{ inputs.htc_max_nodes || '100' }}" >> $GITHUB_OUTPUT
           echo "hpc_max_nodes=${{ inputs.hpc_max_nodes || '16' }}" >> $GITHUB_OUTPUT
@@ -123,8 +107,6 @@ jobs:
       htc_sku: ${{ needs.init.outputs.htc_sku }}
       hpc_sku: ${{ needs.init.outputs.hpc_sku }}
       gpu_sku: ${{ needs.init.outputs.gpu_sku }}
-      scheduler_sku: ${{ needs.init.outputs.scheduler_sku }}
-      login_sku: ${{ needs.init.outputs.login_sku }}
       workspace_ref: ${{ needs.init.outputs.workspace_ref }}
       htc_max_nodes: ${{ needs.init.outputs.htc_max_nodes }}
       hpc_max_nodes: ${{ needs.init.outputs.hpc_max_nodes }}
