@@ -205,12 +205,9 @@ jobs:
           set -euo pipefail
           {
             echo "## Deployment Summary"
-            echo "- **Subscription ID**: ${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+            echo "- **Workspace Reference**: ${{ inputs.workspace_ref }}"
             echo "- **Resource Group**: ${{ steps.rg_name.outputs.resource_group }}"
             echo "- **Location**: ${{ inputs.location }}"
-            echo "- **HTC SKU**: ${{ inputs.htc_sku }}"
-            echo "- **HPC SKU**: ${{ inputs.hpc_sku }}"
-            echo "- **GPU SKU**: ${{ inputs.gpu_sku }}"
             echo "- **Deploy Immediately**: ${{ inputs.deploy_immediately }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
