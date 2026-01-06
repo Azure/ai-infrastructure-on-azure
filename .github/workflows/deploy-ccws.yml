@@ -1,4 +1,3 @@
-
 name: Deploy Azure CycleCloud Workspace for Slurm (CCWS)
 
 on:
