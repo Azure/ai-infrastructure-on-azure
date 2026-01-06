@@ -78,25 +78,25 @@ jobs:
       run: |
         # Set default values based on trigger type
         if [ "${{ github.event_name }}" = "push" ]; then
-          echo "location=westus3" >> $GITHUB_OUTPUT
-          echo "htc_sku=Standard_F2s_v2" >> $GITHUB_OUTPUT
-          echo "hpc_sku=Standard_HB176rs_v4" >> $GITHUB_OUTPUT
-          echo "gpu_sku=Standard_ND96amsr_A100_v4" >> $GITHUB_OUTPUT
-          echo "workspace_ref=2025.12.01" >> $GITHUB_OUTPUT
-          echo "htc_max_nodes=100" >> $GITHUB_OUTPUT
-          echo "hpc_max_nodes=50" >> $GITHUB_OUTPUT
-          echo "gpu_max_nodes=20" >> $GITHUB_OUTPUT
-          echo "deploy_immediately='false'" >> $GITHUB_OUTPUT
+          echo "location=westus3" >> "$GITHUB_OUTPUT"
+          echo "htc_sku=Standard_F2s_v2" >> "$GITHUB_OUTPUT"
+          echo "hpc_sku=Standard_HB176rs_v4" >> "$GITHUB_OUTPUT"
+          echo "gpu_sku=Standard_ND96amsr_A100_v4" >> "$GITHUB_OUTPUT"
+          echo "workspace_ref=2025.12.01" >> "$GITHUB_OUTPUT"
+          echo "htc_max_nodes=100" >> "$GITHUB_OUTPUT"
+          echo "hpc_max_nodes=50" >> "$GITHUB_OUTPUT"
+          echo "gpu_max_nodes=20" >> "$GITHUB_OUTPUT"
+          echo "deploy_immediately='false'" >> "$GITHUB_OUTPUT"
         else
-          echo "location=${{ inputs.location || 'westus3' }}" >> $GITHUB_OUTPUT
-          echo "htc_sku=${{ inputs.htc_sku || 'Standard_F2s_v2' }}" >> $GITHUB_OUTPUT
-          echo "hpc_sku=${{ inputs.hpc_sku || 'Standard_HB176rs_v4' }}" >> $GITHUB_OUTPUT
-          echo "gpu_sku=${{ inputs.gpu_sku || 'Standard_ND96amsr_A100_v4' }}" >> $GITHUB_OUTPUT
-          echo "workspace_ref=${{ inputs.workspace_ref || '2025.12.01' }}" >> $GITHUB_OUTPUT
-          echo "htc_max_nodes=${{ inputs.htc_max_nodes || '100' }}" >> $GITHUB_OUTPUT
-          echo "hpc_max_nodes=${{ inputs.hpc_max_nodes || '16' }}" >> $GITHUB_OUTPUT
-          echo "gpu_max_nodes=${{ inputs.gpu_max_nodes || '8' }}" >> $GITHUB_OUTPUT
-          echo "deploy_immediately=${{ inputs.deploy_immediately || 'false' }}" >> $GITHUB_OUTPUT
+          echo "location=${{ inputs.location || 'westus3' }}" >> "$GITHUB_OUTPUT"
+          echo "htc_sku=${{ inputs.htc_sku || 'Standard_F2s_v2' }}" >> "$GITHUB_OUTPUT"
+          echo "hpc_sku=${{ inputs.hpc_sku || 'Standard_HB176rs_v4' }}" >> "$GITHUB_OUTPUT"
+          echo "gpu_sku=${{ inputs.gpu_sku || 'Standard_ND96amsr_A100_v4' }}" >> "$GITHUB_OUTPUT"
+          echo "workspace_ref=${{ inputs.workspace_ref || '2025.12.01' }}" >> "$GITHUB_OUTPUT"
+          echo "htc_max_nodes=${{ inputs.htc_max_nodes || '100' }}" >> "$GITHUB_OUTPUT"
+          echo "hpc_max_nodes=${{ inputs.hpc_max_nodes || '16' }}" >> "$GITHUB_OUTPUT"
+          echo "gpu_max_nodes=${{ inputs.gpu_max_nodes || '8' }}" >> "$GITHUB_OUTPUT"
+          echo "deploy_immediately=${{ inputs.deploy_immediately || 'false' }}" >> "$GITHUB_OUTPUT"
         fi
 
   call-deployment:
