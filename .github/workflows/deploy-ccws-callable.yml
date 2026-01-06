@@ -92,7 +92,7 @@ jobs:
         # Generate resource group name with pattern ccw_YYDDMMHHmm
         timestamp=$(date -u +"%y%d%m%H%M")
         rg_name="ccw_${timestamp}"
-        echo "resource_group=${rg_name}" >> $GITHUB_OUTPUT
+        echo "resource_group=${rg_name}" >> "$GITHUB_OUTPUT"
         echo "Generated resource group name: ${rg_name}"
 
     - name: Accept Azure Marketplace terms
@@ -144,7 +144,7 @@ jobs:
         # Always enable bastion, accept marketplace terms and disable AZ prompts for silent execution
         cmd="$cmd --bastion --accept-marketplace --no-az --silent"
         
-        echo "command=$cmd" >> $GITHUB_OUTPUT
+        echo "command=$cmd" >> "$GITHUB_OUTPUT"
 
     - name: Run deploy-ccws.sh script
       run: |
