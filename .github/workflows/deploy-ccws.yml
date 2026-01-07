@@ -74,6 +74,6 @@ jobs:
     uses: ./.github/workflows/deploy-ccws-callable.yml
     with:
       location: ${{ needs.init.outputs.location }}
-      data_filesystem: ${{ needs.init.outputs.data_filesystem }}
-      deploy_immediately: ${{ needs.init.outputs.deploy_immediately }}
+      data_filesystem: ${{ needs.init.outputs.data_filesystem == 'true' }}
+      deploy_immediately: ${{ needs.init.outputs.deploy_immediately == 'true' }}
     secrets: inherit
