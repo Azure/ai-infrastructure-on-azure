@@ -13,10 +13,10 @@ jobs:
   deploy:
     strategy:
       matrix:
-        data_filesystem: ['false', 'true']
+        data_filesystem: [false, true]
     uses: ./.github/workflows/deploy-ccws-callable.yml
     with:
       location: westus3
       data_filesystem: ${{ matrix.data_filesystem }}
-      deploy_immediately: 'true'
+      deploy_immediately: true
     secrets: inherit

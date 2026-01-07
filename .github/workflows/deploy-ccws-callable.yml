@@ -56,13 +56,13 @@ on:
       data_filesystem:
         description: "Enable Azure Managed Lustre data filesystem"
         required: false
-        default: "false"
-        type: string
+        default: false
+        type: boolean
       deploy_immediately:
         description: "Deploy immediately after generating parameters"
         required: false
-        default: "false"
-        type: string
+        default: false
+        type: boolean
 
 jobs:
   deploy:
