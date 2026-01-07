@@ -2,6 +2,8 @@ name: Deploy CCWS (Full Matrix)
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * 1' # Every Monday at 02:00 UTC
 
 permissions:
   id-token: write
