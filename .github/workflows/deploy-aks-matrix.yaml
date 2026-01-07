@@ -1,0 +1,26 @@
+name: Deploy AKS (Full Matrix)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * 1" # Every Monday at 02:00 UTC
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    strategy:
+      matrix:
+        include:
+          - name: smoke-westus3
+            location: westus3
+            command: deploy-aks
+    name: ${{ matrix.name }}
+    uses: ./.github/workflows/deploy-aks-callable.yml
+    with:
+      location: ${{ matrix.location }}
+      command: ${{ matrix.command }}
+      cleanup: true
+    secrets: inherit
