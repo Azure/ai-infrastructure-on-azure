@@ -52,7 +52,7 @@ OPTIONAL PARAMETERS:
     --gpu-image <image>          GPU partition OS image (default: cycle.image.ubuntu24)
 
   Workspace Repository:
-    --workspace-ref <ref>        Git ref (branch/tag) to checkout (default: 2025.12.01)
+    --workspace-ref <ref>        Git ref (branch/tag) to checkout (default to latest release)
     --workspace-commit <sha>     Explicit commit (detached HEAD override)
     --workspace-dir <path>       Clone destination (default: ./cyclecloud-slurm-workspace)
     --output-file <path>         Output parameters file path (default: ${DEFAULT_OUTPUT_FILE})
@@ -218,7 +218,9 @@ OOD_IMAGE="cycle.image.ubuntu24"
 HTC_IMAGE="cycle.image.ubuntu24"
 HPC_IMAGE="cycle.image.ubuntu24"
 GPU_IMAGE="cycle.image.ubuntu24"
-WORKSPACE_REF="${WORKSPACE_REF:-2025.12.01}" # allow pre-set env var to override default
+# Retrieve latest releas tag, default to main
+LATEST_RELEASE_TAG="$(curl -s https://api.github.com/repos/azure/cyclecloud-slurm-workspace/releases/latest | jq -r .tag_name 2>/dev/null || echo "main")"
+WORKSPACE_REF="${WORKSPACE_REF:-$LATEST_RELEASE_TAG}" # allow pre-set env var to override default
 WORKSPACE_COMMIT=""
 OUTPUT_FILE="${DEFAULT_OUTPUT_FILE}"
 WORKSPACE_DIR="${SCRIPT_DIR}/cyclecloud-slurm-workspace"

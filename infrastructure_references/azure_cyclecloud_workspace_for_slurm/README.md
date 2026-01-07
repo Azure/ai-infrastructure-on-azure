@@ -58,7 +58,7 @@ script:
 > user may pick up newer code paths that have not been validated in this
 > environment. Always re-run validation (storage mounts, Slurm job submission,
 > NCCL tests) after changing the commit. Default **workspace reference** in the
-> current repository is the `main` branch of the Azure CycleCloud Workspace for
+> current repository is the latest release tag of the Azure CycleCloud Workspace for
 > Slurm repository.
 
 - User can specify a specific `commit-id` or `branch` for checkout.
@@ -182,7 +182,7 @@ parameters:
 
 #### Workspace Repository Configuration
 
-- **`--workspace-ref <branch|tag>`** (default: `main`)
+- **`--workspace-ref <branch|tag>`** (default: latest release tag)
   - Git reference (branch or tag) to checkout from the Azure CycleCloud
     Workspace for Slurm repository
   - Examples: `main`, `v2025.09.15`, `feature-branch`
@@ -594,7 +594,7 @@ OPTIONAL PARAMETERS:
   --login-sku              Login node VM SKU (default: Standard_D2as_v5)
 
   # Workspace Repository
-  --workspace-ref <ref>    Git ref (branch/tag) to checkout (default: 2025.12.01)
+  --workspace-ref <ref>    Git ref (branch/tag) to checkout (default latest release tag)
   --workspace-commit <sha> Explicit commit (detached HEAD override)
   --workspace-dir <path>   Clone destination (default: ./cyclecloud-slurm-workspace under script dir)
   --output-file <path>     Output parameters file path (default: output.json in script dir)

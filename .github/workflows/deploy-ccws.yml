@@ -14,36 +14,11 @@ on:
         required: true
         type: string
         default: "westus3"
-      htc_sku:
-        description: "HTC partition VM SKU (e.g., Standard_F2s_v2)"
-        required: true
-        type: string
-        default: "Standard_F2s_v2"
-      hpc_sku:
-        description: "HPC partition VM SKU (e.g., Standard_HB176rs_v4)"
-        required: true
-        type: string
-        default: "Standard_HB176rs_v4"
-      gpu_sku:
-        description: "GPU partition VM SKU (e.g., Standard_ND96amsr_A100_v4)"
-        required: true
-        type: string
-        default: "Standard_ND96amsr_A100_v4"
-      htc_max_nodes:
-        description: "Maximum nodes for HTC partition"
+      data_filesystem:
+        description: "Enable Azure Managed Lustre data filesystem"
         required: false
-        default: "100"
-        type: string
-      hpc_max_nodes:
-        description: "Maximum nodes for HPC partition"
-        required: false
-        default: "16"
-        type: string
-      gpu_max_nodes:
-        description: "Maximum nodes for GPU partition"
-        required: false
-        default: "8"
-        type: string
+        default: false
+        type: boolean
       deploy_immediately:
         description: "Deploy immediately after generating parameters"
         required: false
@@ -59,12 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       location: ${{ steps.params.outputs.location }}
-      htc_sku: ${{ steps.params.outputs.htc_sku }}
-      hpc_sku: ${{ steps.params.outputs.hpc_sku }}
-      gpu_sku: ${{ steps.params.outputs.gpu_sku }}
-      htc_max_nodes: ${{ steps.params.outputs.htc_max_nodes }}
-      hpc_max_nodes: ${{ steps.params.outputs.hpc_max_nodes }}
-      gpu_max_nodes: ${{ steps.params.outputs.gpu_max_nodes }}
+      data_filesystem: ${{ steps.params.outputs.data_filesystem }}
       deploy_immediately: ${{ steps.params.outputs.deploy_immediately }}
 
     steps:
@@ -73,12 +43,7 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           LOCATION_IN: ${{ inputs.location }}
-          HTC_SKU_IN: ${{ inputs.htc_sku }}
-          HPC_SKU_IN: ${{ inputs.hpc_sku }}
-          GPU_SKU_IN: ${{ inputs.gpu_sku }}
-          HTC_MAX_IN: ${{ inputs.htc_max_nodes }}
-          HPC_MAX_IN: ${{ inputs.hpc_max_nodes }}
-          GPU_MAX_IN: ${{ inputs.gpu_max_nodes }}
+          DATA_FILESYSTEM_IN: ${{ inputs.data_filesystem }}
           DEPLOY_IMMEDIATELY_IN: ${{ inputs.deploy_immediately }}
         run: |
           set -euo pipefail
@@ -87,34 +52,19 @@ jobs:
             # Push defaults (different HPC/GPU defaults per your original intent)
             {
               echo "location=westus3"
-              echo "htc_sku=Standard_F2s_v2"
-              echo "hpc_sku=Standard_HB176rs_v4"
-              echo "gpu_sku=Standard_ND96amsr_A100_v4"
-              echo "htc_max_nodes=100"
-              echo "hpc_max_nodes=50"
-              echo "gpu_max_nodes=20"
+              echo "data_filesystem=false"
               echo "deploy_immediately=false"
             } >> "$GITHUB_OUTPUT"
           else
             # Inputs with shell defaults
             location="${LOCATION_IN:-westus3}"
-            htc_sku="${HTC_SKU_IN:-Standard_F2s_v2}"
-            hpc_sku="${HPC_SKU_IN:-Standard_HB176rs_v4}"
-            gpu_sku="${GPU_SKU_IN:-Standard_ND96amsr_A100_v4}"
-            htc_max_nodes="${HTC_MAX_IN:-100}"
-            hpc_max_nodes="${HPC_MAX_IN:-16}"
-            gpu_max_nodes="${GPU_MAX_IN:-8}"
+            data_filesystem="${DATA_FILESYSTEM_IN:-false}"
             # Note: GitHub passes booleans as strings; default to "false"
             deploy_immediately="${DEPLOY_IMMEDIATELY_IN:-false}"
 
             {
               echo "location=${location}"
-              echo "htc_sku=${htc_sku}"
-              echo "hpc_sku=${hpc_sku}"
-              echo "gpu_sku=${gpu_sku}"
-              echo "htc_max_nodes=${htc_max_nodes}"
-              echo "hpc_max_nodes=${hpc_max_nodes}"
-              echo "gpu_max_nodes=${gpu_max_nodes}"
+              echo "data_filesystem=${data_filesystem}"
               echo "deploy_immediately=${deploy_immediately}"
             } >> "$GITHUB_OUTPUT"
           fi
@@ -124,11 +74,6 @@ jobs:
     uses: ./.github/workflows/deploy-ccws-callable.yml
     with:
       location: ${{ needs.init.outputs.location }}
-      htc_sku: ${{ needs.init.outputs.htc_sku }}
-      hpc_sku: ${{ needs.init.outputs.hpc_sku }}
-      gpu_sku: ${{ needs.init.outputs.gpu_sku }}
-      htc_max_nodes: ${{ needs.init.outputs.htc_max_nodes }}
-      hpc_max_nodes: ${{ needs.init.outputs.hpc_max_nodes }}
-      gpu_max_nodes: ${{ needs.init.outputs.gpu_max_nodes }}
-      deploy_immediately: ${{ needs.init.outputs.deploy_immediately }}
+      data_filesystem: ${{ needs.init.outputs.data_filesystem == 'true' }}
+      deploy_immediately: ${{ needs.init.outputs.deploy_immediately == 'true' }}
     secrets: inherit
