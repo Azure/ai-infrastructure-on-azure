@@ -1,0 +1,20 @@
+name: Deploy CCWS (Full Matrix)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    strategy:
+      matrix:
+        data_filesystem: [false, true]
+    uses: ./.github/workflows/deploy-ccws-callable.yml
+    with:
+      location: westus3
+      data_filesystem: ${{ matrix.data_filesystem }}
+      deploy_immediately: true
+    secrets: inherit
