@@ -22,5 +22,7 @@ jobs:
     with:
       location: ${{ matrix.location }}
       command: ${{ matrix.command }}
+      install_network_operator: false
+      install_gpu_operator: false
       cleanup: true
     secrets: inherit
