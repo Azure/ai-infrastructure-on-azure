@@ -47,6 +47,10 @@ fi
 # Azure Container Storage Configuration
 : "${ENABLE_AZURE_CONTAINER_STORAGE:=true}" # Set to false to disable Azure Container Storage
 
+# Operator Installation Configuration
+: "${INSTALL_NETWORK_OPERATOR:=true}" # Set to false to skip Network Operator installation
+: "${INSTALL_GPU_OPERATOR:=true}"     # Set to false to skip GPU Operator installation
+
 : "${NETWORK_OPERATOR_NS:=network-operator}"
 : "${GPU_OPERATOR_NS:=gpu-operator}"
 
@@ -774,8 +778,12 @@ all)
 	install_mpi_operator
 	install_pytorch_operator
 	add_nodepool --gpu-driver=none
-	install_network_operator
-	install_gpu_operator
+	if [[ "${INSTALL_NETWORK_OPERATOR}" == "true" ]]; then
+		install_network_operator
+	fi
+	if [[ "${INSTALL_GPU_OPERATOR}" == "true" ]]; then
+		install_gpu_operator
+	fi
 	if [[ "${INSTALL_AMLFS}" == "true" ]]; then
 		install_amlfs
 	fi

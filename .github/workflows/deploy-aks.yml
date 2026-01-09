@@ -1,0 +1,68 @@
+name: Deploy AKS (Test)
+
+on:
+  push:
+    paths:
+      - ".github/workflows/deploy-aks.yml"
+      - ".github/workflows/deploy-aks-callable.yml"
+      - "infrastructure_references/aks/scripts/deploy-aks.sh"
+      - "infrastructure_references/aks/configs/**"
+
+  workflow_dispatch:
+    inputs:
+      location:
+        description: "Azure region (e.g., westus3, westeurope, westus2)"
+        required: true
+        type: string
+        default: "westus3"
+      command:
+        description: "deploy-aks.sh command to run"
+        required: false
+        type: choice
+        default: "all"
+        options:
+          - "all"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  init:
+    runs-on: ubuntu-latest
+    outputs:
+      location: ${{ steps.params.outputs.location }}
+      command: ${{ steps.params.outputs.command }}
+
+    steps:
+      - name: Set deployment parameters
+        id: params
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          LOCATION_IN: ${{ inputs.location }}
+          COMMAND_IN: ${{ inputs.command }}
+        run: |
+          set -euo pipefail
+
+          if [ "${EVENT_NAME}" = "push" ]; then
+            {
+              echo "location=westus3"
+              echo "command=all"
+            } >> "$GITHUB_OUTPUT"
+          else
+            location="${LOCATION_IN:-westus3}"
+            command="${COMMAND_IN:-all}"
+
+            {
+              echo "location=${location}"
+              echo "command=${command}"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+  call-deployment:
+    needs: init
+    uses: ./.github/workflows/deploy-aks-callable.yml
+    with:
+      location: ${{ needs.init.outputs.location }}
+      command: ${{ needs.init.outputs.command }}
+    secrets: inherit

@@ -1,0 +1,159 @@
+name: Deploy AKS (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      location:
+        description: "Azure region"
+        required: false
+        type: string
+        default: "westus3"
+      command:
+        description: "deploy-aks.sh command to run"
+        required: false
+        type: string
+        default: "deploy-aks"
+      node_pool_vm_size:
+        description: "Node pool VM size"
+        required: false
+        type: string
+        default: "Standard_D2ads_v5"
+      node_pool_node_count:
+        description: "Node pool node count"
+        required: false
+        type: string
+        default: "2"
+      system_pool_vm_size:
+        description: "Optional system nodepool VM size"
+        required: false
+        type: string
+        default: "Standard_D2ads_v5"
+      install_amlfs:
+        description: "Install Azure Managed Lustre File System (AMLFS) CSI driver"
+        required: false
+        type: boolean
+        default: true
+      install_network_operator:
+        description: "Install NVIDIA Network Operator for InfiniBand/RDMA support"
+        required: false
+        type: boolean
+        default: false
+      install_gpu_operator:
+        description: "Install NVIDIA GPU Operator for GPU workload management"
+        required: false
+        type: boolean
+        default: false
+      cleanup:
+        description: "Delete the resource group after the run"
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: testing
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate deploy script is syntactically valid
+        run: |
+          set -euo pipefail
+          bash -n infrastructure_references/aks/scripts/deploy-aks.sh
+
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Install jq and kustomize
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y jq
+          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Setup helm
+        uses: azure/setup-helm@v3
+
+
+      - name: Verify CLI tools
+        run: |
+          set -euo pipefail
+          kubectl version --client=true
+          helm version
+          kustomize version
+          az version
+
+      - name: Set script permissions
+        run: |
+          set -euo pipefail
+          chmod +x infrastructure_references/aks/scripts/deploy-aks.sh
+
+      - name: Generate resource group and cluster names
+        id: names
+        run: |
+          set -euo pipefail
+          timestamp=$(date -u +"%y%m%d%H%M")
+          rg_name="ai-infra-aks-${timestamp}"
+          cluster_name="ai-infra-${timestamp}"
+          echo "resource_group=${rg_name}" >> "$GITHUB_OUTPUT"
+          echo "cluster_name=${cluster_name}" >> "$GITHUB_OUTPUT"
+
+      - name: Run deploy-aks.sh
+        env:
+          AZURE_REGION: ${{ inputs.location }}
+          AZURE_RESOURCE_GROUP: ${{ steps.names.outputs.resource_group }}
+          CLUSTER_NAME: ${{ steps.names.outputs.cluster_name }}
+          SYSTEM_POOL_VM_SIZE: ${{ inputs.system_pool_vm_size }}
+          NODE_POOL_VM_SIZE: ${{ inputs.node_pool_vm_size }}
+          NODE_POOL_NODE_COUNT: ${{ inputs.node_pool_node_count }}
+          INSTALL_AMLFS: "false"
+          INSTALL_NETWORK_OPERATOR: ${{ inputs.install_network_operator }}
+          INSTALL_GPU_OPERATOR: ${{ inputs.install_gpu_operator }}
+        run: |
+          set -euo pipefail
+          ./infrastructure_references/aks/scripts/deploy-aks.sh "${{ inputs.command }}"
+      
+      - name: Refresh Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          
+      - name: Install AMLFS
+        if: inputs.install_amlfs
+        env:
+          AZURE_REGION: ${{ inputs.location }}
+          AZURE_RESOURCE_GROUP: ${{ steps.names.outputs.resource_group }}
+          CLUSTER_NAME: ${{ steps.names.outputs.cluster_name }}
+          SYSTEM_POOL_VM_SIZE: ${{ inputs.system_pool_vm_size }}
+          NODE_POOL_VM_SIZE: ${{ inputs.node_pool_vm_size }}
+          NODE_POOL_NODE_COUNT: ${{ inputs.node_pool_node_count }}
+          INSTALL_AMLFS: ${{ inputs.install_amlfs }}
+          INSTALL_NETWORK_OPERATOR: ${{ inputs.install_network_operator }}
+          INSTALL_GPU_OPERATOR: ${{ inputs.install_gpu_operator }}
+        run: |
+          set -euo pipefail
+          ./infrastructure_references/aks/scripts/deploy-aks.sh install-amlfs     
+          
+      - name: Cleanup resource group after run
+        if: always() && inputs.cleanup == true
+        run: |
+          set -euo pipefail
+          echo "Cleaning up resource group: ${{ steps.names.outputs.resource_group }}"
+          if az group exists --name "${{ steps.names.outputs.resource_group }}" --output tsv 2>/dev/null | grep -q "true"; then
+            az group delete --name "${{ steps.names.outputs.resource_group }}" --yes --no-wait
+            echo "✅ Resource group deletion initiated" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Resource group does not exist, nothing to clean up"
+          fi
