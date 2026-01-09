@@ -28,6 +28,11 @@ on:
         required: false
         type: string
         default: "Standard_D2ads_v5"
+      install_amlfs:
+        description: "Install Azure Managed Lustre File System (AMLFS) CSI driver"
+        required: false
+        type: boolean
+        default: true
       install_network_operator:
         description: "Install NVIDIA Network Operator for InfiniBand/RDMA support"
         required: false
@@ -111,12 +116,29 @@ jobs:
           SYSTEM_POOL_VM_SIZE: ${{ inputs.system_pool_vm_size }}
           NODE_POOL_VM_SIZE: ${{ inputs.node_pool_vm_size }}
           NODE_POOL_NODE_COUNT: ${{ inputs.node_pool_node_count }}
+          INSTALL_AMLFS: "false"
           INSTALL_NETWORK_OPERATOR: ${{ inputs.install_network_operator }}
           INSTALL_GPU_OPERATOR: ${{ inputs.install_gpu_operator }}
         run: |
           set -euo pipefail
           ./infrastructure_references/aks/scripts/deploy-aks.sh "${{ inputs.command }}"
-
+          
+      - name: Install AMLFS
+        if: inputs.install_amlfs == 'true'
+        env:
+          AZURE_REGION: ${{ inputs.location }}
+          AZURE_RESOURCE_GROUP: ${{ steps.names.outputs.resource_group }}
+          CLUSTER_NAME: ${{ steps.names.outputs.cluster_name }}
+          SYSTEM_POOL_VM_SIZE: ${{ inputs.system_pool_vm_size }}
+          NODE_POOL_VM_SIZE: ${{ inputs.node_pool_vm_size }}
+          NODE_POOL_NODE_COUNT: ${{ inputs.node_pool_node_count }}
+          INSTALL_AMLFS: ${{ inputs.install_amlfs }}
+          INSTALL_NETWORK_OPERATOR: ${{ inputs.install_network_operator }}
+          INSTALL_GPU_OPERATOR: ${{ inputs.install_gpu_operator }}
+        run: |
+          set -euo pipefail
+          ./infrastructure_references/aks/scripts/deploy-aks.sh install-amlfs     
+          
       - name: Cleanup resource group after run
         if: always() && inputs.cleanup == true
         run: |
