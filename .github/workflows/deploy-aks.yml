@@ -51,7 +51,7 @@ jobs:
             } >> "$GITHUB_OUTPUT"
           else
             location="${LOCATION_IN:-westus3}"
-            command="${COMMAND_IN:-deploy-aks}"
+            command="${COMMAND_IN:-all}"
 
             {
               echo "location=${location}"

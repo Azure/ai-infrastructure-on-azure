@@ -14,12 +14,12 @@ on:
         type: string
         default: "deploy-aks"
       node_pool_vm_size:
-        description: "GPU node pool VM size"
+        description: "Node pool VM size"
         required: false
         type: string
         default: "Standard_D2ads_v5"
       node_pool_node_count:
-        description: "GPU node pool node count"
+        description: "Node pool node count"
         required: false
         type: string
         default: "2"
@@ -102,7 +102,7 @@ jobs:
         id: names
         run: |
           set -euo pipefail
-          timestamp=$(date -u +"%y%d%m%H%M")
+          timestamp=$(date -u +"%y%m%d%H%M")
           rg_name="ai-infra-aks-${timestamp}"
           cluster_name="ai-infra-${timestamp}"
           echo "resource_group=${rg_name}" >> "$GITHUB_OUTPUT"
