@@ -17,7 +17,7 @@ on:
         description: "HPC partition VM SKU (e.g., Standard_HB176rs_v4)"
         required: false
         type: string
-        default: "Standard_HB176rs_v4"
+        default: "Standard_D4as_v5"
       gpu_sku:
         description: "GPU partition VM SKU (e.g., Standard_ND96amsr_A100_v4)"
         required: false
