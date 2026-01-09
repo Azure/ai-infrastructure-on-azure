@@ -12,17 +12,17 @@ on:
         description: "HTC partition VM SKU (e.g., Standard_F2s_v2)"
         required: false
         type: string
-        default: "Standard_F2s_v2"
+        default: "Standard_D4as_v5"
       hpc_sku:
         description: "HPC partition VM SKU (e.g., Standard_HB176rs_v4)"
         required: false
         type: string
-        default: "Standard_HB176rs_v4"
+        default: "Standard_D4as_v5"
       gpu_sku:
         description: "GPU partition VM SKU (e.g., Standard_ND96amsr_A100_v4)"
         required: false
         type: string
-        default: "Standard_ND96amsr_A100_v4"
+        default: "Standard_D4as_v5"
       scheduler_sku:
         description: "Scheduler node VM SKU"
         required: false
@@ -31,7 +31,7 @@ on:
       login_sku:
         description: "Login node VM SKU"
         required: false
-        default: "Standard_D2as_v5"
+        default: "Standard_D4as_v5"
         type: string
       workspace_ref:
         description: "Git ref (branch/tag) to checkout"
@@ -103,7 +103,7 @@ jobs:
           echo "Generated resource group name: ${rg_name}"
 
       - name: Accept Azure Marketplace terms
-        if: inputs.deploy_immediately == 'true'
+        if: inputs.deploy_immediately
         run: |
           set -euo pipefail
           echo "Deployment enabled - accepting Azure CycleCloud marketplace terms..."
@@ -212,8 +212,92 @@ jobs:
           # Execute
           "$script" "${args[@]}"
 
+      - name: Wait for login VMSS and validate instances
+        if: inputs.deploy_immediately
+        timeout-minutes: 20
+        run: |
+          set -euo pipefail
+
+          RG_NAME="${{ steps.rg_name.outputs.resource_group }}"
+          VMSS_PATTERN="login-"
+          TIMEOUT_MINUTES=20
+          CHECK_INTERVAL=30  # Check every 30 seconds
+          MAX_ATTEMPTS=$((TIMEOUT_MINUTES * 60 / CHECK_INTERVAL))
+
+          echo "🔍 Waiting for VMSS with pattern '${VMSS_PATTERN}*' in resource group '${RG_NAME}'..."
+          echo "⏱️ Timeout: ${TIMEOUT_MINUTES} minutes (${MAX_ATTEMPTS} attempts with ${CHECK_INTERVAL}s intervals)"
+
+          VMSS_FOUND=false
+          INSTANCES_RUNNING=false
+
+          for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
+            echo "🔄 Attempt ${attempt}/${MAX_ATTEMPTS}: Checking for VMSS..."
+            
+            # Find VMSS with login- pattern
+            VMSS_LIST=$(az vmss list --resource-group "$RG_NAME" \
+              --query "[?starts_with(name, '${VMSS_PATTERN}')].name" \
+              --output tsv 2>/dev/null || echo "")
+            
+            if [ -n "$VMSS_LIST" ]; then
+              VMSS_NAME=$(echo "$VMSS_LIST" | head -n 1)
+              echo "✅ Found VMSS: ${VMSS_NAME}"
+              VMSS_FOUND=true
+              
+              # Check for running instances
+              echo "🔍 Checking instances in VMSS '${VMSS_NAME}'..."
+              RUNNING_INSTANCES=$(az vmss list-instances --resource-group "$RG_NAME" --name "$VMSS_NAME" \
+                --query "[?provisioningState=='Succeeded'].instanceId" \
+                --output tsv 2>/dev/null || echo "")
+              
+              if [ -n "$RUNNING_INSTANCES" ]; then
+                INSTANCE_COUNT=$(echo "$RUNNING_INSTANCES" | wc -l)
+                echo "✅ Found ${INSTANCE_COUNT} running instance(s) in VMSS '${VMSS_NAME}'"
+                INSTANCES_RUNNING=true
+                break
+              else
+                echo "⚠️ VMSS '${VMSS_NAME}' found but no instances are running yet"
+              fi
+            else
+              echo "⏳ No VMSS with pattern '${VMSS_PATTERN}*' found yet"
+            fi
+            
+            if [ "$attempt" -lt "$MAX_ATTEMPTS" ]; then
+              echo "💤 Waiting ${CHECK_INTERVAL} seconds before next check..."
+              sleep "$CHECK_INTERVAL"
+            fi
+          done
+
+          # Final validation
+          if [ "$VMSS_FOUND" = false ]; then
+            echo "❌ FAILURE: No VMSS with pattern '${VMSS_PATTERN}*' found after ${TIMEOUT_MINUTES} minutes"
+            echo "::error::VMSS validation failed: No VMSS found with pattern '${VMSS_PATTERN}*'"
+            exit 1
+          elif [ "$INSTANCES_RUNNING" = false ]; then
+            echo "❌ FAILURE: VMSS found but no running instances after ${TIMEOUT_MINUTES} minutes"
+            echo "::error::VMSS validation failed: No running instances found in VMSS"
+            exit 1
+          else
+            echo "🎉 SUCCESS: VMSS '${VMSS_NAME}' found with running instances"
+            echo "::notice::VMSS validation successful: Found '${VMSS_NAME}' with running instances"
+          fi
+
+      - name: Check CycleCloud VM cloud-init logs
+        if: failure() && inputs.deploy_immediately
+        run: |
+          set -euo pipefail
+          RG_NAME="${{ steps.rg_name.outputs.resource_group }}"
+
+          echo "🔍 Checking cloud-init logs on CycleCloud VM"
+          az vm run-command invoke \
+            --resource-group "$RG_NAME" \
+            --name "ccw-cyclecloud-vm" \
+            --command-id RunShellScript \
+            --scripts "tail -n 200 /var/log/cloud-init-output.log" \
+            --query "value[0].message" \
+            --output tsv
+
       - name: Display deployment summary
-        if: success()
+        if: always()
         run: |
           set -euo pipefail
           {
@@ -232,8 +316,37 @@ jobs:
             echo "=================================="
           fi
 
+      - name: List resources before cleanup
+        if: always() && inputs.deploy_immediately
+        run: |
+          set -euo pipefail
+          RG_NAME="${{ steps.rg_name.outputs.resource_group }}"
+          echo "📋 Listing all resources in resource group: ${RG_NAME}"
+
+          if az group exists --name "$RG_NAME" --output tsv 2>/dev/null | grep -q "true"; then
+            echo "Resource group exists, listing resources..."
+            RESOURCES=$(az resource list --resource-group "$RG_NAME" --query "[].{Name:name, Type:type}" --output table 2>/dev/null || echo "")
+            
+            if [ -n "$RESOURCES" ]; then
+              {
+                echo "## Resources in Resource Group '${RG_NAME}'"
+                echo '```'
+                echo "$RESOURCES"
+                echo '```'
+              } >> "$GITHUB_STEP_SUMMARY"
+              echo "Found resources:"
+              echo "$RESOURCES"
+            else
+              echo "No resources found in resource group"
+              echo "ℹ️ No resources found in resource group '${RG_NAME}'" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          else
+            echo "Resource group '${RG_NAME}' does not exist"
+            echo "ℹ️ Resource group '${RG_NAME}' does not exist" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Cleanup resource group after deployment
-        if: always() && inputs.deploy_immediately == 'true'
+        if: always() && inputs.deploy_immediately
         run: |
           set -euo pipefail
           echo "Cleaning up resource group: ${{ steps.rg_name.outputs.resource_group }}"

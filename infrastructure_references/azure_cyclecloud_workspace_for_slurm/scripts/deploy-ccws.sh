@@ -713,15 +713,18 @@ load_compute_skus() {
 	fi
 	echo "[INFO] Discovering VM SKUs and zones for region '${LOCATION}'..." >&2
 
-	# Build JMESPath query to filter SKUs (only htc, hpc, gpu partitions)
+	# Build JMESPath query to filter SKUs (include all SKUs that need validation)
 	local query_filter=""
 	local filter_parts=()
 	if [[ -n "$HTC_SKU" ]]; then filter_parts+=("name=='$HTC_SKU'"); fi
 	if [[ -n "$HPC_SKU" ]]; then filter_parts+=("name=='$HPC_SKU'"); fi
 	if [[ -n "$GPU_SKU" ]]; then filter_parts+=("name=='$GPU_SKU'"); fi
+	if [[ -n "$SCHEDULER_SKU" ]]; then filter_parts+=("name=='$SCHEDULER_SKU'"); fi
+	if [[ -n "$LOGIN_SKU" ]]; then filter_parts+=("name=='$LOGIN_SKU'"); fi
+	if [[ "$OOD_ENABLED" == "true" && -n "$OOD_SKU" ]]; then filter_parts+=("name=='$OOD_SKU'"); fi
 
 	if [[ ${#filter_parts[@]} -eq 0 ]]; then
-		echo "[DEBUG] No partition SKUs defined yet; loading all SKUs." >&2
+		echo "[DEBUG] No specific SKUs defined yet; loading all SKUs." >&2
 		query_filter="value[?locationInfo!=null]"
 	else
 		# Build OR condition by joining with ||
@@ -734,7 +737,7 @@ load_compute_skus() {
 			fi
 		done
 		query_filter="value[?$condition]"
-		echo "[DEBUG] Loading only SKUs: HTC=$HTC_SKU, HPC=$HPC_SKU, GPU=$GPU_SKU" >&2
+		echo "[DEBUG] Loading SKUs: HTC=$HTC_SKU, HPC=$HPC_SKU, GPU=$GPU_SKU, SCHEDULER=$SCHEDULER_SKU, LOGIN=$LOGIN_SKU, OOD=$OOD_SKU" >&2
 	fi
 	local raw
 	if ! raw=$(az rest --method get --url "/subscriptions/{subscriptionId}/providers/Microsoft.Compute/skus?api-version=2021-07-01&\$filter=location eq '${LOCATION}'" --query "$query_filter" -o json 2>/dev/null); then
@@ -926,6 +929,61 @@ if [[ "$OOD_ENABLED" == "true" ]]; then
 	fi
 fi
 
+# Validate all VM SKUs exist in the target region
+validate_all_skus() {
+	echo "[INFO] Validating all VM SKUs exist in region '${LOCATION}'..." >&2
+	
+	# Ensure SKU cache is loaded
+	if [[ -z "$COMPUTE_SKUS_CACHE" ]]; then
+		load_compute_skus
+	fi
+	
+	if [[ -z "$COMPUTE_SKUS_CACHE" ]]; then
+		echo "[ERROR] Unable to load VM SKU information for region '${LOCATION}'. Cannot validate SKUs." >&2
+		exit 1
+	fi
+	
+	local validation_failed=false
+	local skus_to_validate=()
+	
+	# Collect all SKUs that need validation
+	skus_to_validate+=("${SCHEDULER_SKU}:Scheduler")
+	skus_to_validate+=("${LOGIN_SKU}:Login")
+	skus_to_validate+=("${HTC_SKU}:HTC")
+	skus_to_validate+=("${HPC_SKU}:HPC") 
+	skus_to_validate+=("${GPU_SKU}:GPU")
+	
+	# Add OOD SKU if Open OnDemand is enabled
+	if [[ "$OOD_ENABLED" == "true" ]]; then
+		skus_to_validate+=("${OOD_SKU}:OpenOnDemand")
+	fi
+	
+	# Validate each SKU
+	for sku_entry in "${skus_to_validate[@]}"; do
+		local sku="${sku_entry%%:*}"
+		local label="${sku_entry##*:}"
+		
+		if ! validate_sku "$sku"; then
+			echo "[ERROR] ${label} SKU '${sku}' is not available in region '${LOCATION}'" >&2
+			validation_failed=true
+		else
+			echo "[INFO] ✓ ${label} SKU '${sku}' validated in region '${LOCATION}'" >&2
+		fi
+	done
+	
+	if [[ "$validation_failed" == "true" ]]; then
+		echo "[ERROR] One or more VM SKUs are not available in the target region. Please choose different SKUs or a different region." >&2
+		echo "[INFO] Available SKUs in region '${LOCATION}':" >&2
+		echo "$COMPUTE_SKUS_CACHE" | cut -d':' -f1 | head -20
+		if [[ $(echo "$COMPUTE_SKUS_CACHE" | wc -l) -gt 20 ]]; then
+			echo "... (showing first 20, total: $(echo "$COMPUTE_SKUS_CACHE" | wc -l))" >&2
+		fi
+		exit 1
+	fi
+	
+	echo "[INFO] All VM SKUs validated successfully for region '${LOCATION}'" >&2
+}
+
 # Only load compute SKUs if we need zone discovery
 if [[ "$SPECIFY_AZ" == "true" ]]; then
 	load_compute_skus
@@ -958,6 +1016,9 @@ if ! validate_max_nodes "$GPU_MAX_NODES" "GPU"; then
 	echo "[INFO] GPU max nodes not provided; entering interactive prompt." >&2
 	prompt_for_max_nodes GPU_MAX_NODES "GPU"
 fi
+
+# Validate all VM SKUs exist in the target region before proceeding
+validate_all_skus
 
 if [[ "$NO_AZ" == "true" ]]; then
 	# Check if user specified any zone parameters along with --no-az
