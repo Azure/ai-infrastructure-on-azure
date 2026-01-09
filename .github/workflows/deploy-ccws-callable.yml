@@ -12,17 +12,17 @@ on:
         description: "HTC partition VM SKU (e.g., Standard_F2s_v2)"
         required: false
         type: string
-        default: "Standard_F2s_v2"
+        default: "Standard_D4as_v5"
       hpc_sku:
         description: "HPC partition VM SKU (e.g., Standard_HB176rs_v4)"
         required: false
         type: string
-        default: "Standard_HB176rs_v4"
+        default: "Standard_D4as_v5"
       gpu_sku:
         description: "GPU partition VM SKU (e.g., Standard_ND96amsr_A100_v4)"
         required: false
         type: string
-        default: "Standard_ND96amsr_A100_v4"
+        default: "Standard_D4as_v5"
       scheduler_sku:
         description: "Scheduler node VM SKU"
         required: false
@@ -31,7 +31,7 @@ on:
       login_sku:
         description: "Login node VM SKU"
         required: false
-        default: "Standard_D2as_v5"
+        default: "Standard_D4as_v5"
         type: string
       workspace_ref:
         description: "Git ref (branch/tag) to checkout"
@@ -297,7 +297,7 @@ jobs:
             --output tsv
 
       - name: Display deployment summary
-        if: success()
+        if: always()
         run: |
           set -euo pipefail
           {
