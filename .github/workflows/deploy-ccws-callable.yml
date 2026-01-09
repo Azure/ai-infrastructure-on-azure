@@ -230,11 +230,13 @@ jobs:
           VMSS_FOUND=false
           INSTANCES_RUNNING=false
           
-          for attempt in $(seq 1 $MAX_ATTEMPTS); do
+          for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
             echo "🔄 Attempt ${attempt}/${MAX_ATTEMPTS}: Checking for VMSS..."
             
             # Find VMSS with login- pattern
-            VMSS_LIST=$(az vmss list --resource-group "$RG_NAME" --query "[?starts_with(name, '${VMSS_PATTERN}')].name" --output tsv 2>/dev/null || echo "")
+            VMSS_LIST=$(az vmss list --resource-group "$RG_NAME" \
+              --query "[?starts_with(name, '${VMSS_PATTERN}')].name" \
+              --output tsv 2>/dev/null || echo "")
             
             if [ -n "$VMSS_LIST" ]; then
               VMSS_NAME=$(echo "$VMSS_LIST" | head -n 1)
@@ -243,7 +245,9 @@ jobs:
               
               # Check for running instances
               echo "🔍 Checking instances in VMSS '${VMSS_NAME}'..."
-              RUNNING_INSTANCES=$(az vmss list-instances --resource-group "$RG_NAME" --name "$VMSS_NAME" --query "[?provisioningState=='Succeeded'].instanceId" --output tsv 2>/dev/null || echo "")
+              RUNNING_INSTANCES=$(az vmss list-instances --resource-group "$RG_NAME" --name "$VMSS_NAME" \
+                --query "[?provisioningState=='Succeeded'].instanceId" \
+                --output tsv 2>/dev/null || echo "")
               
               if [ -n "$RUNNING_INSTANCES" ]; then
                 INSTANCE_COUNT=$(echo "$RUNNING_INSTANCES" | wc -l)
@@ -257,9 +261,9 @@ jobs:
               echo "⏳ No VMSS with pattern '${VMSS_PATTERN}*' found yet"
             fi
             
-            if [ $attempt -lt $MAX_ATTEMPTS ]; then
+            if [ "$attempt" -lt "$MAX_ATTEMPTS" ]; then
               echo "💤 Waiting ${CHECK_INTERVAL} seconds before next check..."
-              sleep $CHECK_INTERVAL
+              sleep "$CHECK_INTERVAL"
             fi
           done
           
