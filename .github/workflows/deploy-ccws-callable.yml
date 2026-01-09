@@ -103,7 +103,7 @@ jobs:
           echo "Generated resource group name: ${rg_name}"
 
       - name: Accept Azure Marketplace terms
-        if: inputs.deploy_immediately == 'true'
+        if: inputs.deploy_immediately
         run: |
           set -euo pipefail
           echo "Deployment enabled - accepting Azure CycleCloud marketplace terms..."
@@ -213,7 +213,7 @@ jobs:
           "$script" "${args[@]}"
 
       - name: Wait for login VMSS and validate instances
-        if: inputs.deploy_immediately == 'true'
+        if: inputs.deploy_immediately
         timeout-minutes: 20
         run: |
           set -euo pipefail
@@ -302,7 +302,7 @@ jobs:
           fi
 
       - name: Cleanup resource group after deployment
-        if: always() && inputs.deploy_immediately == 'true'
+        if: always() && inputs.deploy_immediately
         run: |
           set -euo pipefail
           echo "Cleaning up resource group: ${{ steps.rg_name.outputs.resource_group }}"
