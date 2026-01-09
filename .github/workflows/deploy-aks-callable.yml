@@ -122,9 +122,9 @@ jobs:
         run: |
           set -euo pipefail
           ./infrastructure_references/aks/scripts/deploy-aks.sh "${{ inputs.command }}"
-          
+
       - name: Install AMLFS
-        if: inputs.install_amlfs == 'true'
+        if: inputs.install_amlfs
         env:
           AZURE_REGION: ${{ inputs.location }}
           AZURE_RESOURCE_GROUP: ${{ steps.names.outputs.resource_group }}
