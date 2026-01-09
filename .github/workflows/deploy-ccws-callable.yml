@@ -281,6 +281,21 @@ jobs:
             echo "::notice::VMSS validation successful: Found '${VMSS_NAME}' with running instances"
           fi
 
+      - name: Check CycleCloud VM cloud-init logs
+        if: failure() && inputs.deploy_immediately
+        run: |
+          set -euo pipefail
+          RG_NAME="${{ steps.rg_name.outputs.resource_group }}"
+        
+          echo "🔍 Checking cloud-init logs on CycleCloud VM: $CYCLECLOUD_VM"
+          az vm run-command invoke \
+            --resource-group "$RG_NAME" \
+            --name "ccw-cyclecloud-vm" \
+            --command-id RunShellScript \
+            --scripts "tail -n 200 /var/log/cloud-init-output.log" \
+            --query "value[0].message" \
+            --output tsv
+
       - name: Display deployment summary
         if: success()
         run: |
