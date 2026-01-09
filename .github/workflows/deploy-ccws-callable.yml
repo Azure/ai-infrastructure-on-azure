@@ -307,7 +307,7 @@ jobs:
           set -euo pipefail
           RG_NAME="${{ steps.rg_name.outputs.resource_group }}"
           echo "📋 Listing all resources in resource group: ${RG_NAME}"
-          
+
           if az group exists --name "$RG_NAME" --output tsv 2>/dev/null | grep -q "true"; then
             echo "Resource group exists, listing resources..."
             RESOURCES=$(az resource list --resource-group "$RG_NAME" --query "[].{Name:name, Type:type}" --output table 2>/dev/null || echo "")
