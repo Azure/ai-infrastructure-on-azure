@@ -217,19 +217,19 @@ jobs:
         timeout-minutes: 20
         run: |
           set -euo pipefail
-          
+
           RG_NAME="${{ steps.rg_name.outputs.resource_group }}"
           VMSS_PATTERN="login-"
           TIMEOUT_MINUTES=20
           CHECK_INTERVAL=30  # Check every 30 seconds
           MAX_ATTEMPTS=$((TIMEOUT_MINUTES * 60 / CHECK_INTERVAL))
-          
+
           echo "🔍 Waiting for VMSS with pattern '${VMSS_PATTERN}*' in resource group '${RG_NAME}'..."
           echo "⏱️ Timeout: ${TIMEOUT_MINUTES} minutes (${MAX_ATTEMPTS} attempts with ${CHECK_INTERVAL}s intervals)"
-          
+
           VMSS_FOUND=false
           INSTANCES_RUNNING=false
-          
+
           for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
             echo "🔄 Attempt ${attempt}/${MAX_ATTEMPTS}: Checking for VMSS..."
             
@@ -266,7 +266,7 @@ jobs:
               sleep "$CHECK_INTERVAL"
             fi
           done
-          
+
           # Final validation
           if [ "$VMSS_FOUND" = false ]; then
             echo "❌ FAILURE: No VMSS with pattern '${VMSS_PATTERN}*' found after ${TIMEOUT_MINUTES} minutes"
