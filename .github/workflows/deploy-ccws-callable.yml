@@ -286,7 +286,7 @@ jobs:
         run: |
           set -euo pipefail
           RG_NAME="${{ steps.rg_name.outputs.resource_group }}"
-        
+
           echo "🔍 Checking cloud-init logs on CycleCloud VM"
           az vm run-command invoke \
             --resource-group "$RG_NAME" \
