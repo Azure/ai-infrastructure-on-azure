@@ -63,6 +63,10 @@ on:
         required: false
         default: false
         type: boolean
+      image:
+        description: "VM image to use for all nodes (optional)"
+        required: false
+        type: string
 
 concurrency:
   group: deploy-ccws
@@ -145,6 +149,7 @@ jobs:
           GPU_MAX: ${{ inputs.gpu_max_nodes }}
           DATA_FILESYSTEM: ${{ inputs.data_filesystem }}
           DEPLOY_IMMEDIATELY: ${{ inputs.deploy_immediately }}
+          IMAGE: ${{ inputs.image }}
         run: |
           set -euo pipefail
 
@@ -169,6 +174,14 @@ jobs:
             --gpu-max-nodes "$GPU_MAX"
             --bastion --accept-marketplace --no-az --silent
           )
+
+          if [ -n "${IMAGE}" ]; then
+            cmd+=(--htc-image "$IMAGE")
+            cmd+=(--hpc-image "$IMAGE")
+            cmd+=(--gpu-image "$IMAGE")
+            cmd+=(--scheduler-image "$IMAGE")
+            cmd+=(--login-image "$IMAGE")
+          fi
 
           if [ "${DATA_FILESYSTEM}" = "true" ]; then
             cmd+=(--data-filesystem)
@@ -207,6 +220,13 @@ jobs:
             --gpu-max-nodes "${{ inputs.gpu_max_nodes }}"
             --bastion --accept-marketplace --no-az --silent
           )
+          if [ -n "${{ inputs.image }}" ]; then
+            args+=(--htc-image "${{ inputs.image }}")
+            args+=(--hpc-image "${{ inputs.image }}")
+            args+=(--gpu-image "${{ inputs.image }}")
+            args+=(--scheduler-image "${{ inputs.image }}")
+            args+=(--login-image "${{ inputs.image }}")
+          fi
           if [ "${{ inputs.data_filesystem }}" = "true" ]; then
             args+=(--data-filesystem)
           fi
