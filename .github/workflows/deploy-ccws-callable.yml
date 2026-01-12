@@ -64,6 +64,10 @@ on:
         default: false
         type: boolean
 
+concurrency:
+  group: deploy-ccws
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest

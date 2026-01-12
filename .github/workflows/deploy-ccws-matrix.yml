@@ -12,6 +12,7 @@ permissions:
 jobs:
   deploy:
     strategy:
+      fail-fast: false
       matrix:
         data_filesystem: [false, true]
     uses: ./.github/workflows/deploy-ccws-callable.yml
