@@ -10,14 +10,32 @@ permissions:
   contents: read
 
 jobs:
-  deploy:
+  deploy-with-amlfs:
+    name: "${{ matrix.image }}'-AMLFS'"
     strategy:
       fail-fast: false
       matrix:
-        data_filesystem: [false, true]
+        data_filesystem: [true]
+        image: ["cycle.image.ubuntu24", "almalinux9"]
     uses: ./.github/workflows/deploy-ccws-callable.yml
     with:
       location: westus3
       data_filesystem: ${{ matrix.data_filesystem }}
       deploy_immediately: true
+      image: ${{ matrix.image }}
+    secrets: inherit
+
+  deploy-without-amlfs:
+    name: "${{ matrix.image }}"
+    strategy:
+      fail-fast: false
+      matrix:
+        data_filesystem: [false]
+        image: ["cycle.image.ubuntu22", "almalinux8"]
+    uses: ./.github/workflows/deploy-ccws-callable.yml
+    with:
+      location: westus3
+      data_filesystem: ${{ matrix.data_filesystem }}
+      deploy_immediately: true
+      image: ${{ matrix.image }}
     secrets: inherit
