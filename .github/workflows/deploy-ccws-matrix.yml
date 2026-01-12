@@ -9,6 +9,10 @@ permissions:
   id-token: write
   contents: read
 
+concurrency:
+  group: deploy-ccws-matrix
+  cancel-in-progress: false
+
 jobs:
   deploy-with-amlfs:
     name: "${{ matrix.image }}'-AMLFS'"
@@ -26,6 +30,7 @@ jobs:
     secrets: inherit
 
   deploy-without-amlfs:
+    needs: deploy-with-amlfs
     name: "${{ matrix.image }}"
     strategy:
       fail-fast: false
