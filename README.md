@@ -1,5 +1,8 @@
 # AI Infrastructure on Azure
 
+[![Deploy CCWS (Full Matrix)](https://github.com/Azure/ai-infrastructure-on-azure/actions/workflows/deploy-ccws-matrix.yml/badge.svg)](https://github.com/Azure/ai-infrastructure-on-azure/actions/workflows/deploy-ccws-matrix.yml)
+[![Deploy AKS (Full Matrix)](https://github.com/Azure/ai-infrastructure-on-azure/actions/workflows/deploy-aks-matrix.yaml/badge.svg)](https://github.com/Azure/ai-infrastructure-on-azure/actions/workflows/deploy-aks-matrix.yaml)
+
 ## Table of Contents
 
 1. [Overview](#1-overview)
