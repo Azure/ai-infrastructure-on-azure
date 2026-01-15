@@ -1,0 +1,22 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "baseName": {
+      "value": "ccw-events"
+    },
+    "location": {
+      "value": "eastus2"
+    },
+    "logRetentionDays": {
+      "value": 90
+    },
+    "tags": {
+      "value": {
+        "Environment": "Production",
+        "Application": "CycleCloud",
+        "Purpose": "Event Monitoring"
+      }
+    }
+  }
+}
