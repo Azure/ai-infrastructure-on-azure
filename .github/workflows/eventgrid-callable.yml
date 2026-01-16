@@ -84,15 +84,15 @@ jobs:
               logRetentionDays=${{ inputs.log_retention_days }} \
             --query "properties.outputs" \
             --output json)
-          
-          # Extract Event Grid Topic ID
+
+            # Extract Event Grid Topic ID
           topic_id=$(echo "$result" | jq -r '.eventGridTopicId.value // empty')
-          
+
           if [ -z "$topic_id" ]; then
             echo "::error::Failed to retrieve Event Grid Topic ID from deployment"
             exit 1
           fi
-          
+
           echo "eventGridTopicId=${topic_id}" >> "$GITHUB_OUTPUT"
           echo "Event Grid Topic ID: ${topic_id}"
 
