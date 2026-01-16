@@ -74,7 +74,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "Deploying CycleCloud Event Grid to Log Analytics infrastructure..."
-          
+
           result=$(az deployment group create \
             --resource-group "${{ inputs.resource_group }}" \
             --template-file infrastructure_references/azure_cyclecloud_workspace_for_slurm/bicep/ccEventGrid.bicep \

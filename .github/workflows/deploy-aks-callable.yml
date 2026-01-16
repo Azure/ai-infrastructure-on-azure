@@ -63,7 +63,6 @@ jobs:
           set -euo pipefail
           bash -n infrastructure_references/aks/scripts/deploy-aks.sh
 
-
       - name: Azure Login
         uses: azure/login@v2
         with:
@@ -83,7 +82,6 @@ jobs:
 
       - name: Setup helm
         uses: azure/setup-helm@v3
-
 
       - name: Verify CLI tools
         run: |
@@ -122,14 +120,14 @@ jobs:
         run: |
           set -euo pipefail
           ./infrastructure_references/aks/scripts/deploy-aks.sh "${{ inputs.command }}"
-      
+
       - name: Refresh Azure Login
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          
+
       - name: Install AMLFS
         if: inputs.install_amlfs
         env:
@@ -144,8 +142,8 @@ jobs:
           INSTALL_GPU_OPERATOR: ${{ inputs.install_gpu_operator }}
         run: |
           set -euo pipefail
-          ./infrastructure_references/aks/scripts/deploy-aks.sh install-amlfs     
-          
+          ./infrastructure_references/aks/scripts/deploy-aks.sh install-amlfs
+
       - name: Cleanup resource group after run
         if: always() && inputs.cleanup == true
         run: |
