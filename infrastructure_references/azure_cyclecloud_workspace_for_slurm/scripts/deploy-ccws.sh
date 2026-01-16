@@ -38,6 +38,7 @@ OPTIONAL PARAMETERS:
 
   General Configuration:
     --admin-username <name>      Admin username (default: hpcadmin)
+    --cluster-name <name>        Slurm cluster name (default: ccw)
 
   CycleCloud Infrastructure SKUs:
     --scheduler-sku <sku>        Scheduler node VM SKU (default: Standard_D4as_v5)
@@ -207,6 +208,7 @@ EOF
 
 # Default values
 ADMIN_USERNAME="hpcadmin"
+CLUSTER_NAME="ccw"
 SCHEDULER_SKU="Standard_D4as_v5"
 LOGIN_SKU="Standard_D2as_v5"
 HTC_SKU=""
@@ -288,6 +290,10 @@ while [[ $# -gt 0 ]]; do
 		;;
 	--admin-username)
 		ADMIN_USERNAME="$2"
+		shift 2
+		;;
+	--cluster-name)
+		CLUSTER_NAME="$2"
 		shift 2
 		;;
 	--htc-sku)
@@ -1206,6 +1212,7 @@ cat >"$OUTPUT_FILE" <<EOF
 		"location": { "value": "${LOCATION}" },
 		"adminUsername": { "value": "${ADMIN_USERNAME}" },
 		"adminSshPublicKey": { "value": "${SSH_PUBLIC_KEY}" },
+		"clusterName": { "value": "${CLUSTER_NAME}" },
 		"ccVMName": { "value": "ccw-cyclecloud-vm" },
 		"ccVMSize": { "value": "${SCHEDULER_SKU}" },
 		"resourceGroup": { "value": "${RESOURCE_GROUP}" },

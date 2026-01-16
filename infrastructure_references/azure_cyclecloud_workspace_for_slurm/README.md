@@ -170,6 +170,10 @@ parameters:
   - Username for the CycleCloud administrator account
   - Used for SSH access and CycleCloud UI login
 
+- **`--cluster-name <name>`** (default: `ccw`)
+  - Name for the Slurm cluster
+  - Used to identify the cluster in CycleCloud
+
 #### CycleCloud Infrastructure SKUs
 
 - **`--scheduler-sku <sku>`** (default: `Standard_D4as_v5`)
@@ -590,6 +594,7 @@ REQUIRED PARAMETERS:
 OPTIONAL PARAMETERS:
   # General Configuration
   --admin-username         Admin username (default: hpcadmin)
+  --cluster-name           Slurm cluster name (default: ccw)
   --scheduler-sku          Scheduler node VM SKU (default: Standard_D4as_v5)
   --login-sku              Login node VM SKU (default: Standard_D2as_v5)
 
