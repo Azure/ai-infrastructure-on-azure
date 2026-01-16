@@ -13,7 +13,6 @@
     },
     "tags": {
       "value": {
-        "Environment": "Production",
         "Application": "CycleCloud",
         "Purpose": "Event Monitoring"
       }
