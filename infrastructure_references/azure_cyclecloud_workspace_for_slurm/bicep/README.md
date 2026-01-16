@@ -100,21 +100,27 @@ az group create \
   --name cyclecloud-events \
   --location eastus2
 
-# Deploy Bicep template
+# Deploy Bicep template with parameters file
 az deployment group create \
   --resource-group cyclecloud-events \
   --template-file ccEventGrid.bicep \
   --parameters parameters.json
+
+# Or deploy with inline parameters
+az deployment group create \
+  --resource-group cyclecloud-events \
+  --template-file ccEventGrid.bicep \
+  --parameters baseName='ccw-events' location='eastus2'
 ```
 
-### 3. Get Event Grid Topic Endpoint
+### 3. Get Event Grid Topic ID
 
 ```bash
-# Get the Event Grid topic endpoint to configure in CycleCloud
+# Get the Event Grid topic ID to configure in CycleCloud
 az deployment group show \
   --resource-group cyclecloud-events \
   --name ccEventGrid \
-  --query properties.outputs.eventGridTopicEndpoint.value -o tsv
+  --query properties.outputs.eventGridTopicId.value -o tsv
 ```
 
 ### 4. Configure CycleCloud to Publish Events

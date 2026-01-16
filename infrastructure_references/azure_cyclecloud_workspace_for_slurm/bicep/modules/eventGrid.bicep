@@ -69,5 +69,5 @@ resource eventSubscription 'Microsoft.EventGrid/topics/eventSubscriptions@2024-0
   }
 }
 
-@description('Event Grid Custom Topic endpoint - Configure this URL in CycleCloud Settings')
-output topicEndpoint string = customTopic.properties.endpoint
+@description('Event Grid Custom Topic ID - Configure this in CycleCloud Settings')
+output topicId string = customTopic.id

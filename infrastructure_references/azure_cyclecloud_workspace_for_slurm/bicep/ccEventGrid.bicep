@@ -85,5 +85,5 @@ resource dcrRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' 
 // Outputs
 // ============================================================================
 
-@description('Event Grid Custom Topic Endpoint - Configure this in CycleCloud Settings')
-output eventGridTopicEndpoint string = eventGrid.outputs.topicEndpoint
+@description('Event Grid Custom Topic ID - Configure this in CycleCloud Settings')
+output eventGridTopicId string = eventGrid.outputs.topicId
