@@ -8,7 +8,7 @@ CycleCloud publishes events to a **Custom Event Grid Topic** which you configure
 
 ```
 ┌─────────────────────┐     ┌─────────────────────┐     ┌─────────────────────┐
-│     CycleCloud      │────▶│ Event Grid Custom   │────▶│   Azure Function    │
+│     CycleCloud      │────>│ Event Grid Custom   │────>│   Azure Function    │
 │  (Native Events)    │     │      Topic          │     │ (Event Grid Trigger)│
 └─────────────────────┘     └─────────────────────┘     └─────────────────────┘
                                                                   │
@@ -103,7 +103,7 @@ az group create \
 # Deploy Bicep template
 az deployment group create \
   --resource-group cyclecloud-events \
-  --template-file main.bicep \
+  --template-file ccEventGrid.bicep \
   --parameters parameters.json
 ```
 
@@ -113,7 +113,7 @@ az deployment group create \
 # Get the Event Grid topic endpoint to configure in CycleCloud
 az deployment group show \
   --resource-group cyclecloud-events \
-  --name main \
+  --name ccEventGrid \
   --query properties.outputs.eventGridTopicEndpoint.value -o tsv
 ```
 
@@ -143,7 +143,7 @@ az functionapp function list \
 # Get all deployment outputs
 az deployment group show \
   --resource-group cyclecloud-events \
-  --name main \
+  --name ccEventGrid \
   --query properties.outputs
 ```
 
@@ -267,6 +267,16 @@ CycleCloudEvents_CL
 | order by NodeCreated desc
 ```
 
+### Cluster Start Events
+
+```kql
+CycleCloudEvents_CL
+| where TimeGenerated > ago(7d)
+| where EventType == "Microsoft.CycleCloud.ClusterStarted"
+| project TimeGenerated, ClusterName, Status, Message
+| order by TimeGenerated desc
+```
+
 ## Alerting
 
 Create alerts based on Log Analytics queries:
@@ -322,12 +332,12 @@ To manually ingest events (useful for testing or custom event sources), use the 
 # Get the logs ingestion endpoint from deployment outputs
 DCE_ENDPOINT=$(az deployment group show \
   --resource-group cyclecloud-events \
-  --name main \
+  --name ccEventGrid \
   --query properties.outputs.dataCollectionEndpointLogsIngestion.value -o tsv)
 
 DCR_IMMUTABLE_ID=$(az deployment group show \
   --resource-group cyclecloud-events \
-  --name main \
+  --name ccEventGrid \
   --query properties.outputs.dataCollectionRuleImmutableId.value -o tsv)
 
 # Send test event

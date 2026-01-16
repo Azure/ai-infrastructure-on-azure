@@ -168,12 +168,3 @@ resource cycleCloudEventsTable 'Microsoft.OperationalInsights/workspaces/tables@
 
 @description('Log Analytics Workspace resource ID')
 output workspaceId string = logAnalyticsWorkspace.id
-
-@description('Log Analytics Workspace name')
-output workspaceName string = logAnalyticsWorkspace.name
-
-@description('Log Analytics Workspace customer ID (for queries)')
-output workspaceCustomerId string = logAnalyticsWorkspace.properties.customerId
-
-@description('Custom table name for CycleCloud events')
-output customTableName string = cycleCloudEventsTable.name

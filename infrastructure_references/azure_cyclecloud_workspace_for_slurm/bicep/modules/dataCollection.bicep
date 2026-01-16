@@ -156,23 +156,8 @@ resource dataCollectionRule 'Microsoft.Insights/dataCollectionRules@2023-03-11' 
   }
 }
 
-@description('Data Collection Endpoint resource ID')
-output dataCollectionEndpointId string = dataCollectionEndpoint.id
-
-@description('Data Collection Endpoint name')
-output dataCollectionEndpointName string = dataCollectionEndpoint.name
-
-@description('Data Collection Endpoint configuration access endpoint')
-output dataCollectionEndpointConfigurationAccess string = dataCollectionEndpoint.properties.configurationAccess.endpoint
-
 @description('Data Collection Endpoint logs ingestion endpoint')
 output dataCollectionEndpointLogsIngestion string = dataCollectionEndpoint.properties.logsIngestion.endpoint
-
-@description('Data Collection Rule resource ID')
-output dataCollectionRuleId string = dataCollectionRule.id
-
-@description('Data Collection Rule name')
-output dataCollectionRuleName string = dataCollectionRule.name
 
 @description('Data Collection Rule immutable ID')
 output dataCollectionRuleImmutableId string = dataCollectionRule.properties.immutableId

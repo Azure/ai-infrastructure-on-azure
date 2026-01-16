@@ -85,35 +85,5 @@ resource dcrRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' 
 // Outputs
 // ============================================================================
 
-@description('Log Analytics Workspace ID')
-output logAnalyticsWorkspaceId string = logAnalytics.outputs.workspaceId
-
-@description('Log Analytics Workspace Name')
-output logAnalyticsWorkspaceName string = logAnalytics.outputs.workspaceName
-
-@description('Data Collection Endpoint ID')
-output dataCollectionEndpointId string = dataCollection.outputs.dataCollectionEndpointId
-
-@description('Data Collection Rule ID')
-output dataCollectionRuleId string = dataCollection.outputs.dataCollectionRuleId
-
-@description('Data Collection Rule Immutable ID')
-output dataCollectionRuleImmutableId string = dataCollection.outputs.dataCollectionRuleImmutableId
-
-@description('Data Collection Endpoint Logs Ingestion URL')
-output dataCollectionEndpointLogsIngestion string = dataCollection.outputs.dataCollectionEndpointLogsIngestion
-
-@description('Event Grid Custom Topic ID')
-output eventGridTopicId string = eventGrid.outputs.topicId
-
 @description('Event Grid Custom Topic Endpoint - Configure this in CycleCloud Settings')
 output eventGridTopicEndpoint string = eventGrid.outputs.topicEndpoint
-
-@description('Event Grid Subscription ID')
-output eventGridSubscriptionId string = eventGrid.outputs.subscriptionId
-
-@description('Function App Name')
-output functionAppName string = functionApp.outputs.functionAppName
-
-@description('Function App Principal ID')
-output functionAppPrincipalId string = functionApp.outputs.functionAppPrincipalId

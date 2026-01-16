@@ -353,11 +353,5 @@ resource roleAssignmentContributor 'Microsoft.Authorization/roleAssignments@2022
 @description('Function App resource ID')
 output functionAppId string = functionApp.id
 
-@description('Function App name')
-output functionAppName string = functionApp.name
-
 @description('Function App managed identity principal ID')
 output functionAppPrincipalId string = functionApp.identity.principalId
-
-@description('Application Insights resource ID')
-output appInsightsId string = appInsights.id
