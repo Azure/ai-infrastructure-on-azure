@@ -32,10 +32,6 @@ on:
         description: "Event Grid Custom Topic ID to configure in CycleCloud"
         value: ${{ jobs.deploy.outputs.event_grid_topic_id }}
 
-concurrency:
-  group: deploy-eventgrid-${{ inputs.resource_group }}
-  cancel-in-progress: false
-
 jobs:
   deploy:
     if: ${{ !inputs.delete_resource_group }}
@@ -107,6 +103,7 @@ jobs:
           echo "=============================================="
 
   delete:
+    needs: deploy
     if: ${{ always() && inputs.delete_resource_group }}
     runs-on: ubuntu-latest
     environment: testing
