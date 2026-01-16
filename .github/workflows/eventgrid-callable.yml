@@ -1,0 +1,130 @@
+name: Deploy CycleCloud Event Grid to Log Analytics (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      resource_group:
+        description: "Azure resource group name for Event Grid resources"
+        required: true
+        type: string
+      location:
+        description: "Azure region (e.g., eastus2, westus3)"
+        required: false
+        type: string
+        default: "westus3"
+      base_name:
+        description: "Base name for all resources (e.g., ccw-events)"
+        required: false
+        type: string
+        default: "ccw-events"
+      log_retention_days:
+        description: "Log Analytics workspace retention in days (30-730)"
+        required: false
+        type: number
+        default: 90
+      delete_resource_group:
+        description: "Delete the resource group (for cleanup)"
+        required: false
+        type: boolean
+        default: false
+    outputs:
+      event_grid_topic_id:
+        description: "Event Grid Custom Topic ID to configure in CycleCloud"
+        value: ${{ jobs.deploy.outputs.event_grid_topic_id }}
+
+concurrency:
+  group: deploy-eventgrid-${{ inputs.resource_group }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: ${{ !inputs.delete_resource_group }}
+    runs-on: ubuntu-latest
+    environment: testing
+    outputs:
+      event_grid_topic_id: ${{ steps.deploy.outputs.eventGridTopicId }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Create resource group
+        run: |
+          set -euo pipefail
+          echo "Creating resource group ${{ inputs.resource_group }} in ${{ inputs.location }}..."
+          az group create \
+            --name "${{ inputs.resource_group }}" \
+            --location "${{ inputs.location }}" \
+            --output none
+
+      - name: Deploy Event Grid infrastructure
+        id: deploy
+        run: |
+          set -euo pipefail
+          echo "Deploying CycleCloud Event Grid to Log Analytics infrastructure..."
+          
+          result=$(az deployment group create \
+            --resource-group "${{ inputs.resource_group }}" \
+            --template-file infrastructure_references/azure_cyclecloud_workspace_for_slurm/bicep/ccEventGrid.bicep \
+            --parameters \
+              baseName="${{ inputs.base_name }}" \
+              location="${{ inputs.location }}" \
+              logRetentionDays=${{ inputs.log_retention_days }} \
+            --query "properties.outputs" \
+            --output json)
+          
+          # Extract Event Grid Topic ID
+          topic_id=$(echo "$result" | jq -r '.eventGridTopicId.value // empty')
+          
+          if [ -z "$topic_id" ]; then
+            echo "::error::Failed to retrieve Event Grid Topic ID from deployment"
+            exit 1
+          fi
+          
+          echo "eventGridTopicId=${topic_id}" >> "$GITHUB_OUTPUT"
+          echo "Event Grid Topic ID: ${topic_id}"
+
+      - name: Display deployment summary
+        run: |
+          echo "=============================================="
+          echo "CycleCloud Event Grid Deployment Complete"
+          echo "=============================================="
+          echo "Resource Group: ${{ inputs.resource_group }}"
+          echo "Location: ${{ inputs.location }}"
+          echo "Base Name: ${{ inputs.base_name }}"
+          echo "Event Grid Topic ID: ${{ steps.deploy.outputs.eventGridTopicId }}"
+          echo ""
+          echo "Next Steps:"
+          echo "1. Configure this Event Grid Topic ID in CycleCloud Settings"
+          echo "2. Ensure CycleCloud has EventGrid Data Sender role on the topic"
+          echo "=============================================="
+
+  delete:
+    if: ${{ always() && inputs.delete_resource_group }}
+    runs-on: ubuntu-latest
+    environment: testing
+
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Delete resource group
+        run: |
+          set -euo pipefail
+          echo "Deleting resource group ${{ inputs.resource_group }}..."
+          az group delete \
+            --name "${{ inputs.resource_group }}" \
+            --yes \
+            --no-wait
+          echo "Resource group deletion initiated (running in background)"

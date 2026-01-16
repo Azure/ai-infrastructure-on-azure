@@ -1,0 +1,94 @@
+name: Deploy CycleCloud Event Grid to Log Analytics
+
+on:
+  push:
+    paths:
+      - ".github/workflows/eventgrid.yml"
+      - ".github/workflows/eventgrid-callable.yml"
+      - "infrastructure_references/azure_cyclecloud_workspace_for_slurm/bicep/**"
+
+  workflow_dispatch:
+    inputs:
+      resource_group:
+        description: "Azure resource group name for Event Grid resources"
+        required: false
+        type: string
+        default: "rg-ccw-eventgrid"
+      location:
+        description: "Azure region (e.g., eastus2, westus3)"
+        required: false
+        type: string
+        default: "westus3"
+      base_name:
+        description: "Base name for all resources (e.g., ccw-events)"
+        required: false
+        type: string
+        default: "ccw-events"
+      log_retention_days:
+        description: "Log Analytics workspace retention in days (30-730)"
+        required: false
+        type: number
+        default: 90
+      delete_resource_group:
+        description: "Delete the resource group (for cleanup)"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  init:
+    runs-on: ubuntu-latest
+    outputs:
+      resource_group: ${{ steps.params.outputs.resource_group }}
+      location: ${{ steps.params.outputs.location }}
+      base_name: ${{ steps.params.outputs.base_name }}
+      log_retention_days: ${{ steps.params.outputs.log_retention_days }}
+      delete_resource_group: ${{ steps.params.outputs.delete_resource_group }}
+
+    steps:
+      - name: Set deployment parameters
+        id: params
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RESOURCE_GROUP_IN: ${{ inputs.resource_group }}
+          LOCATION_IN: ${{ inputs.location }}
+          BASE_NAME_IN: ${{ inputs.base_name }}
+          LOG_RETENTION_DAYS_IN: ${{ inputs.log_retention_days }}
+          DELETE_RESOURCE_GROUP_IN: ${{ inputs.delete_resource_group }}
+        run: |
+          set -euo pipefail
+
+          if [ "${EVENT_NAME}" = "push" ]; then
+            # Push defaults for CI testing
+            {
+              echo "resource_group=rg-ccw-eventgrid-ci"
+              echo "location=westus3"
+              echo "base_name=ccw-events-ci"
+              echo "log_retention_days=30"
+              echo "delete_resource_group=true"
+            } >> "$GITHUB_OUTPUT"
+          else
+            # Use workflow_dispatch inputs with defaults
+            {
+              echo "resource_group=${RESOURCE_GROUP_IN:-rg-ccw-eventgrid}"
+              echo "location=${LOCATION_IN:-westus3}"
+              echo "base_name=${BASE_NAME_IN:-ccw-events}"
+              echo "log_retention_days=${LOG_RETENTION_DAYS_IN:-90}"
+              echo "delete_resource_group=${DELETE_RESOURCE_GROUP_IN:-false}"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+  call-eventgrid:
+    needs: init
+    uses: ./.github/workflows/eventgrid-callable.yml
+    with:
+      resource_group: ${{ needs.init.outputs.resource_group }}
+      location: ${{ needs.init.outputs.location }}
+      base_name: ${{ needs.init.outputs.base_name }}
+      log_retention_days: ${{ fromJSON(needs.init.outputs.log_retention_days) }}
+      delete_resource_group: ${{ needs.init.outputs.delete_resource_group == 'true' }}
+    secrets: inherit
