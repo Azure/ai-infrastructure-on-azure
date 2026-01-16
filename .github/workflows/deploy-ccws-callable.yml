@@ -33,6 +33,11 @@ on:
         required: false
         default: "Standard_D4as_v5"
         type: string
+      cluster_name:
+        description: "Slurm cluster name"
+        required: false
+        default: "ccw"
+        type: string
       workspace_ref:
         description: "Git ref (branch/tag) to checkout"
         required: false
@@ -143,6 +148,7 @@ jobs:
           GPU_SKU: ${{ inputs.gpu_sku }}
           SCHEDULER_SKU: ${{ inputs.scheduler_sku }}
           LOGIN_SKU: ${{ inputs.login_sku }}
+          CLUSTER_NAME: ${{ inputs.cluster_name }}
           WORKSPACE_REF: ${{ inputs.workspace_ref }}
           HTC_MAX: ${{ inputs.htc_max_nodes }}
           HPC_MAX: ${{ inputs.hpc_max_nodes }}
@@ -168,6 +174,7 @@ jobs:
             --admin-username "hpcadmin"
             --scheduler-sku "$SCHEDULER_SKU"
             --login-sku "$LOGIN_SKU"
+            --cluster-name "$CLUSTER_NAME"
             --workspace-ref "$WORKSPACE_REF"
             --htc-max-nodes "$HTC_MAX"
             --hpc-max-nodes "$HPC_MAX"
