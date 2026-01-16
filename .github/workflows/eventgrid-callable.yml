@@ -34,7 +34,6 @@ on:
 
 jobs:
   deploy:
-    if: ${{ !inputs.delete_resource_group }}
     runs-on: ubuntu-latest
     environment: testing
     outputs:
