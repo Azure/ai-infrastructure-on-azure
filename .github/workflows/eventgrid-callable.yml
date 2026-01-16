@@ -59,6 +59,16 @@ jobs:
             --location "${{ inputs.location }}" \
             --output none
 
+      - name: Register required resource providers
+        run: |
+          set -euo pipefail
+          echo "Registering required resource providers..."
+          for provider in Microsoft.ContainerInstance Microsoft.Storage Microsoft.EventGrid Microsoft.Insights Microsoft.OperationalInsights Microsoft.Web; do
+            echo "Registering $provider..."
+            az provider register --namespace "$provider" --wait || true
+          done
+          echo "Resource providers registered"
+
       - name: Deploy Event Grid infrastructure
         id: deploy
         run: |
