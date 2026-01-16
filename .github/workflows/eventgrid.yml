@@ -62,10 +62,13 @@ jobs:
         run: |
           set -euo pipefail
 
+          # Generate random suffix for resource group name
+          random_suffix=$(date +%y%m%d%H%M)
+
           if [ "${EVENT_NAME}" = "push" ]; then
-            # Push defaults for CI testing
+            # Push defaults for CI testing with random name
             {
-              echo "resource_group=rg-ccw-eventgrid-ci"
+              echo "resource_group=rg-ccw-evtgrid-${random_suffix}"
               echo "location=westus3"
               echo "base_name=ccw-events-ci"
               echo "log_retention_days=30"
@@ -73,8 +76,14 @@ jobs:
             } >> "$GITHUB_OUTPUT"
           else
             # Use workflow_dispatch inputs with defaults
+            # If resource_group not provided, generate random name
+            if [ -z "${RESOURCE_GROUP_IN}" ]; then
+              rg_name="rg-ccw-evtgrid-${random_suffix}"
+            else
+              rg_name="${RESOURCE_GROUP_IN}"
+            fi
             {
-              echo "resource_group=${RESOURCE_GROUP_IN:-rg-ccw-eventgrid}"
+              echo "resource_group=${rg_name}"
               echo "location=${LOCATION_IN:-westus3}"
               echo "base_name=${BASE_NAME_IN:-ccw-events}"
               echo "log_retention_days=${LOG_RETENTION_DAYS_IN:-90}"
