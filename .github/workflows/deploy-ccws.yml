@@ -24,6 +24,11 @@ on:
         required: false
         default: false
         type: boolean
+      slurm_no_start:
+        description: "Do not start Slurm cluster automatically"
+        required: false
+        default: false
+        type: boolean
       image:
         description: "VM image to use for all nodes (Scheduler, Compute, Login) (optional)"
         required: false
@@ -40,6 +45,7 @@ jobs:
       location: ${{ steps.params.outputs.location }}
       data_filesystem: ${{ steps.params.outputs.data_filesystem }}
       deploy_immediately: ${{ steps.params.outputs.deploy_immediately }}
+      slurm_no_start: ${{ steps.params.outputs.slurm_no_start }}
       image: ${{ steps.params.outputs.image }}
 
     steps:
@@ -50,6 +56,7 @@ jobs:
           LOCATION_IN: ${{ inputs.location }}
           DATA_FILESYSTEM_IN: ${{ inputs.data_filesystem }}
           DEPLOY_IMMEDIATELY_IN: ${{ inputs.deploy_immediately }}
+          SLURM_NO_START_IN: ${{ inputs.slurm_no_start }}
           IMAGE_IN: ${{ inputs.image }}
         run: |
           set -euo pipefail
@@ -60,6 +67,7 @@ jobs:
               echo "location=westus3"
               echo "data_filesystem=false"
               echo "deploy_immediately=false"
+              echo "slurm_no_start=false"
               echo "image="
             } >> "$GITHUB_OUTPUT"
           else
@@ -68,12 +76,14 @@ jobs:
             data_filesystem="${DATA_FILESYSTEM_IN:-false}"
             # Note: GitHub passes booleans as strings; default to "false"
             deploy_immediately="${DEPLOY_IMMEDIATELY_IN:-false}"
+            slurm_no_start="${SLURM_NO_START_IN:-false}"
             image="${IMAGE_IN:-}"
 
             {
               echo "location=${location}"
               echo "data_filesystem=${data_filesystem}"
               echo "deploy_immediately=${deploy_immediately}"
+              echo "slurm_no_start=${slurm_no_start}"
               echo "image=${image}"
             } >> "$GITHUB_OUTPUT"
           fi
@@ -85,5 +95,6 @@ jobs:
       location: ${{ needs.init.outputs.location }}
       data_filesystem: ${{ needs.init.outputs.data_filesystem == 'true' }}
       deploy_immediately: ${{ needs.init.outputs.deploy_immediately == 'true' }}
+      slurm_no_start: ${{ needs.init.outputs.slurm_no_start == 'true' }}
       image: ${{ needs.init.outputs.image }}
     secrets: inherit

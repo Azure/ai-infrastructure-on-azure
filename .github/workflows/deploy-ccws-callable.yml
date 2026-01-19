@@ -68,6 +68,11 @@ on:
         required: false
         default: false
         type: boolean
+      slurm_no_start:
+        description: "Do not start Slurm cluster automatically"
+        required: false
+        default: false
+        type: boolean
       image:
         description: "VM image to use for all nodes (optional)"
         required: false
@@ -155,6 +160,7 @@ jobs:
           GPU_MAX: ${{ inputs.gpu_max_nodes }}
           DATA_FILESYSTEM: ${{ inputs.data_filesystem }}
           DEPLOY_IMMEDIATELY: ${{ inputs.deploy_immediately }}
+          SLURM_NO_START: ${{ inputs.slurm_no_start }}
           IMAGE: ${{ inputs.image }}
         run: |
           set -euo pipefail
@@ -198,6 +204,10 @@ jobs:
             cmd+=(--deploy)
           fi
 
+          if [ "${SLURM_NO_START}" = "true" ]; then
+            cmd+=(--slurm-no-start)
+          fi
+
           # Emit the command as a single line to outputs for visibility/logging
           printf 'command=%q ' "${cmd[@]}" >> "$GITHUB_OUTPUT"
           echo >> "$GITHUB_OUTPUT" # newline
@@ -239,6 +249,9 @@ jobs:
           fi
           if [ "${{ inputs.deploy_immediately }}" = "true" ]; then
             args+=(--deploy)
+          fi
+          if [ "${{ inputs.slurm_no_start }}" = "true" ]; then
+            args+=(--slurm-no-start)
           fi
           # Execute
           "$script" "${args[@]}"
