@@ -68,11 +68,6 @@ on:
         required: false
         default: false
         type: boolean
-      slurm_no_start:
-        description: "Do not start Slurm cluster automatically"
-        required: false
-        default: false
-        type: boolean
       image:
         description: "VM image to use for all nodes (optional)"
         required: false
@@ -160,8 +155,8 @@ jobs:
           GPU_MAX: ${{ inputs.gpu_max_nodes }}
           DATA_FILESYSTEM: ${{ inputs.data_filesystem }}
           DEPLOY_IMMEDIATELY: ${{ inputs.deploy_immediately }}
-          SLURM_NO_START: ${{ inputs.slurm_no_start }}
           IMAGE: ${{ inputs.image }}
+          EG_TOPIC: "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-ccw-eventgrid/providers/Microsoft.EventGrid/topics/evgt-ccw-eg-cyclecloud"
         run: |
           set -euo pipefail
 
@@ -202,10 +197,6 @@ jobs:
 
           if [ "${DEPLOY_IMMEDIATELY}" = "true" ]; then
             cmd+=(--deploy)
-          fi
-
-          if [ "${SLURM_NO_START}" = "true" ]; then
-            cmd+=(--slurm-no-start)
           fi
 
           # Emit the command as a single line to outputs for visibility/logging
@@ -250,11 +241,77 @@ jobs:
           if [ "${{ inputs.deploy_immediately }}" = "true" ]; then
             args+=(--deploy)
           fi
-          if [ "${{ inputs.slurm_no_start }}" = "true" ]; then
-            args+=(--slurm-no-start)
-          fi
+          # Do no start the Slurm cluster automatically
+          args+=(--slurm-no-start)
           # Execute
           "$script" "${args[@]}"
+
+      - name: Wait for CycleCloud VM cloud-init completion
+        if: inputs.deploy_immediately
+        timeout-minutes: 15
+        run: |
+          set -euo pipefail
+
+          RG_NAME="${{ steps.rg_name.outputs.resource_group }}"
+          VM_NAME="ccw-cyclecloud-vm"
+          SEARCH_STRING="exiting after install"
+          TIMEOUT_MINUTES=15
+          CHECK_INTERVAL=30  # Check every 30 seconds
+          MAX_ATTEMPTS=$((TIMEOUT_MINUTES * 60 / CHECK_INTERVAL))
+
+          echo "🔍 Waiting for cloud-init completion on '${VM_NAME}'..."
+          echo "🔎 Looking for: '${SEARCH_STRING}' in /var/log/cloud-init-output.log"
+          echo "⏱️ Timeout: ${TIMEOUT_MINUTES} minutes (${MAX_ATTEMPTS} attempts with ${CHECK_INTERVAL}s intervals)"
+
+          INIT_COMPLETE=false
+
+          for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
+            echo "🔄 Attempt ${attempt}/${MAX_ATTEMPTS}: Checking cloud-init log..."
+            
+            # Run command on VM to check for the string
+            RESULT=$(az vm run-command invoke \
+              --resource-group "$RG_NAME" \
+              --name "$VM_NAME" \
+              --command-id RunShellScript \
+              --scripts "grep -c '${SEARCH_STRING}' /var/log/cloud-init-output.log 2>/dev/null || echo 0" \
+              --query "value[0].message" \
+              --output tsv 2>/dev/null || echo "0")
+            
+            # Extract the count from the result (last line typically contains the output)
+            COUNT=$(echo "$RESULT" | grep -oE '[0-9]+' | tail -1 || echo "0")
+            
+            if [ "$COUNT" -gt 0 ]; then
+              echo "✅ Found '${SEARCH_STRING}' in cloud-init log - installation complete!"
+              INIT_COMPLETE=true
+              break
+            else
+              echo "⏳ String not found yet, cloud-init still in progress..."
+            fi
+            
+            if [ "$attempt" -lt "$MAX_ATTEMPTS" ]; then
+              echo "💤 Waiting ${CHECK_INTERVAL} seconds before next check..."
+              sleep "$CHECK_INTERVAL"
+            fi
+          done
+
+          if [ "$INIT_COMPLETE" = false ]; then
+            echo "❌ FAILURE: Cloud-init did not complete within ${TIMEOUT_MINUTES} minutes"
+            echo "::error::CycleCloud cloud-init did not complete - '${SEARCH_STRING}' not found in log"
+            
+            # Show last 50 lines of cloud-init log for debugging
+            echo "📋 Last 50 lines of cloud-init log:"
+            az vm run-command invoke \
+              --resource-group "$RG_NAME" \
+              --name "$VM_NAME" \
+              --command-id RunShellScript \
+              --scripts "tail -n 50 /var/log/cloud-init-output.log" \
+              --query "value[0].message" \
+              --output tsv || echo "Failed to retrieve log"
+            exit 1
+          else
+            echo "🎉 SUCCESS: CycleCloud VM cloud-init completed successfully"
+            echo "::notice::CycleCloud cloud-init completed - found '${SEARCH_STRING}'"
+          fi
 
       - name: Wait for login VMSS and validate instances
         if: inputs.deploy_immediately
