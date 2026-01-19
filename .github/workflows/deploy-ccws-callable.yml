@@ -156,7 +156,6 @@ jobs:
           DATA_FILESYSTEM: ${{ inputs.data_filesystem }}
           DEPLOY_IMMEDIATELY: ${{ inputs.deploy_immediately }}
           IMAGE: ${{ inputs.image }}
-          EG_TOPIC: "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-ccw-eventgrid/providers/Microsoft.EventGrid/topics/evgt-ccw-eg-cyclecloud"
         run: |
           set -euo pipefail
 
@@ -313,74 +312,109 @@ jobs:
             echo "::notice::CycleCloud cloud-init completed - found '${SEARCH_STRING}'"
           fi
 
-      - name: Wait for login VMSS and validate instances
+      - name: Inject EventGrid topic for CycleCloud Application.Setting
         if: inputs.deploy_immediately
-        timeout-minutes: 20
+        env:
+          EG_TOPIC: "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-ccw-eventgrid/providers/Microsoft.EventGrid/topics/evgt-ccw-eg-cyclecloud"
+          CLUSTER_NAME: ${{ inputs.cluster_name }}
         run: |
           set -euo pipefail
 
           RG_NAME="${{ steps.rg_name.outputs.resource_group }}"
-          VMSS_PATTERN="login-"
-          TIMEOUT_MINUTES=20
-          CHECK_INTERVAL=30  # Check every 30 seconds
-          MAX_ATTEMPTS=$((TIMEOUT_MINUTES * 60 / CHECK_INTERVAL))
+          VM_NAME="ccw-cyclecloud-vm"
+          
+          echo "📝 Injecting EventGrid topic into CycleCloud Application.Setting..."
+          echo "🔗 Topic: ${EG_TOPIC}"
 
-          echo "🔍 Waiting for VMSS with pattern '${VMSS_PATTERN}*' in resource group '${RG_NAME}'..."
-          echo "⏱️ Timeout: ${TIMEOUT_MINUTES} minutes (${MAX_ATTEMPTS} attempts with ${CHECK_INTERVAL}s intervals)"
+          # Create the application setting file on the CycleCloud VM
+          az vm run-command invoke \
+            --resource-group "$RG_NAME" \
+            --name "$VM_NAME" \
+            --command-id RunShellScript \
+            --scripts "cat > /tmp/eventgrid_topic.txt << 'EOF'
+AdType = "Application.Setting"
+Category = "CycleCloud"
+Description = "Sends CycleCloud events to EventGrid"
+Name = "cyclecloud.event_grid_topic"
+Value = ${EG_TOPIC}
+EOF
+chown cycle_server:cycle_server /tmp/eventgrid_topic.txt
+chmod 664 /tmp/eventgrid_topic.txt
+mv /tmp/eventgrid_topic.txt /opt/cycle_server/config/data/eventgrid_topic.txt" 
+cyclecloud start_cluster "$CLUSTER_NAME"\
+            --query "value[0].message" \
+            --output tsv
 
-          VMSS_FOUND=false
-          INSTANCES_RUNNING=false
+          echo "✅ EventGrid topic injected successfully"
 
-          for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
-            echo "🔄 Attempt ${attempt}/${MAX_ATTEMPTS}: Checking for VMSS..."
+      # - name: Wait for login VMSS and validate instances
+      #   if: inputs.deploy_immediately
+      #   timeout-minutes: 20
+      #   run: |
+      #     set -euo pipefail
+
+      #     RG_NAME="${{ steps.rg_name.outputs.resource_group }}"
+      #     VMSS_PATTERN="login-"
+      #     TIMEOUT_MINUTES=20
+      #     CHECK_INTERVAL=30  # Check every 30 seconds
+      #     MAX_ATTEMPTS=$((TIMEOUT_MINUTES * 60 / CHECK_INTERVAL))
+
+      #     echo "🔍 Waiting for VMSS with pattern '${VMSS_PATTERN}*' in resource group '${RG_NAME}'..."
+      #     echo "⏱️ Timeout: ${TIMEOUT_MINUTES} minutes (${MAX_ATTEMPTS} attempts with ${CHECK_INTERVAL}s intervals)"
+
+      #     VMSS_FOUND=false
+      #     INSTANCES_RUNNING=false
+
+      #     for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
+      #       echo "🔄 Attempt ${attempt}/${MAX_ATTEMPTS}: Checking for VMSS..."
             
-            # Find VMSS with login- pattern
-            VMSS_LIST=$(az vmss list --resource-group "$RG_NAME" \
-              --query "[?starts_with(name, '${VMSS_PATTERN}')].name" \
-              --output tsv 2>/dev/null || echo "")
+      #       # Find VMSS with login- pattern
+      #       VMSS_LIST=$(az vmss list --resource-group "$RG_NAME" \
+      #         --query "[?starts_with(name, '${VMSS_PATTERN}')].name" \
+      #         --output tsv 2>/dev/null || echo "")
             
-            if [ -n "$VMSS_LIST" ]; then
-              VMSS_NAME=$(echo "$VMSS_LIST" | head -n 1)
-              echo "✅ Found VMSS: ${VMSS_NAME}"
-              VMSS_FOUND=true
+      #       if [ -n "$VMSS_LIST" ]; then
+      #         VMSS_NAME=$(echo "$VMSS_LIST" | head -n 1)
+      #         echo "✅ Found VMSS: ${VMSS_NAME}"
+      #         VMSS_FOUND=true
               
-              # Check for running instances
-              echo "🔍 Checking instances in VMSS '${VMSS_NAME}'..."
-              RUNNING_INSTANCES=$(az vmss list-instances --resource-group "$RG_NAME" --name "$VMSS_NAME" \
-                --query "[?provisioningState=='Succeeded'].instanceId" \
-                --output tsv 2>/dev/null || echo "")
+      #         # Check for running instances
+      #         echo "🔍 Checking instances in VMSS '${VMSS_NAME}'..."
+      #         RUNNING_INSTANCES=$(az vmss list-instances --resource-group "$RG_NAME" --name "$VMSS_NAME" \
+      #           --query "[?provisioningState=='Succeeded'].instanceId" \
+      #           --output tsv 2>/dev/null || echo "")
               
-              if [ -n "$RUNNING_INSTANCES" ]; then
-                INSTANCE_COUNT=$(echo "$RUNNING_INSTANCES" | wc -l)
-                echo "✅ Found ${INSTANCE_COUNT} running instance(s) in VMSS '${VMSS_NAME}'"
-                INSTANCES_RUNNING=true
-                break
-              else
-                echo "⚠️ VMSS '${VMSS_NAME}' found but no instances are running yet"
-              fi
-            else
-              echo "⏳ No VMSS with pattern '${VMSS_PATTERN}*' found yet"
-            fi
+      #         if [ -n "$RUNNING_INSTANCES" ]; then
+      #           INSTANCE_COUNT=$(echo "$RUNNING_INSTANCES" | wc -l)
+      #           echo "✅ Found ${INSTANCE_COUNT} running instance(s) in VMSS '${VMSS_NAME}'"
+      #           INSTANCES_RUNNING=true
+      #           break
+      #         else
+      #           echo "⚠️ VMSS '${VMSS_NAME}' found but no instances are running yet"
+      #         fi
+      #       else
+      #         echo "⏳ No VMSS with pattern '${VMSS_PATTERN}*' found yet"
+      #       fi
             
-            if [ "$attempt" -lt "$MAX_ATTEMPTS" ]; then
-              echo "💤 Waiting ${CHECK_INTERVAL} seconds before next check..."
-              sleep "$CHECK_INTERVAL"
-            fi
-          done
+      #       if [ "$attempt" -lt "$MAX_ATTEMPTS" ]; then
+      #         echo "💤 Waiting ${CHECK_INTERVAL} seconds before next check..."
+      #         sleep "$CHECK_INTERVAL"
+      #       fi
+      #     done
 
-          # Final validation
-          if [ "$VMSS_FOUND" = false ]; then
-            echo "❌ FAILURE: No VMSS with pattern '${VMSS_PATTERN}*' found after ${TIMEOUT_MINUTES} minutes"
-            echo "::error::VMSS validation failed: No VMSS found with pattern '${VMSS_PATTERN}*'"
-            exit 1
-          elif [ "$INSTANCES_RUNNING" = false ]; then
-            echo "❌ FAILURE: VMSS found but no running instances after ${TIMEOUT_MINUTES} minutes"
-            echo "::error::VMSS validation failed: No running instances found in VMSS"
-            exit 1
-          else
-            echo "🎉 SUCCESS: VMSS '${VMSS_NAME}' found with running instances"
-            echo "::notice::VMSS validation successful: Found '${VMSS_NAME}' with running instances"
-          fi
+      #     # Final validation
+      #     if [ "$VMSS_FOUND" = false ]; then
+      #       echo "❌ FAILURE: No VMSS with pattern '${VMSS_PATTERN}*' found after ${TIMEOUT_MINUTES} minutes"
+      #       echo "::error::VMSS validation failed: No VMSS found with pattern '${VMSS_PATTERN}*'"
+      #       exit 1
+      #     elif [ "$INSTANCES_RUNNING" = false ]; then
+      #       echo "❌ FAILURE: VMSS found but no running instances after ${TIMEOUT_MINUTES} minutes"
+      #       echo "::error::VMSS validation failed: No running instances found in VMSS"
+      #       exit 1
+      #     else
+      #       echo "🎉 SUCCESS: VMSS '${VMSS_NAME}' found with running instances"
+      #       echo "::notice::VMSS validation successful: Found '${VMSS_NAME}' with running instances"
+      #     fi
 
       - name: Check CycleCloud VM cloud-init logs
         if: failure() && inputs.deploy_immediately
