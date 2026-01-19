@@ -339,6 +339,8 @@ jobs:
           mv /tmp/eventgrid_topic.txt /opt/cycle_server/config/data/eventgrid_topic.txt
           "
 
+          echo "Script content is : $SCRIPT_CONTENT"
+          echo "Executing script on VM to inject EventGrid topic..."
           az vm run-command invoke \
             --resource-group "$RG_NAME" \
             --name "$VM_NAME" \
@@ -348,11 +350,12 @@ jobs:
             --output tsv
 
           # Start the cluster after injecting the EventGrid topic
+          echo "🚀 Starting Slurm cluster '${CLUSTER_NAME}'..."
           az vm run-command invoke \
             --resource-group "$RG_NAME" \
             --name "$VM_NAME" \
             --command-id RunShellScript \
-            --scripts "sudo -u cycle_server /opt/cycle_server/cycle_server execute 'cluster.start(\"${CLUSTER_NAME}\")'" \
+            --scripts "/usr/local/bin/cyclecloud start_cluster \"${CLUSTER_NAME}\"" \
             --query "value[0].message" \
             --output tsv
 
