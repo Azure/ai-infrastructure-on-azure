@@ -317,12 +317,12 @@ jobs:
         env:
           EG_TOPIC: "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-ccw-eventgrid/providers/Microsoft.EventGrid/topics/evgt-ccw-eg-cyclecloud"
           CLUSTER_NAME: ${{ inputs.cluster_name }}
+          RG_NAME: ${{ steps.rg_name.outputs.resource_group }}
+          VM_NAME: "ccw-cyclecloud-vm"
         run: |
+          set +x
           set -euo pipefail
 
-          RG_NAME="${{ steps.rg_name.outputs.resource_group }}"
-          VM_NAME="ccw-cyclecloud-vm"
-          
           echo "📝 Injecting EventGrid topic into CycleCloud Application.Setting..."
           echo "🔗 Topic: ${EG_TOPIC}"
 
@@ -338,8 +338,7 @@ jobs:
           chmod 664 /tmp/eventgrid_topic.txt && \
           mv /tmp/eventgrid_topic.txt /opt/cycle_server/config/data/eventgrid_topic.txt
           "
-
-          echo "Script content is : $SCRIPT_CONTENT"
+          echo "📝 Script content is : $SCRIPT_CONTENT"
           echo "Executing script on VM to inject EventGrid topic..."
           az vm run-command invoke \
             --resource-group "$RG_NAME" \
