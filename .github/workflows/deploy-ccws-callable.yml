@@ -499,6 +499,22 @@ jobs:
 
           NODES_READY=false
 
+          # Diagnostic: Check what events exist in the table
+          echo "🔧 DIAGNOSTIC: Checking what events exist in CycleCloudEvents_CL..."
+          DIAG_QUERY="CycleCloudEvents_CL
+          | where TimeGenerated > ago(1h)
+          | summarize count() by EventType, NodeName
+          | order by count_ desc
+          | take 20"
+          
+          DIAG_RESULT=$(az monitor log-analytics query \
+            --workspace "${LOG_ANALYTICS_WORKSPACE_ID}" \
+            --analytics-query "${DIAG_QUERY}" \
+            --output json 2>&1) || true
+          echo "🔧 DIAGNOSTIC: Events in table:"
+          echo "${DIAG_RESULT}" | jq '.' 2>/dev/null || echo "${DIAG_RESULT}"
+          echo "----------------------------------------"
+
           for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
             echo "🔄 Attempt ${attempt}/${MAX_ATTEMPTS}: Querying Log Analytics..."
             echo "🔧 DEBUG: Workspace ID: ${LOG_ANALYTICS_WORKSPACE_ID}"
