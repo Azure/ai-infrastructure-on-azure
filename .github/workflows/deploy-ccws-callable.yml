@@ -440,7 +440,7 @@ jobs:
         timeout-minutes: 30
         env:
           LOG_ANALYTICS_RG: "rg-ccw-eventgrid"
-          LOG_ANALYTICS_WORKSPACE_NAME: "law-ccw-eg-cyclecloud-events"
+          LOG_ANALYTICS_WORKSPACE_NAME: "law-ccw-events"
           NODES_TO_CHECK: '["login-1", "scheduler"]'
         run: |
           set -euo pipefail
