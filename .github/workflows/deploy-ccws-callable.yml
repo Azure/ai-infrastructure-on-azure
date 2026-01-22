@@ -327,18 +327,23 @@ jobs:
           echo "🔗 Topic: ${EG_TOPIC}"
 
           # Create the application setting file on the CycleCloud VM
-          SCRIPT_CONTENT="\
-          {
-            echo 'AdType = "Application.Setting"'
-            echo 'Description = "Sends CycleCloud events to EventGrid"'
-            echo 'Name = "cyclecloud.event_grid_topic"'
-            echo 'Value = "${EG_TOPIC}"'
-          } > /tmp/eventgrid_topic.txt && \
-          chown cycle_server:cycle_server /tmp/eventgrid_topic.txt && \
-          chmod 664 /tmp/eventgrid_topic.txt && \
+          read -r -d '' SCRIPT_CONTENT <<'EOFSCRIPT' || true
+          cat > /tmp/eventgrid_topic.txt <<EOF
+          AdType = "Application.Setting"
+          Description = "Sends CycleCloud events to EventGrid"
+          Name = "cyclecloud.event_grid_topic"
+          Value = "${EG_TOPIC}"
+          EOF
+          chown cycle_server:cycle_server /tmp/eventgrid_topic.txt
+          chmod 664 /tmp/eventgrid_topic.txt
           mv /tmp/eventgrid_topic.txt /opt/cycle_server/config/data/eventgrid_topic.txt
-          "
-          echo "📝 Script content is : $SCRIPT_CONTENT"
+          EOFSCRIPT
+
+          # Substitute the actual EG_TOPIC value into the script
+          SCRIPT_CONTENT="${SCRIPT_CONTENT//\$\{EG_TOPIC\}/$EG_TOPIC}"
+
+          echo "📝 Script content is:"
+          echo "$SCRIPT_CONTENT"
           echo "Executing script on VM to inject EventGrid topic..."
           az vm run-command invoke \
             --resource-group "$RG_NAME" \
