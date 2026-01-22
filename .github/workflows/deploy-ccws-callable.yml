@@ -484,16 +484,54 @@ jobs:
           MAX_ATTEMPTS=$((TIMEOUT_MINUTES * 60 / CHECK_INTERVAL))
           REQUIRED_NODES=$(echo "${NODES_TO_CHECK}" | jq 'length')
 
+          echo "🔧 DEBUG: Required nodes count: ${REQUIRED_NODES}"
+          echo "🔧 DEBUG: KQL Query:"
+          echo "----------------------------------------"
+          echo "${KQL_QUERY}"
+          echo "----------------------------------------"
+
           NODES_READY=false
 
           for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
             echo "🔄 Attempt ${attempt}/${MAX_ATTEMPTS}: Querying Log Analytics..."
+            echo "🔧 DEBUG: Workspace ID: ${LOG_ANALYTICS_WORKSPACE_ID}"
 
-            # Run the query against Log Analytics
-            RESULT=$(az monitor log-analytics query \
+            # Run the query against Log Analytics - capture both stdout and stderr
+            echo "🔧 DEBUG: Running az monitor log-analytics query..."
+            QUERY_OUTPUT=$(az monitor log-analytics query \
               --workspace "${LOG_ANALYTICS_WORKSPACE_ID}" \
               --analytics-query "${KQL_QUERY}" \
-              --output json 2>/dev/null || echo "[]")
+              --output json 2>&1) || true
+            
+            QUERY_EXIT_CODE=$?
+            echo "🔧 DEBUG: az command exit code: ${QUERY_EXIT_CODE}"
+            echo "🔧 DEBUG: Raw query output (first 2000 chars):"
+            echo "${QUERY_OUTPUT}" | head -c 2000
+            echo ""
+            
+            # Check if output is valid JSON
+            if echo "${QUERY_OUTPUT}" | jq empty 2>/dev/null; then
+              echo "🔧 DEBUG: Output is valid JSON"
+              RESULT="${QUERY_OUTPUT}"
+              
+              # Check the structure of the result
+              echo "🔧 DEBUG: JSON type: $(echo "${RESULT}" | jq 'type')"
+              echo "🔧 DEBUG: JSON length: $(echo "${RESULT}" | jq 'length')"
+              
+              # If it's an object with 'tables' key (Log Analytics API v2 format)
+              if echo "${RESULT}" | jq -e '.tables' >/dev/null 2>&1; then
+                echo "🔧 DEBUG: Detected tables format, extracting rows..."
+                RESULT=$(echo "${QUERY_OUTPUT}" | jq '[.tables[0] | .columns as $cols | .rows[] | [[$cols[].name], .] | transpose | map({(.[0]): .[1]}) | add]')
+                echo "🔧 DEBUG: Extracted result: ${RESULT}"
+              fi
+            else
+              echo "⚠️ DEBUG: Output is NOT valid JSON"
+              echo "🔧 DEBUG: Checking for error messages..."
+              if echo "${QUERY_OUTPUT}" | grep -qi "error\|failed\|unauthorized"; then
+                echo "❌ DEBUG: Error detected in output"
+              fi
+              RESULT="[]"
+            fi
 
             echo "📊 Query result: ${RESULT}"
 
