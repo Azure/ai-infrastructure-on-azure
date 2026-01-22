@@ -367,7 +367,7 @@ jobs:
 
 
       - name: Wait for login VMSS and validate instances
-        if: inputs.deploy_immediately
+        if: false  # Disabled - using Log Analytics node readiness check instead
         timeout-minutes: 20
         run: |
           set -euo pipefail
@@ -433,6 +433,85 @@ jobs:
           else
             echo "🎉 SUCCESS: VMSS '${VMSS_NAME}' found with running instances"
             echo "::notice::VMSS validation successful: Found '${VMSS_NAME}' with running instances"
+          fi
+
+      - name: Check nodes ready in Log Analytics
+        if: inputs.deploy_immediately
+        timeout-minutes: 30
+        env:
+          LOG_ANALYTICS_WORKSPACE_ID: ${{ secrets.LOG_ANALYTICS_WORKSPACE_ID }}
+          NODES_TO_CHECK: '["login-1", "scheduler"]'
+        run: |
+          set -euo pipefail
+
+          echo "🔍 Checking if nodes are ready in Log Analytics..."
+          echo "📋 Nodes to check: ${NODES_TO_CHECK}"
+
+          # Calculate the start time (current time minus 10 minutes) in ISO 8601 format
+          START_TIME=$(date -u -d '10 minutes ago' +"%Y-%m-%dT%H:%M:%SZ")
+          echo "⏱️ Checking for events since: ${START_TIME}"
+
+          # KQL query to check node readiness
+          KQL_QUERY="let nodesToCheck = dynamic(${NODES_TO_CHECK});
+          let startTime = datetime(${START_TIME});
+          CycleCloudEvents_CL
+          | where TimeGenerated > startTime
+          | where NodeName in (nodesToCheck)
+          | where EventType == \"Microsoft.CycleCloud.NodeCreated\"
+          | summarize arg_max(TimeGenerated, Status, VmSku, Message) by ClusterName, NodeName
+          | extend IsReady = (Status == \"Succeeded\")
+          | project ClusterName, NodeName, VmSku, LastEvent = TimeGenerated, Status, IsReady, Message
+          | order by NodeName asc"
+
+          TIMEOUT_MINUTES=30
+          CHECK_INTERVAL=60  # Check every 60 seconds
+          MAX_ATTEMPTS=$((TIMEOUT_MINUTES * 60 / CHECK_INTERVAL))
+          REQUIRED_NODES=2  # login-1 and scheduler
+
+          NODES_READY=false
+
+          for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
+            echo "🔄 Attempt ${attempt}/${MAX_ATTEMPTS}: Querying Log Analytics..."
+
+            # Run the query against Log Analytics
+            RESULT=$(az monitor log-analytics query \
+              --workspace "${LOG_ANALYTICS_WORKSPACE_ID}" \
+              --analytics-query "${KQL_QUERY}" \
+              --output json 2>/dev/null || echo "[]")
+
+            echo "📊 Query result: ${RESULT}"
+
+            # Count nodes where IsReady is true
+            READY_COUNT=$(echo "$RESULT" | jq '[.[] | select(.IsReady == true)] | length' 2>/dev/null || echo "0")
+
+            echo "📈 Ready nodes: ${READY_COUNT}/${REQUIRED_NODES}"
+
+            if [ "$READY_COUNT" -ge "$REQUIRED_NODES" ]; then
+              echo "✅ All required nodes are ready!"
+              echo "$RESULT" | jq -r '.[] | "  - \(.NodeName): \(.Status) (\(.VmSku))"'
+              NODES_READY=true
+              break
+            else
+              echo "⏳ Nodes not ready yet. Found ${READY_COUNT}/${REQUIRED_NODES} ready nodes."
+              # Show current status of found nodes
+              if [ "$RESULT" != "[]" ]; then
+                echo "$RESULT" | jq -r '.[] | "  - \(.NodeName): \(.Status)"' 2>/dev/null || true
+              fi
+            fi
+
+            if [ "$attempt" -lt "$MAX_ATTEMPTS" ]; then
+              echo "💤 Waiting ${CHECK_INTERVAL} seconds before next check..."
+              sleep "$CHECK_INTERVAL"
+            fi
+          done
+
+          if [ "$NODES_READY" = false ]; then
+            echo "❌ FAILURE: Required nodes not ready after ${TIMEOUT_MINUTES} minutes"
+            echo "::error::Node readiness check failed: login-1 and scheduler not ready in Log Analytics"
+            exit 1
+          else
+            echo "🎉 SUCCESS: All required nodes (login-1, scheduler) are ready"
+            echo "::notice::Node readiness check passed"
           fi
 
       - name: Check CycleCloud VM cloud-init logs
