@@ -439,13 +439,29 @@ jobs:
         if: inputs.deploy_immediately
         timeout-minutes: 30
         env:
-          LOG_ANALYTICS_WORKSPACE_ID: ${{ secrets.LOG_ANALYTICS_WORKSPACE_ID }}
+          LOG_ANALYTICS_RG: "rg-ccw-eventgrid"
+          LOG_ANALYTICS_WORKSPACE_NAME: "law-ccw-eg-cyclecloud-events"
           NODES_TO_CHECK: '["login-1", "scheduler"]'
         run: |
           set -euo pipefail
 
           echo "🔍 Checking if nodes are ready in Log Analytics..."
           echo "📋 Nodes to check: ${NODES_TO_CHECK}"
+
+          # Dynamically retrieve the Log Analytics Workspace ID
+          echo "🔧 Retrieving Log Analytics Workspace ID..."
+          LOG_ANALYTICS_WORKSPACE_ID=$(az monitor log-analytics workspace show \
+            --resource-group "${LOG_ANALYTICS_RG}" \
+            --workspace-name "${LOG_ANALYTICS_WORKSPACE_NAME}" \
+            --query "customerId" \
+            --output tsv)
+          
+          if [ -z "${LOG_ANALYTICS_WORKSPACE_ID}" ]; then
+            echo "❌ ERROR: Failed to retrieve Log Analytics Workspace ID"
+            echo "::error::Could not get workspace ID for ${LOG_ANALYTICS_WORKSPACE_NAME} in ${LOG_ANALYTICS_RG}"
+            exit 1
+          fi
+          echo "✅ Retrieved Workspace ID: ${LOG_ANALYTICS_WORKSPACE_ID}"
 
           # Calculate the start time (current time minus 10 minutes) in ISO 8601 format
           START_TIME=$(date -u -d '10 minutes ago' +"%Y-%m-%dT%H:%M:%SZ")
@@ -466,7 +482,7 @@ jobs:
           TIMEOUT_MINUTES=30
           CHECK_INTERVAL=60  # Check every 60 seconds
           MAX_ATTEMPTS=$((TIMEOUT_MINUTES * 60 / CHECK_INTERVAL))
-          REQUIRED_NODES=2  # login-1 and scheduler
+          REQUIRED_NODES=$(echo "${NODES_TO_CHECK}" | jq 'length')
 
           NODES_READY=false
 
