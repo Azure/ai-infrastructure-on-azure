@@ -331,7 +331,7 @@ jobs:
           cat > /tmp/eventgrid_topic.txt <<EOF
           AdType = "Application.Setting"
           Description = "Sends CycleCloud events to EventGrid"
-          Name = "cyclecloud.event_grid_topic"
+          Name = "cyclecloud.eventgrid_topic"
           Value = "${EG_TOPIC}"
           EOF
           chown cycle_server:cycle_server /tmp/eventgrid_topic.txt
