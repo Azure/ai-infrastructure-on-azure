@@ -127,6 +127,7 @@ OPTIONAL PARAMETERS:
     --accept-marketplace         Accept marketplace terms automatically
     --deploy                     Perform deployment after generating output.json
     --silent                     Skip interactive confirmation prompts (default: interactive when --deploy not set)
+		--debug                      Enable verbose debug logging
     --help                       Show this usage information
 
 INTERACTIVE PROMPTS:
@@ -264,6 +265,14 @@ OOD_START_CLUSTER="true"
 CREATE_ACCOUNTING_MYSQL="false"
 DB_GENERATE_NAME="false"
 SILENT="false"
+DEBUG_ENABLED="false"
+
+# Debug logging helper (only emits when --debug is specified)
+debug_log() {
+	if [[ "$DEBUG_ENABLED" == "true" ]]; then
+		echo "[DEBUG] $*" >&2
+	fi
+}
 
 # Parse args
 while [[ $# -gt 0 ]]; do
@@ -510,6 +519,10 @@ while [[ $# -gt 0 ]]; do
 		DO_DEPLOY="true"
 		shift 1
 		;;
+	--debug)
+		DEBUG_ENABLED="true"
+		shift 1
+		;;
 	--silent)
 		SILENT="true"
 		shift 1
@@ -569,6 +582,7 @@ prompt_for_sku() {
 			echo "[WARN] Empty value not allowed for ${label} SKU; please provide a valid Azure VM SKU." >&2
 			continue
 		fi
+		load_compute_skus
 		if validate_sku "$sku_value"; then
 			eval "$var_name=\"$sku_value\""
 			break
@@ -720,17 +734,48 @@ load_compute_skus() {
 	echo "[INFO] Discovering VM SKUs and zones for region '${LOCATION}'..." >&2
 
 	# Build JMESPath query to filter SKUs (include all SKUs that need validation)
+
 	local query_filter=""
 	local filter_parts=()
-	if [[ -n "$HTC_SKU" ]]; then filter_parts+=("name=='$HTC_SKU'"); fi
-	if [[ -n "$HPC_SKU" ]]; then filter_parts+=("name=='$HPC_SKU'"); fi
-	if [[ -n "$GPU_SKU" ]]; then filter_parts+=("name=='$GPU_SKU'"); fi
-	if [[ -n "$SCHEDULER_SKU" ]]; then filter_parts+=("name=='$SCHEDULER_SKU'"); fi
-	if [[ -n "$LOGIN_SKU" ]]; then filter_parts+=("name=='$LOGIN_SKU'"); fi
-	if [[ "$OOD_ENABLED" == "true" && -n "$OOD_SKU" ]]; then filter_parts+=("name=='$OOD_SKU'"); fi
+	local all_skus_specified="true"
 
-	if [[ ${#filter_parts[@]} -eq 0 ]]; then
-		echo "[DEBUG] No specific SKUs defined yet; loading all SKUs." >&2
+	# Track which SKUs are specified; if any expected SKU is missing, skip filtering.
+	if [[ -n "$HTC_SKU" ]]; then
+		filter_parts+=("name=='$HTC_SKU'")
+	else
+		all_skus_specified="false"
+	fi
+	if [[ -n "$HPC_SKU" ]]; then
+		filter_parts+=("name=='$HPC_SKU'")
+	else
+		all_skus_specified="false"
+	fi
+	if [[ -n "$GPU_SKU" ]]; then
+		filter_parts+=("name=='$GPU_SKU'")
+	else
+		all_skus_specified="false"
+	fi
+	if [[ -n "$SCHEDULER_SKU" ]]; then
+		filter_parts+=("name=='$SCHEDULER_SKU'")
+	else
+		all_skus_specified="false"
+	fi
+	if [[ -n "$LOGIN_SKU" ]]; then
+		filter_parts+=("name=='$LOGIN_SKU'")
+	else
+		all_skus_specified="false"
+	fi
+	if [[ "$OOD_ENABLED" == "true" ]]; then
+		if [[ -n "$OOD_SKU" ]]; then
+			filter_parts+=("name=='$OOD_SKU'")
+		else
+			all_skus_specified="false"
+		fi
+	fi
+
+	# If any expected SKU is not specified, or no SKUs at all are set, skip filtering.
+	if [[ "$all_skus_specified" != "true" || ${#filter_parts[@]} -eq 0 ]]; then
+		debug_log "At least one SKU not specified; loading all SKUs without filtering."
 		query_filter="value[?locationInfo!=null]"
 	else
 		# Build OR condition by joining with ||
@@ -743,7 +788,7 @@ load_compute_skus() {
 			fi
 		done
 		query_filter="value[?$condition]"
-		echo "[DEBUG] Loading SKUs: HTC=$HTC_SKU, HPC=$HPC_SKU, GPU=$GPU_SKU, SCHEDULER=$SCHEDULER_SKU, LOGIN=$LOGIN_SKU, OOD=$OOD_SKU" >&2
+		debug_log "Loading SKUs with filter: HTC=$HTC_SKU, HPC=$HPC_SKU, GPU=$GPU_SKU, SCHEDULER=$SCHEDULER_SKU, LOGIN=$LOGIN_SKU, OOD=$OOD_SKU"
 	fi
 	local raw
 	if ! raw=$(az rest --method get --url "/subscriptions/{subscriptionId}/providers/Microsoft.Compute/skus?api-version=2021-07-01&\$filter=location eq '${LOCATION}'" --query "$query_filter" -o json 2>/dev/null); then
@@ -778,31 +823,31 @@ fetch_region_zones() {
 		echo "[ERROR] fetch_region_zones called with empty SKU argument." >&2
 		exit 1
 	fi
-	echo "[DEBUG] fetch_region_zones: attempting zone lookup for SKU='${sku}' in region='${LOCATION}'." >&2
+	debug_log "fetch_region_zones: attempting zone lookup for SKU='${sku}' in region='${LOCATION}'."
 	# Ensure cache loaded
 	if [[ -z "$COMPUTE_SKUS_CACHE" ]]; then
-		echo "[DEBUG] COMPUTE_SKUS_CACHE empty prior to load; invoking load_compute_skus." >&2
+		debug_log "COMPUTE_SKUS_CACHE empty prior to load; invoking load_compute_skus."
 		load_compute_skus
 	fi
 	if [[ -z "$COMPUTE_SKUS_CACHE" ]]; then
-		echo "[DEBUG] COMPUTE_SKUS_CACHE still empty after load attempt; returning no zones." >&2
+		debug_log "COMPUTE_SKUS_CACHE still empty after load attempt; returning no zones."
 		return 1
 	fi
 	local line zones
 	# Exact match on SKU name followed by colon
 	line="$(echo "$COMPUTE_SKUS_CACHE" | grep -E "^${sku}:" || true)"
 	if [[ -z "$line" ]]; then
-		echo "[DEBUG] SKU '${sku}' not found in cached list (cache lines: $(echo "$COMPUTE_SKUS_CACHE" | wc -l | tr -d ' '))." >&2
+		debug_log "SKU '${sku}' not found in cached list (cache lines: $(echo "$COMPUTE_SKUS_CACHE" | wc -l | tr -d ' '))."
 		echo ""
 		return 0
 	fi
 	zones="${line#*:}"
 	if [[ -z "$zones" ]]; then
-		echo "[DEBUG] SKU '${sku}' found but zones list empty (non‑zonal SKU or discovery limitation)." >&2
+		debug_log "SKU '${sku}' found but zones list empty (non‑zonal SKU or discovery limitation)."
 		echo ""
 		return 0
 	fi
-	echo "[DEBUG] SKU '${sku}' zones resolved: ${zones}" >&2
+	debug_log "SKU '${sku}' zones resolved: ${zones}"
 	echo "$zones"
 }
 
@@ -990,8 +1035,15 @@ validate_all_skus() {
 	echo "[INFO] All VM SKUs validated successfully for region '${LOCATION}'" >&2
 }
 
-# Only load compute SKUs if we need zone discovery
-if [[ "$SPECIFY_AZ" == "true" ]]; then
+# Only load compute SKUs if we need zone discovery or if any SKU is empty
+if [[ "$SPECIFY_AZ" == "true" \
+	|| -z "${HTC_SKU:-}" \
+	|| -z "${HPC_SKU:-}" \
+	|| -z "${GPU_SKU:-}" \
+	|| -z "${SCHEDULER_SKU:-}" \
+	|| -z "${LOGIN_SKU:-}" \
+	|| ( "$OOD_ENABLED" == "true" && -z "${OOD_SKU:-}" )
+ ]]; then
 	load_compute_skus
 fi
 
