@@ -558,8 +558,8 @@ jobs:
 
             echo "📊 Query result: ${RESULT}"
 
-            # Count nodes where IsReady is true
-            READY_COUNT=$(echo "$RESULT" | jq '[.[] | select(.IsReady == true)] | length' 2>/dev/null || echo "0")
+            # Count nodes where IsReady is true (Log Analytics returns boolean as string "True"/"False")
+            READY_COUNT=$(echo "$RESULT" | jq '[.[] | select(.IsReady == true or .IsReady == "True")] | length' 2>/dev/null || echo "0")
 
             echo "📈 Ready nodes: ${READY_COUNT}/${REQUIRED_NODES}"
 
