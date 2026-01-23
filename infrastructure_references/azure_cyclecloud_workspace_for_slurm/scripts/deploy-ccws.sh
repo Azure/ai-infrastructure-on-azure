@@ -823,7 +823,7 @@ fetch_region_zones() {
 		echo "[ERROR] fetch_region_zones called with empty SKU argument." >&2
 		exit 1
 	fi
-	echo "[DEBUG] fetch_region_zones: attempting zone lookup for SKU='${sku}' in region='${LOCATION}'." >&2
+	debug_log "fetch_region_zones: attempting zone lookup for SKU='${sku}' in region='${LOCATION}'."
 	# Ensure cache loaded
 	if [[ -z "$COMPUTE_SKUS_CACHE" ]]; then
 		debug_log "COMPUTE_SKUS_CACHE empty prior to load; invoking load_compute_skus."
