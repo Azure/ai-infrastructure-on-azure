@@ -211,8 +211,8 @@ CycleCloudEvents_CL
 | where NodeName == nodeToCheck
 | where EventType == "Microsoft.CycleCloud.NodeCreated"
 | where Status == "Succeeded"
-| project TimeGenerated, ClusterName, NodeName, VmSku, Status, 
-    VMCreateTime = Timing.CreateVM, 
+| project TimeGenerated, ClusterName, NodeName, VmSku, Status,
+    VMCreateTime = Timing.CreateVM,
     ConfigureTime = Timing.Configure,
     Message
 | take 1
