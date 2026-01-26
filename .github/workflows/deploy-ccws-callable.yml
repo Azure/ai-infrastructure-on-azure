@@ -393,7 +393,7 @@ jobs:
             --workspace-name "${LOG_ANALYTICS_WORKSPACE_NAME}" \
             --query "customerId" \
             --output tsv)
-          
+
           if [ -z "${LOG_ANALYTICS_WORKSPACE_ID}" ]; then
             echo "❌ ERROR: Failed to retrieve Log Analytics Workspace ID"
             echo "::error::Could not get workspace ID for ${LOG_ANALYTICS_WORKSPACE_NAME} in ${LOG_ANALYTICS_RG}"
@@ -437,7 +437,7 @@ jobs:
           | summarize count() by EventType, NodeName
           | order by count_ desc
           | take 20"
-          
+
           DIAG_RESULT=$(az monitor log-analytics query \
             --workspace "${LOG_ANALYTICS_WORKSPACE_ID}" \
             --analytics-query "${DIAG_QUERY}" \

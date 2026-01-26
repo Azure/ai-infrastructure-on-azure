@@ -167,6 +167,7 @@ parameters:
 #### General Configuration
 
 - **`--admin-username <username>`** (default: `hpcadmin`)
+
   - Username for the CycleCloud administrator account
   - Used for SSH access and CycleCloud UI login
 
@@ -177,6 +178,7 @@ parameters:
 #### CycleCloud Infrastructure SKUs
 
 - **`--scheduler-sku <sku>`** (default: `Standard_D4as_v5`)
+
   - VM SKU for the CycleCloud scheduler node
   - Controls the scheduler's compute capacity
 
@@ -187,11 +189,13 @@ parameters:
 #### Workspace Repository Configuration
 
 - **`--workspace-ref <branch|tag>`** (default: latest release tag)
+
   - Git reference (branch or tag) to checkout from the Azure CycleCloud
     Workspace for Slurm repository
   - Examples: `main`, `v2025.09.15`, `feature-branch`
 
 - **`--workspace-commit <sha>`**
+
   - Pin to a specific commit SHA (creates detached HEAD)
   - Overrides `--workspace-ref` if both are provided
   - Recommended for reproducible deployments
@@ -205,21 +209,25 @@ parameters:
 #### Availability Zones
 
 - **`--no-az`**
+
   - Explicitly disable availability zones for all resources (default behavior)
   - When set, all availability zone configurations are omitted from deployment
   - This is the default if neither `--no-az` nor `--specify-az` is provided
 
 - **`--specify-az`**
+
   - Enable interactive prompts for availability zones
   - Only prompts if the region supports zonal SKUs
   - Mutually exclusive with `--no-az`
 
 - **`--htc-az <zone>`**
+
   - Explicitly set availability zone for HTC partition (e.g., `1`, `2`, `3`)
   - Suppresses interactive prompt for HTC partition
   - Only valid when `--specify-az` is set
 
 - **`--hpc-az <zone>`**
+
   - Explicitly set availability zone for HPC partition
   - Suppresses interactive prompt for HPC partition
   - Only valid when `--specify-az` is set
@@ -232,21 +240,25 @@ parameters:
 #### Compute Partition Configuration
 
 - **`--htc-max-nodes <count>`**
+
   - Maximum number of nodes for HTC (High Throughput Computing) partition
   - Must be a positive integer
   - Interactive prompt if omitted
 
 - **`--hpc-max-nodes <count>`**
+
   - Maximum number of nodes for HPC (High Performance Computing) partition
   - Must be a positive integer
   - Interactive prompt if omitted
 
 - **`--gpu-max-nodes <count>`**
+
   - Maximum number of nodes for GPU partition
   - Must be a positive integer
   - Interactive prompt if omitted
 
 - **`--htc-use-spot`**
+
   - Use Azure Spot (preemptible) VMs for HTC partition
   - Flag parameter (no value required)
   - Default: disabled (use regular on-demand VMs)
@@ -263,26 +275,31 @@ parameters:
 All OS image parameters default to `cycle.image.ubuntu24` if not specified:
 
 - **`--scheduler-image <image>`** (default: `cycle.image.ubuntu24`)
+
   - OS image for the CycleCloud scheduler node
   - Common values: `cycle.image.ubuntu24`, `cycle.image.ubuntu22`
   - Example: `cycle.image.ubuntu22`
 
 - **`--login-image <image>`** (default: `cycle.image.ubuntu24`)
+
   - OS image for the login node
   - Should typically match scheduler image for consistency
   - Example: `cycle.image.ubuntu22`
 
 - **`--ood-image <image>`** (default: `cycle.image.ubuntu24`)
+
   - OS image for Open OnDemand web portal nodes
   - Only applies when `--open-ondemand` is enabled
   - Example: `cycle.image.ubuntu22`
 
 - **`--htc-image <image>`** (default: `cycle.image.ubuntu24`)
+
   - OS image for HTC (High Throughput Computing) partition nodes
   - Choose based on workload requirements and software compatibility
   - Example: `cycle.image.ubuntu22`
 
 - **`--hpc-image <image>`** (default: `cycle.image.ubuntu24`)
+
   - OS image for HPC (High Performance Computing) partition nodes
   - Consider HPC-optimized images for performance-critical workloads
   - Example: `cycle.image.ubuntu22`
@@ -295,6 +312,7 @@ All OS image parameters default to `cycle.image.ubuntu24` if not specified:
 #### Network Configuration
 
 - **`--network-address-space <cidr>`** (default: `10.0.0.0/24`)
+
   - Virtual network CIDR address space
   - Must be valid CIDR notation
   - Example: `10.1.0.0/16`
@@ -310,11 +328,13 @@ All OS image parameters default to `cycle.image.ubuntu24` if not specified:
 All ANF parameters must be provided together to enable ANF storage:
 
 - **`--anf-sku <sku>`** (default: `Premium`)
+
   - ANF service level: `Standard`, `Premium`, or `Ultra`
   - Determines performance tier and pricing
   - Example: `Premium`
 
 - **`--anf-size <size_in_TiB>`** (default: `2`)
+
   - Capacity pool size in TiB (minimum: 2 TiB)
   - Must be an integer ≥ 1
   - Example: `4` for 4 TiB
@@ -329,12 +349,14 @@ All ANF parameters must be provided together to enable ANF storage:
 AMLFS provides an additional high-performance data filesystem. It is **disabled by default**.
 
 - **`--data-filesystem`**
+
   - Enable Azure Managed Lustre data filesystem
   - Flag parameter (no value required)
   - Default: disabled
   - When enabled, AMLFS will be deployed with the parameters below
 
 - **`--amlfs-sku <sku>`** (default: `AMLFS-Durable-Premium-500`)
+
   - AMLFS SKU type (only used when `--data-filesystem` is enabled)
   - Available options: `AMLFS-Durable-Premium-40`, `AMLFS-Durable-Premium-125`,
     `AMLFS-Durable-Premium-250`, `AMLFS-Durable-Premium-500`
@@ -342,6 +364,7 @@ AMLFS provides an additional high-performance data filesystem. It is **disabled 
   - Example: `AMLFS-Durable-Premium-500`
 
 - **`--amlfs-size <size_in_TiB>`** (default: `4`)
+
   - File system size in TiB (only used when `--data-filesystem` is enabled)
   - Must be an integer ≥ 4 TiB
   - Example: `8` for 8 TiB
@@ -354,12 +377,14 @@ AMLFS provides an additional high-performance data filesystem. It is **disabled 
 #### Monitoring Configuration
 
 - **`--monitoring`**
+
   - Enable monitoring for the cluster
   - Flag parameter (no value required)
   - Default: disabled
   - When enabled, requires `--mon-ingestion-endpoint` and `--mon-dcr-id`
 
 - **`--mon-ingestion-endpoint <endpoint>`**
+
   - Monitoring ingestion endpoint URL
   - Required when `--monitoring` is enabled
   - Example: `https://your-monitor-xxxxx.region-1.metrics.ingest.monitor.azure.com/dataCollectionRules/dcr-xxxxx/streams/Microsoft-PrometheusMetrics/api/v1/write?api-version=2023-04-24`
@@ -372,12 +397,14 @@ AMLFS provides an additional high-performance data filesystem. It is **disabled 
 #### Microsoft Entra ID Configuration
 
 - **`--entra-id`**
+
   - Enable Microsoft Entra ID authentication
   - Flag parameter (no value required)
   - Default: disabled
   - When enabled, requires `--entra-app-umi` and `--entra-app-id`
 
 - **`--entra-app-umi <umi-id>`**
+
   - User Managed Identity resource ID used in federated credentials of the registered Entra ID application for user authentication
   - Required when `--entra-id` is enabled
   - Format: `/subscriptions/<sub-id>/resourceGroups/<rg-name>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/<identity-name>`
@@ -396,21 +423,25 @@ The script supports two modes for database configuration:
 **Mode 1: Auto-create MySQL Flexible Server** (use `--create-accounting-mysql`)
 
 - **`--create-accounting-mysql`**
+
   - Flag to automatically create a minimal MySQL Flexible Server
   - Requires `--db-name`, `--db-user`, `--db-password` (but NOT `--db-id`)
   - Server is created in the specified resource group and location
 
 - **`--db-generate-name`**
+
   - Automatically generate a random database name
   - Only valid with `--create-accounting-mysql`
   - Format: `ccdb-<random-hex>`
   - Ignored if `--db-name` is already provided
 
 - **`--db-name <name>`**
+
   - MySQL Flexible Server instance name (for auto-creation or existing server)
   - Example: `myccdb`
 
 - **`--db-user <username>`**
+
   - Database administrator username for Slurm accounting
   - Example: `dbadmin`
 
@@ -443,6 +474,7 @@ If none of the database flags are provided, `databaseConfig` defaults to:
 #### Open OnDemand Portal Configuration
 
 - **`--open-ondemand`**
+
   - Enable Open OnDemand web portal deployment
   - Flag parameter (no value required)
   - Default: disabled
@@ -450,15 +482,18 @@ If none of the database flags are provided, `databaseConfig` defaults to:
   - Requires `--ood-user-domain` when enabled
 
 - **`--ood-sku <sku>`** (default: `Standard_D4as_v5`)
+
   - VM SKU for the Open OnDemand portal server
   - Example: `Standard_D8as_v5`
 
 - **`--ood-user-domain <domain>`**
+
   - User domain for Open OnDemand authentication
   - Required when `--open-ondemand` is enabled
   - Example: `contoso.com`
 
 - **`--ood-fqdn <fqdn>`**
+
   - Fully Qualified Domain Name for Open OnDemand portal
   - Optional; defaults to empty string
   - Only included in parameters when `--open-ondemand` is enabled
@@ -480,17 +515,20 @@ If none of the database flags are provided, `databaseConfig` defaults to:
 #### Deployment Control
 
 - **`--accept-marketplace`**
+
   - Automatically accept Azure Marketplace terms
   - Sets `acceptMarketplaceTerms=true` in parameters
   - Required for first-time deployment of certain OS SKUs
   - Avoids manual marketplace agreement step
 
 - **`--deploy`**
+
   - Perform deployment immediately after generating `output.json`
   - Skips interactive confirmation prompt
   - Useful for automated/scripted deployments
 
 - **`--silent`**
+
   - Skip interactive confirmation prompts without deploying
   - Generates parameters file but exits without deployment
   - Useful for CI/CD pipelines where parameters need to be generated for review

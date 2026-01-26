@@ -27,8 +27,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FIX_JSON_PRETTIER: true
-          FIX_YAML_PRETTIER: false
-          FIX_MARKDOWN_PRETTIER: false
+          FIX_YAML_PRETTIER: true
+          FIX_MARKDOWN_PRETTIER: true
           FIX_MARKDOWN: false
           FIX_PYTHON_ISORT: true
           FIX_PYTHON_PYINK: true
@@ -56,6 +56,30 @@ jobs:
           VALIDATE_PYTHON_BLACK: false
           # Filter out Helm chart templates from remaining YAML checks
           FILTER_REGEX_EXCLUDE: ".*helm.*templates/.*\\.yaml$"
+
+      - name: Generate linting patch
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          if git diff --quiet; then
+            echo "No changes to include in patch."
+          else
+            git diff > super-linter-fixes.patch
+          fi
+
+      - name: Upload linting patch artifact
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: super-linter-fixes
+          path: super-linter-fixes.patch
+          if-no-files-found: ignore
+
+      - name: Cleanup linting patch
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          if [ -f super-linter-fixes.patch ]; then
+            rm super-linter-fixes.patch
+          fi
 
       - name: Commit and push linting fixes
         # Run only on:
