@@ -28,7 +28,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FIX_JSON_PRETTIER: true
           FIX_YAML_PRETTIER: false
-          FIX_MARKDOWN_PRETTIER: false
+          FIX_MARKDOWN_PRETTIER: true
           FIX_MARKDOWN: false
           FIX_PYTHON_ISORT: true
           FIX_PYTHON_PYINK: true
