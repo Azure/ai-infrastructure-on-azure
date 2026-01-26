@@ -983,37 +983,37 @@ fi
 # Validate all VM SKUs exist in the target region
 validate_all_skus() {
 	echo "[INFO] Validating all VM SKUs exist in region '${LOCATION}'..." >&2
-	
+
 	# Ensure SKU cache is loaded
 	if [[ -z "$COMPUTE_SKUS_CACHE" ]]; then
 		load_compute_skus
 	fi
-	
+
 	if [[ -z "$COMPUTE_SKUS_CACHE" ]]; then
 		echo "[ERROR] Unable to load VM SKU information for region '${LOCATION}'. Cannot validate SKUs." >&2
 		exit 1
 	fi
-	
+
 	local validation_failed=false
 	local skus_to_validate=()
-	
+
 	# Collect all SKUs that need validation
 	skus_to_validate+=("${SCHEDULER_SKU}:Scheduler")
 	skus_to_validate+=("${LOGIN_SKU}:Login")
 	skus_to_validate+=("${HTC_SKU}:HTC")
-	skus_to_validate+=("${HPC_SKU}:HPC") 
+	skus_to_validate+=("${HPC_SKU}:HPC")
 	skus_to_validate+=("${GPU_SKU}:GPU")
-	
+
 	# Add OOD SKU if Open OnDemand is enabled
 	if [[ "$OOD_ENABLED" == "true" ]]; then
 		skus_to_validate+=("${OOD_SKU}:OpenOnDemand")
 	fi
-	
+
 	# Validate each SKU
 	for sku_entry in "${skus_to_validate[@]}"; do
 		local sku="${sku_entry%%:*}"
 		local label="${sku_entry##*:}"
-		
+
 		if ! validate_sku "$sku"; then
 			echo "[ERROR] ${label} SKU '${sku}' is not available in region '${LOCATION}'" >&2
 			validation_failed=true
@@ -1021,7 +1021,7 @@ validate_all_skus() {
 			echo "[INFO] ✓ ${label} SKU '${sku}' validated in region '${LOCATION}'" >&2
 		fi
 	done
-	
+
 	if [[ "$validation_failed" == "true" ]]; then
 		echo "[ERROR] One or more VM SKUs are not available in the target region. Please choose different SKUs or a different region." >&2
 		echo "[INFO] Available SKUs in region '${LOCATION}':" >&2
@@ -1031,19 +1031,19 @@ validate_all_skus() {
 		fi
 		exit 1
 	fi
-	
+
 	echo "[INFO] All VM SKUs validated successfully for region '${LOCATION}'" >&2
 }
 
 # Only load compute SKUs if we need zone discovery or if any SKU is empty
-if [[ "$SPECIFY_AZ" == "true" \
-	|| -z "${HTC_SKU:-}" \
-	|| -z "${HPC_SKU:-}" \
-	|| -z "${GPU_SKU:-}" \
-	|| -z "${SCHEDULER_SKU:-}" \
-	|| -z "${LOGIN_SKU:-}" \
-	|| ( "$OOD_ENABLED" == "true" && -z "${OOD_SKU:-}" )
- ]]; then
+if [[ "$SPECIFY_AZ" == "true" ||
+	-z "${HTC_SKU:-}" ||
+	-z "${HPC_SKU:-}" ||
+	-z "${GPU_SKU:-}" ||
+	-z "${SCHEDULER_SKU:-}" ||
+	-z "${LOGIN_SKU:-}" ||
+	("$OOD_ENABLED" == "true" && -z "${OOD_SKU:-}") ]] \
+	; then
 	load_compute_skus
 fi
 
