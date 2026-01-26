@@ -195,6 +195,38 @@ CycleCloudEvents_CL
 | order by TimeGenerated desc
 ```
 
+### Check if a Node is Ready
+
+Use this query to verify if a specific node has been successfully created and is ready:
+
+```kql
+let nodeToCheck = "gpu-pg0-1";  // Replace with your node name
+CycleCloudEvents_CL
+| where TimeGenerated > ago(24h)
+| where NodeName == nodeToCheck
+| where EventType == "Microsoft.CycleCloud.NodeCreated"
+| where Status == "Succeeded"
+| project TimeGenerated, ClusterName, NodeName, VmSku, Status, 
+    VMCreateTime = Timing.CreateVM, 
+    ConfigureTime = Timing.Configure,
+    Message
+| take 1
+```
+
+To check multiple nodes at once:
+
+```kql
+let nodesToCheck = dynamic(["gpu-pg0-1", "gpu-pg0-2", "hpc-pg0-1"]);  // Replace with your node names
+CycleCloudEvents_CL
+| where TimeGenerated > ago(24h)
+| where NodeName in (nodesToCheck)
+| where EventType == "Microsoft.CycleCloud.NodeCreated"
+| summarize arg_max(TimeGenerated, Status, VmSku, Message) by ClusterName, NodeName
+| extend IsReady = (Status == "Succeeded")
+| project ClusterName, NodeName, VmSku, LastEvent = TimeGenerated, Status, IsReady, Message
+| order by NodeName asc
+```
+
 ### Average VM Creation and Configuration Time
 
 ```kql

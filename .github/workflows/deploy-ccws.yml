@@ -40,6 +40,7 @@ jobs:
       location: ${{ steps.params.outputs.location }}
       data_filesystem: ${{ steps.params.outputs.data_filesystem }}
       deploy_immediately: ${{ steps.params.outputs.deploy_immediately }}
+      slurm_no_start: ${{ steps.params.outputs.slurm_no_start }}
       image: ${{ steps.params.outputs.image }}
 
     steps:

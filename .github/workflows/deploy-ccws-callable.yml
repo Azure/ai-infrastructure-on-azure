@@ -240,56 +240,51 @@ jobs:
           if [ "${{ inputs.deploy_immediately }}" = "true" ]; then
             args+=(--deploy)
           fi
+          # Do no start the Slurm cluster automatically
+          args+=(--slurm-no-start)
           # Execute
           "$script" "${args[@]}"
 
-      - name: Wait for login VMSS and validate instances
+      - name: Wait for CycleCloud VM cloud-init completion
         if: inputs.deploy_immediately
-        timeout-minutes: 20
+        timeout-minutes: 15
         run: |
           set -euo pipefail
 
           RG_NAME="${{ steps.rg_name.outputs.resource_group }}"
-          VMSS_PATTERN="login-"
-          TIMEOUT_MINUTES=20
+          VM_NAME="ccw-cyclecloud-vm"
+          SEARCH_STRING="exiting after install"
+          TIMEOUT_MINUTES=15
           CHECK_INTERVAL=30  # Check every 30 seconds
           MAX_ATTEMPTS=$((TIMEOUT_MINUTES * 60 / CHECK_INTERVAL))
 
-          echo "🔍 Waiting for VMSS with pattern '${VMSS_PATTERN}*' in resource group '${RG_NAME}'..."
+          echo "🔍 Waiting for cloud-init completion on '${VM_NAME}'..."
+          echo "🔎 Looking for: '${SEARCH_STRING}' in /var/log/cloud-init-output.log"
           echo "⏱️ Timeout: ${TIMEOUT_MINUTES} minutes (${MAX_ATTEMPTS} attempts with ${CHECK_INTERVAL}s intervals)"
 
-          VMSS_FOUND=false
-          INSTANCES_RUNNING=false
+          INIT_COMPLETE=false
 
           for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
-            echo "🔄 Attempt ${attempt}/${MAX_ATTEMPTS}: Checking for VMSS..."
+            echo "🔄 Attempt ${attempt}/${MAX_ATTEMPTS}: Checking cloud-init log..."
             
-            # Find VMSS with login- pattern
-            VMSS_LIST=$(az vmss list --resource-group "$RG_NAME" \
-              --query "[?starts_with(name, '${VMSS_PATTERN}')].name" \
-              --output tsv 2>/dev/null || echo "")
+            # Run command on VM to check for the string
+            RESULT=$(az vm run-command invoke \
+              --resource-group "$RG_NAME" \
+              --name "$VM_NAME" \
+              --command-id RunShellScript \
+              --scripts "grep -c '${SEARCH_STRING}' /var/log/cloud-init-output.log 2>/dev/null || echo 0" \
+              --query "value[0].message" \
+              --output tsv 2>/dev/null || echo "0")
             
-            if [ -n "$VMSS_LIST" ]; then
-              VMSS_NAME=$(echo "$VMSS_LIST" | head -n 1)
-              echo "✅ Found VMSS: ${VMSS_NAME}"
-              VMSS_FOUND=true
-              
-              # Check for running instances
-              echo "🔍 Checking instances in VMSS '${VMSS_NAME}'..."
-              RUNNING_INSTANCES=$(az vmss list-instances --resource-group "$RG_NAME" --name "$VMSS_NAME" \
-                --query "[?provisioningState=='Succeeded'].instanceId" \
-                --output tsv 2>/dev/null || echo "")
-              
-              if [ -n "$RUNNING_INSTANCES" ]; then
-                INSTANCE_COUNT=$(echo "$RUNNING_INSTANCES" | wc -l)
-                echo "✅ Found ${INSTANCE_COUNT} running instance(s) in VMSS '${VMSS_NAME}'"
-                INSTANCES_RUNNING=true
-                break
-              else
-                echo "⚠️ VMSS '${VMSS_NAME}' found but no instances are running yet"
-              fi
+            # Extract the count from the result (last line typically contains the output)
+            COUNT=$(echo "$RESULT" | grep -oE '[0-9]+' | tail -1 || echo "0")
+            
+            if [ "$COUNT" -gt 0 ]; then
+              echo "✅ Found '${SEARCH_STRING}' in cloud-init log - installation complete!"
+              INIT_COMPLETE=true
+              break
             else
-              echo "⏳ No VMSS with pattern '${VMSS_PATTERN}*' found yet"
+              echo "⏳ String not found yet, cloud-init still in progress..."
             fi
             
             if [ "$attempt" -lt "$MAX_ATTEMPTS" ]; then
@@ -298,18 +293,233 @@ jobs:
             fi
           done
 
-          # Final validation
-          if [ "$VMSS_FOUND" = false ]; then
-            echo "❌ FAILURE: No VMSS with pattern '${VMSS_PATTERN}*' found after ${TIMEOUT_MINUTES} minutes"
-            echo "::error::VMSS validation failed: No VMSS found with pattern '${VMSS_PATTERN}*'"
-            exit 1
-          elif [ "$INSTANCES_RUNNING" = false ]; then
-            echo "❌ FAILURE: VMSS found but no running instances after ${TIMEOUT_MINUTES} minutes"
-            echo "::error::VMSS validation failed: No running instances found in VMSS"
+          if [ "$INIT_COMPLETE" = false ]; then
+            echo "❌ FAILURE: Cloud-init did not complete within ${TIMEOUT_MINUTES} minutes"
+            echo "::error::CycleCloud cloud-init did not complete - '${SEARCH_STRING}' not found in log"
+            
+            # Show last 50 lines of cloud-init log for debugging
+            echo "📋 Last 50 lines of cloud-init log:"
+            az vm run-command invoke \
+              --resource-group "$RG_NAME" \
+              --name "$VM_NAME" \
+              --command-id RunShellScript \
+              --scripts "tail -n 50 /var/log/cloud-init-output.log" \
+              --query "value[0].message" \
+              --output tsv || echo "Failed to retrieve log"
             exit 1
           else
-            echo "🎉 SUCCESS: VMSS '${VMSS_NAME}' found with running instances"
-            echo "::notice::VMSS validation successful: Found '${VMSS_NAME}' with running instances"
+            echo "🎉 SUCCESS: CycleCloud VM cloud-init completed successfully"
+            echo "::notice::CycleCloud cloud-init completed - found '${SEARCH_STRING}'"
+          fi
+
+      - name: Inject EventGrid topic for CycleCloud Application.Setting
+        if: inputs.deploy_immediately
+        env:
+          EG_TOPIC: "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-ccw-eventgrid/providers/Microsoft.EventGrid/topics/evgt-ccw-eg-cyclecloud"
+          CLUSTER_NAME: ${{ inputs.cluster_name }}
+          RG_NAME: ${{ steps.rg_name.outputs.resource_group }}
+          VM_NAME: "ccw-cyclecloud-vm"
+        run: |
+          set +x
+          set -euo pipefail
+
+          echo "📝 Injecting EventGrid topic into CycleCloud Application.Setting..."
+          echo "🔗 Topic: ${EG_TOPIC}"
+
+          # Create the application setting file on the CycleCloud VM
+          read -r -d '' SCRIPT_CONTENT <<'EOFSCRIPT' || true
+          cat > /tmp/eventgrid_topic.txt <<EOF
+          AdType = "Application.Setting"
+          Description = "Sends CycleCloud events to EventGrid"
+          Name = "cyclecloud.eventgrid_topic"
+          Value = "${EG_TOPIC}"
+          EOF
+          chown cycle_server:cycle_server /tmp/eventgrid_topic.txt
+          chmod 664 /tmp/eventgrid_topic.txt
+          mv /tmp/eventgrid_topic.txt /opt/cycle_server/config/data/eventgrid_topic.txt
+          EOFSCRIPT
+
+          # Substitute the actual EG_TOPIC value into the script
+          SCRIPT_CONTENT="${SCRIPT_CONTENT//\$\{EG_TOPIC\}/$EG_TOPIC}"
+
+          echo "📝 Script content is:"
+          echo "$SCRIPT_CONTENT"
+          echo "Executing script on VM to inject EventGrid topic..."
+          az vm run-command invoke \
+            --resource-group "$RG_NAME" \
+            --name "$VM_NAME" \
+            --command-id RunShellScript \
+            --scripts "$SCRIPT_CONTENT" \
+            --query "value[0].message" \
+            --output tsv
+
+          # Start the cluster after injecting the EventGrid topic
+          echo "🚀 Starting Slurm cluster '${CLUSTER_NAME}'..."
+          az vm run-command invoke \
+            --resource-group "$RG_NAME" \
+            --name "$VM_NAME" \
+            --command-id RunShellScript \
+            --scripts "/usr/local/bin/cyclecloud start_cluster \"${CLUSTER_NAME}\"" \
+            --query "value[0].message" \
+            --output tsv
+
+          echo "✅ EventGrid topic injected successfully"
+
+      - name: Re-authenticate with Azure (refresh token)
+        if: inputs.deploy_immediately
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Check nodes ready in Log Analytics
+        if: inputs.deploy_immediately
+        timeout-minutes: 30
+        env:
+          LOG_ANALYTICS_RG: "rg-ccw-eventgrid"
+          LOG_ANALYTICS_WORKSPACE_NAME: "law-ccw-eg"
+          NODES_TO_CHECK: '["login-1", "scheduler"]'
+        run: |
+          set -euo pipefail
+
+          echo "🔍 Checking if nodes are ready in Log Analytics..."
+          echo "📋 Nodes to check: ${NODES_TO_CHECK}"
+
+          # Dynamically retrieve the Log Analytics Workspace ID
+          echo "🔧 Retrieving Log Analytics Workspace ID..."
+          LOG_ANALYTICS_WORKSPACE_ID=$(az monitor log-analytics workspace show \
+            --resource-group "${LOG_ANALYTICS_RG}" \
+            --workspace-name "${LOG_ANALYTICS_WORKSPACE_NAME}" \
+            --query "customerId" \
+            --output tsv)
+          
+          if [ -z "${LOG_ANALYTICS_WORKSPACE_ID}" ]; then
+            echo "❌ ERROR: Failed to retrieve Log Analytics Workspace ID"
+            echo "::error::Could not get workspace ID for ${LOG_ANALYTICS_WORKSPACE_NAME} in ${LOG_ANALYTICS_RG}"
+            exit 1
+          fi
+          echo "✅ Retrieved Workspace ID: ${LOG_ANALYTICS_WORKSPACE_ID}"
+
+          # Calculate the start time (current time minus 10 minutes) in ISO 8601 format
+          START_TIME=$(date -u -d '10 minutes ago' +"%Y-%m-%dT%H:%M:%SZ")
+          echo "⏱️ Checking for events since: ${START_TIME}"
+
+          # KQL query to check node readiness
+          KQL_QUERY="let nodesToCheck = dynamic(${NODES_TO_CHECK});
+          let startTime = datetime(${START_TIME});
+          CycleCloudEvents_CL
+          | where TimeGenerated > startTime
+          | where NodeName in (nodesToCheck)
+          | where EventType == \"Microsoft.CycleCloud.NodeCreated\"
+          | summarize arg_max(TimeGenerated, Status, VmSku, Message) by ClusterName, NodeName
+          | extend IsReady = (Status == \"Succeeded\")
+          | project ClusterName, NodeName, VmSku, LastEvent = TimeGenerated, Status, IsReady, Message
+          | order by NodeName asc"
+
+          TIMEOUT_MINUTES=30
+          CHECK_INTERVAL=60  # Check every 60 seconds
+          MAX_ATTEMPTS=$((TIMEOUT_MINUTES * 60 / CHECK_INTERVAL))
+          REQUIRED_NODES=$(echo "${NODES_TO_CHECK}" | jq 'length')
+
+          echo "🔧 DEBUG: Required nodes count: ${REQUIRED_NODES}"
+          echo "🔧 DEBUG: KQL Query:"
+          echo "----------------------------------------"
+          echo "${KQL_QUERY}"
+          echo "----------------------------------------"
+
+          NODES_READY=false
+
+          # Diagnostic: Check what events exist in the table
+          echo "🔧 DIAGNOSTIC: Checking what events exist in CycleCloudEvents_CL..."
+          DIAG_QUERY="CycleCloudEvents_CL
+          | where TimeGenerated > ago(1h)
+          | summarize count() by EventType, NodeName
+          | order by count_ desc
+          | take 20"
+          
+          DIAG_RESULT=$(az monitor log-analytics query \
+            --workspace "${LOG_ANALYTICS_WORKSPACE_ID}" \
+            --analytics-query "${DIAG_QUERY}" \
+            --output json 2>&1) || true
+          echo "🔧 DIAGNOSTIC: Events in table:"
+          echo "${DIAG_RESULT}" | jq '.' 2>/dev/null || echo "${DIAG_RESULT}"
+          echo "----------------------------------------"
+
+          for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
+            echo "🔄 Attempt ${attempt}/${MAX_ATTEMPTS}: Querying Log Analytics..."
+            echo "🔧 DEBUG: Workspace ID: ${LOG_ANALYTICS_WORKSPACE_ID}"
+
+            # Run the query against Log Analytics - capture both stdout and stderr
+            echo "🔧 DEBUG: Running az monitor log-analytics query..."
+            QUERY_OUTPUT=$(az monitor log-analytics query \
+              --workspace "${LOG_ANALYTICS_WORKSPACE_ID}" \
+              --analytics-query "${KQL_QUERY}" \
+              --output json 2>&1) || true
+            
+            QUERY_EXIT_CODE=$?
+            echo "🔧 DEBUG: az command exit code: ${QUERY_EXIT_CODE}"
+            echo "🔧 DEBUG: Raw query output (first 2000 chars):"
+            echo "${QUERY_OUTPUT}" | head -c 2000
+            echo ""
+            
+            # Check if output is valid JSON
+            if echo "${QUERY_OUTPUT}" | jq empty 2>/dev/null; then
+              echo "🔧 DEBUG: Output is valid JSON"
+              RESULT="${QUERY_OUTPUT}"
+              
+              # Check the structure of the result
+              echo "🔧 DEBUG: JSON type: $(echo "${RESULT}" | jq 'type')"
+              echo "🔧 DEBUG: JSON length: $(echo "${RESULT}" | jq 'length')"
+              
+              # If it's an object with 'tables' key (Log Analytics API v2 format)
+              if echo "${RESULT}" | jq -e '.tables' >/dev/null 2>&1; then
+                echo "🔧 DEBUG: Detected tables format, extracting rows..."
+                RESULT=$(echo "${QUERY_OUTPUT}" | jq '[.tables[0] | .columns as $cols | .rows[] | [[$cols[].name], .] | transpose | map({(.[0]): .[1]}) | add]')
+                echo "🔧 DEBUG: Extracted result: ${RESULT}"
+              fi
+            else
+              echo "⚠️ DEBUG: Output is NOT valid JSON"
+              echo "🔧 DEBUG: Checking for error messages..."
+              if echo "${QUERY_OUTPUT}" | grep -qi "error\|failed\|unauthorized"; then
+                echo "❌ DEBUG: Error detected in output"
+              fi
+              RESULT="[]"
+            fi
+
+            echo "📊 Query result: ${RESULT}"
+
+            # Count nodes where IsReady is true (Log Analytics returns boolean as string "True"/"False")
+            READY_COUNT=$(echo "$RESULT" | jq '[.[] | select(.IsReady == true or .IsReady == "True")] | length' 2>/dev/null || echo "0")
+
+            echo "📈 Ready nodes: ${READY_COUNT}/${REQUIRED_NODES}"
+
+            if [ "$READY_COUNT" -ge "$REQUIRED_NODES" ]; then
+              echo "✅ All required nodes are ready!"
+              echo "$RESULT" | jq -r '.[] | "  - \(.NodeName): \(.Status) (\(.VmSku))"'
+              NODES_READY=true
+              break
+            else
+              echo "⏳ Nodes not ready yet. Found ${READY_COUNT}/${REQUIRED_NODES} ready nodes."
+              # Show current status of found nodes
+              if [ "$RESULT" != "[]" ]; then
+                echo "$RESULT" | jq -r '.[] | "  - \(.NodeName): \(.Status)"' 2>/dev/null || true
+              fi
+            fi
+
+            if [ "$attempt" -lt "$MAX_ATTEMPTS" ]; then
+              echo "💤 Waiting ${CHECK_INTERVAL} seconds before next check..."
+              sleep "$CHECK_INTERVAL"
+            fi
+          done
+
+          if [ "$NODES_READY" = false ]; then
+            echo "❌ FAILURE: Required nodes not ready after ${TIMEOUT_MINUTES} minutes"
+            echo "::error::Node readiness check failed: login-1 and scheduler not ready in Log Analytics"
+            exit 1
+          else
+            echo "🎉 SUCCESS: All required nodes (login-1, scheduler) are ready"
+            echo "::notice::Node readiness check passed"
           fi
 
       - name: Check CycleCloud VM cloud-init logs
