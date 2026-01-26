@@ -2,10 +2,13 @@
 
 | Language                   | Validation result |
 | -------------------------- | ----------------- |
+| ARM                        | Pass ✅           |
 | BASH                       | Pass ✅           |
 | GITHUB_ACTIONS             | Pass ✅           |
 | GITLEAKS                   | Pass ✅           |
 | GIT_MERGE_CONFLICT_MARKERS | Pass ✅           |
+| JSON                       | Pass ✅           |
+| JSON_PRETTIER              | Pass ✅           |
 | JUPYTER_NBQA_BLACK         | Pass ✅           |
 | JUPYTER_NBQA_FLAKE8        | Pass ✅           |
 | JUPYTER_NBQA_ISORT         | Pass ✅           |
