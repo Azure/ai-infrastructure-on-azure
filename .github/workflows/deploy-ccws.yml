@@ -24,6 +24,11 @@ on:
         required: false
         default: false
         type: boolean
+      with_openondemand:
+        description: "Enable Open OnDemand web portal"
+        required: false
+        default: false
+        type: boolean
       image:
         description: "VM image to use for all nodes (Scheduler, Compute, Login) (optional)"
         required: false
@@ -40,6 +45,7 @@ jobs:
       location: ${{ steps.params.outputs.location }}
       data_filesystem: ${{ steps.params.outputs.data_filesystem }}
       deploy_immediately: ${{ steps.params.outputs.deploy_immediately }}
+      with_openondemand: ${{ steps.params.outputs.with_openondemand }}
       slurm_no_start: ${{ steps.params.outputs.slurm_no_start }}
       image: ${{ steps.params.outputs.image }}
 
@@ -51,6 +57,7 @@ jobs:
           LOCATION_IN: ${{ inputs.location }}
           DATA_FILESYSTEM_IN: ${{ inputs.data_filesystem }}
           DEPLOY_IMMEDIATELY_IN: ${{ inputs.deploy_immediately }}
+          WITH_OPENONDEMAND_IN: ${{ inputs.with_openondemand }}
           IMAGE_IN: ${{ inputs.image }}
         run: |
           set -euo pipefail
@@ -61,6 +68,7 @@ jobs:
               echo "location=westus3"
               echo "data_filesystem=false"
               echo "deploy_immediately=false"
+              echo "with_openondemand=false"
               echo "image="
             } >> "$GITHUB_OUTPUT"
           else
@@ -69,12 +77,14 @@ jobs:
             data_filesystem="${DATA_FILESYSTEM_IN:-false}"
             # Note: GitHub passes booleans as strings; default to "false"
             deploy_immediately="${DEPLOY_IMMEDIATELY_IN:-false}"
+            with_openondemand="${WITH_OPENONDEMAND_IN:-false}"
             image="${IMAGE_IN:-}"
 
             {
               echo "location=${location}"
               echo "data_filesystem=${data_filesystem}"
               echo "deploy_immediately=${deploy_immediately}"
+              echo "with_openondemand=${with_openondemand}"
               echo "image=${image}"
             } >> "$GITHUB_OUTPUT"
           fi
@@ -86,5 +96,6 @@ jobs:
       location: ${{ needs.init.outputs.location }}
       data_filesystem: ${{ needs.init.outputs.data_filesystem == 'true' }}
       deploy_immediately: ${{ needs.init.outputs.deploy_immediately == 'true' }}
+      with_openondemand: ${{ needs.init.outputs.with_openondemand == 'true' }}
       image: ${{ needs.init.outputs.image }}
     secrets: inherit
