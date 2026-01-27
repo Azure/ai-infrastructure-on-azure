@@ -68,6 +68,11 @@ on:
         required: false
         default: false
         type: boolean
+      with_openondemand:
+        description: "Enable Open OnDemand web portal"
+        required: false
+        default: false
+        type: boolean
       image:
         description: "VM image to use for all nodes (optional)"
         required: false
