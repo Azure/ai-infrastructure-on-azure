@@ -348,11 +348,9 @@ jobs:
           fi
 
       - name: Inject EventGrid topic for CycleCloud Application.Setting
-        id: start_cluster
         if: inputs.deploy_immediately
         env:
           EG_TOPIC: "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-ccw-eventgrid/providers/Microsoft.EventGrid/topics/evgt-ccw-eg-cyclecloud"
-          CLUSTER_NAME: ${{ inputs.cluster_name }}
           RG_NAME: ${{ steps.rg_name.outputs.resource_group }}
           VM_NAME: "ccw-cyclecloud-vm"
         run: |
@@ -389,34 +387,82 @@ jobs:
             --query "value[0].message" \
             --output tsv
 
+          echo "✅ EventGrid topic injected successfully"
+
+      - name: Initialize CycleCloud CLI for Open OnDemand
+        if: inputs.deploy_immediately && inputs.with_openondemand
+        env:
+          RG_NAME: ${{ steps.rg_name.outputs.resource_group }}
+          VM_NAME: "ccw-cyclecloud-vm"
+        run: |
+          set -euo pipefail
+
+          echo "🔧 Initializing CycleCloud CLI for Open OnDemand..."
+          INIT_OUTPUT=$(az vm run-command invoke \
+            --resource-group "$RG_NAME" \
+            --name "$VM_NAME" \
+            --command-id RunShellScript \
+            --scripts "cyclecloud initialize --batch --identity --url=https://localhost --verify-ssl=false --loglevel=debug --force" \
+            --query "value[0].message" \
+            --output tsv)
+          echo "$INIT_OUTPUT"
+          if echo "$INIT_OUTPUT" | grep -qi "error"; then
+            echo "❌ ERROR: Failed to initialize CycleCloud CLI"
+            echo "::error::Failed to initialize CycleCloud CLI"
+            exit 1
+          fi
+          echo "✅ CycleCloud CLI initialized successfully"
+
+      - name: Start clusters
+        id: start_cluster
+        if: inputs.deploy_immediately
+        env:
+          CLUSTER_NAME: ${{ inputs.cluster_name }}
+          RG_NAME: ${{ steps.rg_name.outputs.resource_group }}
+          VM_NAME: "ccw-cyclecloud-vm"
+        run: |
+          set -euo pipefail
+
           # Capture cluster start time in ISO 8601 format
           CLUSTER_START_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           echo "⏱️ Cluster start time: ${CLUSTER_START_TIME}"
           echo "cluster_start_time=${CLUSTER_START_TIME}" >> "$GITHUB_OUTPUT"
-          
-          # Start the cluster after injecting the EventGrid topic
+
+          # Start the Slurm cluster
           echo "🚀 Starting Slurm cluster '${CLUSTER_NAME}'..."
-          az vm run-command invoke \
+          SLURM_OUTPUT=$(az vm run-command invoke \
             --resource-group "$RG_NAME" \
             --name "$VM_NAME" \
             --command-id RunShellScript \
             --scripts "/usr/local/bin/cyclecloud start_cluster \"${CLUSTER_NAME}\"" \
             --query "value[0].message" \
-            --output tsv
+            --output tsv)
+          echo "$SLURM_OUTPUT"
+          if echo "$SLURM_OUTPUT" | grep -qi "error"; then
+            echo "❌ ERROR: Failed to start Slurm cluster"
+            echo "::error::Failed to start Slurm cluster '${CLUSTER_NAME}'"
+            exit 1
+          fi
 
           # Start OOD cluster if Open OnDemand is enabled
           if [ "${{ inputs.with_openondemand }}" = "true" ]; then
             echo "🚀 Starting Open OnDemand cluster 'ood'..."
-            az vm run-command invoke \
+            OOD_OUTPUT=$(az vm run-command invoke \
               --resource-group "$RG_NAME" \
               --name "$VM_NAME" \
               --command-id RunShellScript \
               --scripts "/usr/local/bin/cyclecloud start_cluster \"ood\"" \
               --query "value[0].message" \
-              --output tsv
+              --output tsv)
+            echo "$OOD_OUTPUT"
+            if echo "$OOD_OUTPUT" | grep -qi "error"; then
+              echo "❌ ERROR: Failed to start OOD cluster"
+              echo "::error::Failed to start OOD cluster 'ood'"
+              exit 1
+            fi
           fi
 
-          echo "✅ EventGrid topic injected successfully"
+          echo "✅ Clusters started successfully"
 
       - name: Re-authenticate with Azure (refresh token)
         if: inputs.deploy_immediately
@@ -434,8 +480,14 @@ jobs:
           LOG_ANALYTICS_WORKSPACE_NAME: "law-ccw-eg"
           NODES_TO_CHECK: '["login-1", "scheduler"]'
           CLUSTER_START_TIME: ${{ steps.start_cluster.outputs.cluster_start_time }}
+          WITH_OPENONDEMAND: ${{ inputs.with_openondemand }}
         run: |
           set -euo pipefail
+
+          # Add ood node to check list if Open OnDemand is enabled
+          if [ "${WITH_OPENONDEMAND}" = "true" ]; then
+            NODES_TO_CHECK=$(echo "${NODES_TO_CHECK}" | jq '. + ["ood"]')
+          fi
 
           echo "🔍 Checking if nodes are ready in Log Analytics..."
           echo "📋 Nodes to check: ${NODES_TO_CHECK}"
