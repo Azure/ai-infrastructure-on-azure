@@ -318,6 +318,7 @@ jobs:
           fi
 
       - name: Inject EventGrid topic for CycleCloud Application.Setting
+        id: start_cluster
         if: inputs.deploy_immediately
         env:
           EG_TOPIC: "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-ccw-eventgrid/providers/Microsoft.EventGrid/topics/evgt-ccw-eg-cyclecloud"
@@ -368,6 +369,11 @@ jobs:
             --query "value[0].message" \
             --output tsv
 
+          # Capture cluster start time in ISO 8601 format
+          CLUSTER_START_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          echo "⏱️ Cluster start time: ${CLUSTER_START_TIME}"
+          echo "cluster_start_time=${CLUSTER_START_TIME}" >> "$GITHUB_OUTPUT"
+
           echo "✅ EventGrid topic injected successfully"
 
       - name: Re-authenticate with Azure (refresh token)
@@ -385,6 +391,7 @@ jobs:
           LOG_ANALYTICS_RG: "rg-ccw-eventgrid"
           LOG_ANALYTICS_WORKSPACE_NAME: "law-ccw-eg"
           NODES_TO_CHECK: '["login-1", "scheduler"]'
+          CLUSTER_START_TIME: ${{ steps.start_cluster.outputs.cluster_start_time }}
         run: |
           set -euo pipefail
 
@@ -406,9 +413,9 @@ jobs:
           fi
           echo "✅ Retrieved Workspace ID: ${LOG_ANALYTICS_WORKSPACE_ID}"
 
-          # Calculate the start time (current time minus 10 minutes) in ISO 8601 format
-          START_TIME=$(date -u -d '10 minutes ago' +"%Y-%m-%dT%H:%M:%SZ")
-          echo "⏱️ Checking for events since: ${START_TIME}"
+          # Use cluster start time from previous step
+          START_TIME="${CLUSTER_START_TIME}"
+          echo "⏱️ Checking for events since cluster start: ${START_TIME}"
 
           # KQL query to check node readiness
           KQL_QUERY="let nodesToCheck = dynamic(${NODES_TO_CHECK});
@@ -526,6 +533,84 @@ jobs:
             echo "🎉 SUCCESS: All required nodes (login-1, scheduler) are ready"
             echo "::notice::Node readiness check passed"
           fi
+
+      - name: Query node startup time summary
+        if: inputs.deploy_immediately
+        env:
+          LOG_ANALYTICS_RG: "rg-ccw-eventgrid"
+          LOG_ANALYTICS_WORKSPACE_NAME: "law-ccw-eg"
+          CLUSTER_START_TIME: ${{ steps.start_cluster.outputs.cluster_start_time }}
+        run: |
+          set -euo pipefail
+
+          echo "📊 Querying node startup time summary..."
+          echo "⏱️ Using cluster start time: ${CLUSTER_START_TIME}"
+
+          # Retrieve the Log Analytics Workspace ID
+          LOG_ANALYTICS_WORKSPACE_ID=$(az monitor log-analytics workspace show \
+            --resource-group "${LOG_ANALYTICS_RG}" \
+            --workspace-name "${LOG_ANALYTICS_WORKSPACE_NAME}" \
+            --query "customerId" \
+            --output tsv)
+
+          if [ -z "${LOG_ANALYTICS_WORKSPACE_ID}" ]; then
+            echo "⚠️ WARNING: Failed to retrieve Log Analytics Workspace ID"
+            echo "Skipping node startup time summary..."
+            exit 0
+          fi
+
+          # KQL query to get node startup times
+          KQL_QUERY="let startTime = datetime(${CLUSTER_START_TIME});
+          CycleCloudEvents_CL
+          | where TimeGenerated > startTime
+          | where EventType == \"Microsoft.CycleCloud.NodeCreated\"
+          | where Status == \"Succeeded\"
+          | extend VMCreateTime = Timing.CreateVM, ConfigureTime = Timing.Configure
+          | project TimeGenerated, ClusterName, NodeName, VmSku, Status, VMCreateTime, ConfigureTime
+          | order by TimeGenerated desc"
+
+          echo "🔧 Executing KQL query..."
+          QUERY_OUTPUT=$(az monitor log-analytics query \
+            --workspace "${LOG_ANALYTICS_WORKSPACE_ID}" \
+            --analytics-query "${KQL_QUERY}" \
+            --output json 2>&1) || true
+
+          # Check if output is valid JSON
+          if ! echo "${QUERY_OUTPUT}" | jq empty 2>/dev/null; then
+            echo "⚠️ WARNING: Query output is not valid JSON"
+            echo "Skipping node startup time summary..."
+            exit 0
+          fi
+
+          # Extract results - handle Log Analytics API v2 format
+          if echo "${QUERY_OUTPUT}" | jq -e '.tables' >/dev/null 2>&1; then
+            RESULT=$(echo "${QUERY_OUTPUT}" | jq '[.tables[0] | .columns as $cols | .rows[] | [[$cols[].name], .] | transpose | map({(.[0]): .[1]}) | add]')
+          else
+            RESULT="${QUERY_OUTPUT}"
+          fi
+
+          RESULT_COUNT=$(echo "$RESULT" | jq 'length')
+
+          if [ "$RESULT_COUNT" -eq 0 ]; then
+            echo "ℹ️ No node startup events found since cluster start (${CLUSTER_START_TIME})"
+            echo "## Node Startup Times" >> "$GITHUB_STEP_SUMMARY"
+            echo "ℹ️ No node startup events found since cluster start (${CLUSTER_START_TIME})" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          echo "✅ Found ${RESULT_COUNT} node startup events"
+
+          # Generate summary table
+          {
+            echo "## Node Startup Times"
+            echo ""
+            echo "| Node Name | VM SKU | VM Create Time | Configure Time | Timestamp |"
+            echo "|-----------|--------|----------------|----------------|-----------|"
+            echo "$RESULT" | jq -r '.[] | "| \(.NodeName) | \(.VmSku) | \(.VMCreateTime) | \(.ConfigureTime) | \(.TimeGenerated) |"'
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "📋 Node startup time summary added to job summary"
 
       - name: Check CycleCloud VM cloud-init logs
         if: failure() && inputs.deploy_immediately
