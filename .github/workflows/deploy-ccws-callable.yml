@@ -486,7 +486,7 @@ jobs:
 
           # Add ood node to check list if Open OnDemand is enabled
           if [ "${WITH_OPENONDEMAND}" = "true" ]; then
-            NODES_TO_CHECK=$(echo "${NODES_TO_CHECK}" | jq '. + ["ood"]')
+            NODES_TO_CHECK=$(echo "${NODES_TO_CHECK}" | jq '. + ["OOD"]')
           fi
 
           echo "🔍 Checking if nodes are ready in Log Analytics..."
