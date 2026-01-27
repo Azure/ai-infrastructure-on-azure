@@ -446,18 +446,18 @@ jobs:
 
           # Start OOD cluster if Open OnDemand is enabled
           if [ "${{ inputs.with_openondemand }}" = "true" ]; then
-            echo "🚀 Starting Open OnDemand cluster 'ood'..."
+            echo "🚀 Starting Open OnDemand cluster 'OpenOnDemand'..."
             OOD_OUTPUT=$(az vm run-command invoke \
               --resource-group "$RG_NAME" \
               --name "$VM_NAME" \
               --command-id RunShellScript \
-              --scripts "/usr/local/bin/cyclecloud start_cluster \"ood\"" \
+              --scripts "/usr/local/bin/cyclecloud start_cluster \"OpenOnDemand\"" \
               --query "value[0].message" \
               --output tsv)
             echo "$OOD_OUTPUT"
             if echo "$OOD_OUTPUT" | grep -qi "error"; then
               echo "❌ ERROR: Failed to start OOD cluster"
-              echo "::error::Failed to start OOD cluster 'ood'"
+              echo "::error::Failed to start OOD cluster 'OpenOnDemand'"
               exit 1
             fi
           fi
