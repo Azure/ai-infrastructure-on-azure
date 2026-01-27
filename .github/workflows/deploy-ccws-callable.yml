@@ -275,6 +275,8 @@ jobs:
           fi
           # Do no start the Slurm cluster automatically
           args+=(--slurm-no-start)
+          # Do no start the Open OnDemand cluster automatically
+          args+=(--ood-no-start)
           # Execute
           "$script" "${args[@]}"
 
@@ -387,6 +389,11 @@ jobs:
             --query "value[0].message" \
             --output tsv
 
+          # Capture cluster start time in ISO 8601 format
+          CLUSTER_START_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          echo "⏱️ Cluster start time: ${CLUSTER_START_TIME}"
+          echo "cluster_start_time=${CLUSTER_START_TIME}" >> "$GITHUB_OUTPUT"
+          
           # Start the cluster after injecting the EventGrid topic
           echo "🚀 Starting Slurm cluster '${CLUSTER_NAME}'..."
           az vm run-command invoke \
@@ -397,10 +404,17 @@ jobs:
             --query "value[0].message" \
             --output tsv
 
-          # Capture cluster start time in ISO 8601 format
-          CLUSTER_START_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          echo "⏱️ Cluster start time: ${CLUSTER_START_TIME}"
-          echo "cluster_start_time=${CLUSTER_START_TIME}" >> "$GITHUB_OUTPUT"
+          # Start OOD cluster if Open OnDemand is enabled
+          if [ "${{ inputs.with_openondemand }}" = "true" ]; then
+            echo "🚀 Starting Open OnDemand cluster 'ood'..."
+            az vm run-command invoke \
+              --resource-group "$RG_NAME" \
+              --name "$VM_NAME" \
+              --command-id RunShellScript \
+              --scripts "/usr/local/bin/cyclecloud start_cluster \"ood\"" \
+              --query "value[0].message" \
+              --output tsv
+          fi
 
           echo "✅ EventGrid topic injected successfully"
 

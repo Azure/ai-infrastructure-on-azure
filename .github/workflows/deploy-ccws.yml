@@ -46,7 +46,6 @@ jobs:
       data_filesystem: ${{ steps.params.outputs.data_filesystem }}
       deploy_immediately: ${{ steps.params.outputs.deploy_immediately }}
       with_openondemand: ${{ steps.params.outputs.with_openondemand }}
-      slurm_no_start: ${{ steps.params.outputs.slurm_no_start }}
       image: ${{ steps.params.outputs.image }}
 
     steps:
