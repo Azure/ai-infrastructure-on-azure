@@ -4,8 +4,6 @@ name: Lint checker
 on:
   pull_request: null
 
-permissions: {}
-
 jobs:
   build:
     name: Lint checker
@@ -15,6 +13,7 @@ jobs:
       contents: write
       packages: read
       statuses: write
+      workflows: write
 
     steps:
       - name: Checkout code
