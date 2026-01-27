@@ -109,6 +109,16 @@ jobs:
             echo "::error::ADMIN_PASSWORD secret is required"
             exit 1
           fi
+          if [ "${{ inputs.with_openondemand }}" = "true" ]; then
+            if [ -z "${{ secrets.AZURE_CCW_MI_RESOURCE_ID }}" ]; then
+              echo "::error::AZURE_CCW_MI_RESOURCE_ID secret is required when with_openondemand is enabled"
+              exit 1
+            fi
+            if [ -z "${{ secrets.AZURE_CCW_CLIENT_ID }}" ]; then
+              echo "::error::AZURE_CCW_CLIENT_ID secret is required when with_openondemand is enabled"
+              exit 1
+            fi
+          fi
 
       - name: Generate resource group name
         id: rg_name
@@ -160,6 +170,9 @@ jobs:
           GPU_MAX: ${{ inputs.gpu_max_nodes }}
           DATA_FILESYSTEM: ${{ inputs.data_filesystem }}
           DEPLOY_IMMEDIATELY: ${{ inputs.deploy_immediately }}
+          WITH_OPENONDEMAND: ${{ inputs.with_openondemand }}
+          AZURE_CCW_MI_RESOURCE_ID: ${{ secrets.AZURE_CCW_MI_RESOURCE_ID }}
+          AZURE_CCW_CLIENT_ID: ${{ secrets.AZURE_CCW_CLIENT_ID }}
           IMAGE: ${{ inputs.image }}
         run: |
           set -euo pipefail
@@ -203,6 +216,14 @@ jobs:
             cmd+=(--deploy)
           fi
 
+          if [ "${WITH_OPENONDEMAND}" = "true" ]; then
+            cmd+=(--entra-id)
+            cmd+=(--entra-app-umi "$AZURE_CCW_MI_RESOURCE_ID")
+            cmd+=(--entra-app-id "$AZURE_CCW_CLIENT_ID")
+            cmd+=(--open-ondemand)
+            cmd+=(--ood-user-domain "contoso.com")
+          fi
+
           # Emit the command as a single line to outputs for visibility/logging
           printf 'command=%q ' "${cmd[@]}" >> "$GITHUB_OUTPUT"
           echo >> "$GITHUB_OUTPUT" # newline
@@ -244,6 +265,13 @@ jobs:
           fi
           if [ "${{ inputs.deploy_immediately }}" = "true" ]; then
             args+=(--deploy)
+          fi
+          if [ "${{ inputs.with_openondemand }}" = "true" ]; then
+            args+=(--entra-id)
+            args+=(--entra-app-umi "${{ secrets.AZURE_CCW_MI_RESOURCE_ID }}")
+            args+=(--entra-app-id "${{ secrets.AZURE_CCW_CLIENT_ID }}")
+            args+=(--open-ondemand)
+            args+=(--ood-user-domain "contoso.com")
           fi
           # Do no start the Slurm cluster automatically
           args+=(--slurm-no-start)
