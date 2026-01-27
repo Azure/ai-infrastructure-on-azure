@@ -21,12 +21,14 @@ jobs:
       matrix:
         data_filesystem: [true]
         image: ["cycle.image.ubuntu24", "almalinux9"]
+        ood : [true]
     uses: ./.github/workflows/deploy-ccws-callable.yml
     with:
       location: westus3
       data_filesystem: ${{ matrix.data_filesystem }}
       deploy_immediately: true
       image: ${{ matrix.image }}
+      with_openondemand: ${{ matrix.ood }}
     secrets: inherit
 
   deploy-without-amlfs:
@@ -37,10 +39,12 @@ jobs:
       matrix:
         data_filesystem: [false]
         image: ["cycle.image.ubuntu22", "almalinux8"]
+        ood : [false]
     uses: ./.github/workflows/deploy-ccws-callable.yml
     with:
       location: westus3
       data_filesystem: ${{ matrix.data_filesystem }}
       deploy_immediately: true
       image: ${{ matrix.image }}
+      with_openondemand: ${{ matrix.ood }}
     secrets: inherit
