@@ -68,6 +68,11 @@ on:
         required: false
         default: false
         type: boolean
+      with_openondemand:
+        description: "Enable Open OnDemand web portal"
+        required: false
+        default: false
+        type: boolean
       image:
         description: "VM image to use for all nodes (optional)"
         required: false
@@ -103,6 +108,16 @@ jobs:
           if [ -z "${{ secrets.ADMIN_PASSWORD }}" ]; then
             echo "::error::ADMIN_PASSWORD secret is required"
             exit 1
+          fi
+          if [ "${{ inputs.with_openondemand }}" = "true" ]; then
+            if [ -z "${{ secrets.AZURE_CCW_MI_RESOURCE_ID }}" ]; then
+              echo "::error::AZURE_CCW_MI_RESOURCE_ID secret is required when with_openondemand is enabled"
+              exit 1
+            fi
+            if [ -z "${{ secrets.AZURE_CCW_CLIENT_ID }}" ]; then
+              echo "::error::AZURE_CCW_CLIENT_ID secret is required when with_openondemand is enabled"
+              exit 1
+            fi
           fi
 
       - name: Generate resource group name
@@ -155,6 +170,9 @@ jobs:
           GPU_MAX: ${{ inputs.gpu_max_nodes }}
           DATA_FILESYSTEM: ${{ inputs.data_filesystem }}
           DEPLOY_IMMEDIATELY: ${{ inputs.deploy_immediately }}
+          WITH_OPENONDEMAND: ${{ inputs.with_openondemand }}
+          AZURE_CCW_MI_RESOURCE_ID: ${{ secrets.AZURE_CCW_MI_RESOURCE_ID }}
+          AZURE_CCW_CLIENT_ID: ${{ secrets.AZURE_CCW_CLIENT_ID }}
           IMAGE: ${{ inputs.image }}
         run: |
           set -euo pipefail
@@ -196,6 +214,14 @@ jobs:
 
           if [ "${DEPLOY_IMMEDIATELY}" = "true" ]; then
             cmd+=(--deploy)
+          fi
+
+          if [ "${WITH_OPENONDEMAND}" = "true" ]; then
+            cmd+=(--entra-id)
+            cmd+=(--entra-app-umi "$AZURE_CCW_MI_RESOURCE_ID")
+            cmd+=(--entra-app-id "$AZURE_CCW_CLIENT_ID")
+            cmd+=(--open-ondemand)
+            cmd+=(--ood-user-domain "contoso.com")
           fi
 
           # Emit the command as a single line to outputs for visibility/logging
@@ -240,8 +266,17 @@ jobs:
           if [ "${{ inputs.deploy_immediately }}" = "true" ]; then
             args+=(--deploy)
           fi
+          if [ "${{ inputs.with_openondemand }}" = "true" ]; then
+            args+=(--entra-id)
+            args+=(--entra-app-umi "${{ secrets.AZURE_CCW_MI_RESOURCE_ID }}")
+            args+=(--entra-app-id "${{ secrets.AZURE_CCW_CLIENT_ID }}")
+            args+=(--open-ondemand)
+            args+=(--ood-user-domain "contoso.com")
+          fi
           # Do no start the Slurm cluster automatically
           args+=(--slurm-no-start)
+          # Do no start the Open OnDemand cluster automatically
+          args+=(--ood-no-start)
           # Execute
           "$script" "${args[@]}"
 
@@ -313,11 +348,9 @@ jobs:
           fi
 
       - name: Inject EventGrid topic for CycleCloud Application.Setting
-        id: start_cluster
         if: inputs.deploy_immediately
         env:
           EG_TOPIC: "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-ccw-eventgrid/providers/Microsoft.EventGrid/topics/evgt-ccw-eg-cyclecloud"
-          CLUSTER_NAME: ${{ inputs.cluster_name }}
           RG_NAME: ${{ steps.rg_name.outputs.resource_group }}
           VM_NAME: "ccw-cyclecloud-vm"
         run: |
@@ -354,22 +387,82 @@ jobs:
             --query "value[0].message" \
             --output tsv
 
-          # Start the cluster after injecting the EventGrid topic
-          echo "🚀 Starting Slurm cluster '${CLUSTER_NAME}'..."
-          az vm run-command invoke \
+          echo "✅ EventGrid topic injected successfully"
+
+      - name: Initialize CycleCloud CLI for Open OnDemand
+        if: inputs.deploy_immediately && inputs.with_openondemand
+        env:
+          RG_NAME: ${{ steps.rg_name.outputs.resource_group }}
+          VM_NAME: "ccw-cyclecloud-vm"
+        run: |
+          set -euo pipefail
+
+          echo "🔧 Initializing CycleCloud CLI for Open OnDemand..."
+          INIT_OUTPUT=$(az vm run-command invoke \
             --resource-group "$RG_NAME" \
             --name "$VM_NAME" \
             --command-id RunShellScript \
-            --scripts "/usr/local/bin/cyclecloud start_cluster \"${CLUSTER_NAME}\"" \
+            --scripts "cyclecloud initialize --batch --identity --url=https://localhost --verify-ssl=false --loglevel=debug --force" \
             --query "value[0].message" \
-            --output tsv
+            --output tsv)
+          echo "$INIT_OUTPUT"
+          if echo "$INIT_OUTPUT" | grep -qi "error"; then
+            echo "❌ ERROR: Failed to initialize CycleCloud CLI"
+            echo "::error::Failed to initialize CycleCloud CLI"
+            exit 1
+          fi
+          echo "✅ CycleCloud CLI initialized successfully"
+
+      - name: Start clusters
+        id: start_cluster
+        if: inputs.deploy_immediately
+        env:
+          CLUSTER_NAME: ${{ inputs.cluster_name }}
+          RG_NAME: ${{ steps.rg_name.outputs.resource_group }}
+          VM_NAME: "ccw-cyclecloud-vm"
+        run: |
+          set -euo pipefail
 
           # Capture cluster start time in ISO 8601 format
           CLUSTER_START_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           echo "⏱️ Cluster start time: ${CLUSTER_START_TIME}"
           echo "cluster_start_time=${CLUSTER_START_TIME}" >> "$GITHUB_OUTPUT"
 
-          echo "✅ EventGrid topic injected successfully"
+          # Start the Slurm cluster
+          echo "🚀 Starting Slurm cluster '${CLUSTER_NAME}'..."
+          SLURM_OUTPUT=$(az vm run-command invoke \
+            --resource-group "$RG_NAME" \
+            --name "$VM_NAME" \
+            --command-id RunShellScript \
+            --scripts "/usr/local/bin/cyclecloud start_cluster \"${CLUSTER_NAME}\"" \
+            --query "value[0].message" \
+            --output tsv)
+          echo "$SLURM_OUTPUT"
+          if echo "$SLURM_OUTPUT" | grep -qi "error"; then
+            echo "❌ ERROR: Failed to start Slurm cluster"
+            echo "::error::Failed to start Slurm cluster '${CLUSTER_NAME}'"
+            exit 1
+          fi
+
+          # Start OOD cluster if Open OnDemand is enabled
+          if [ "${{ inputs.with_openondemand }}" = "true" ]; then
+            echo "🚀 Starting Open OnDemand cluster 'OpenOnDemand'..."
+            OOD_OUTPUT=$(az vm run-command invoke \
+              --resource-group "$RG_NAME" \
+              --name "$VM_NAME" \
+              --command-id RunShellScript \
+              --scripts "/usr/local/bin/cyclecloud start_cluster \"OpenOnDemand\"" \
+              --query "value[0].message" \
+              --output tsv)
+            echo "$OOD_OUTPUT"
+            if echo "$OOD_OUTPUT" | grep -qi "error"; then
+              echo "❌ ERROR: Failed to start OOD cluster"
+              echo "::error::Failed to start OOD cluster 'OpenOnDemand'"
+              exit 1
+            fi
+          fi
+
+          echo "✅ Clusters started successfully"
 
       - name: Re-authenticate with Azure (refresh token)
         if: inputs.deploy_immediately
@@ -387,8 +480,14 @@ jobs:
           LOG_ANALYTICS_WORKSPACE_NAME: "law-ccw-eg"
           NODES_TO_CHECK: '["login-1", "scheduler"]'
           CLUSTER_START_TIME: ${{ steps.start_cluster.outputs.cluster_start_time }}
+          WITH_OPENONDEMAND: ${{ inputs.with_openondemand }}
         run: |
           set -euo pipefail
+
+          # Add ood node to check list if Open OnDemand is enabled
+          if [ "${WITH_OPENONDEMAND}" = "true" ]; then
+            NODES_TO_CHECK=$(echo "${NODES_TO_CHECK}" | jq '. + ["OOD"]')
+          fi
 
           echo "🔍 Checking if nodes are ready in Log Analytics..."
           echo "📋 Nodes to check: ${NODES_TO_CHECK}"

@@ -4,8 +4,6 @@ name: Lint checker
 on:
   pull_request: null
 
-permissions: {}
-
 jobs:
   build:
     name: Lint checker
