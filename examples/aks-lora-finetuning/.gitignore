@@ -1,0 +1,36 @@
+# Environment & secrets
+config.env
+.env*
+*.key
+*.pem
+secrets/
+
+# Azure & Kubernetes
+.azure/
+*.kubeconfig
+
+# Model & data files (large)
+*.bin
+*.safetensors
+models/
+checkpoints/
+.cache/
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# OS & IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/settings.json
+*.swp
+
+# Temporary
+*.log
+*.tmp
+temp/
+tmp/

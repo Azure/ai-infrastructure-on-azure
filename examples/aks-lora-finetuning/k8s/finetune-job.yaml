@@ -1,0 +1,56 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: gpt-oss-finetune
+  namespace: workloads
+spec:
+  # Allow 0 retries to prevent pod cleanup before we can check logs
+  backoffLimit: 0
+  # Keep failed pods for debugging
+  ttlSecondsAfterFinished: 3600
+  
+  template:
+    metadata:
+      labels:
+        app: gpt-oss-finetune
+        azure.workload.identity/use: "true"  # Enable workload identity
+    spec:
+      # Use workload identity service account for blob storage access
+      serviceAccountName: workload-identity-sa
+      
+      # Tolerate GPU node taints
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+      
+      restartPolicy: Never
+      
+      containers:
+      - name: finetune
+        image: __ACR_NAME__.azurecr.io/gpt-oss-finetune:latest
+        imagePullPolicy: Always
+        
+        # Environment variables for Azure Storage
+        env:
+        - name: STORAGE_ACCOUNT_NAME
+          value: "__STORAGE_ACCOUNT_NAME__"
+        - name: MODEL_CONTAINER
+          value: "models"
+        - name: DATASET_CONTAINER
+          value: "datasets"
+        
+        # Request 1 H100 GPU (Standard_NC40ads_H100_v5: 40 vCPUs, 96GB RAM)
+        resources:
+          requests:
+            nvidia.com/gpu: 1
+            memory: "80Gi"
+            cpu: "32"
+          limits:
+            nvidia.com/gpu: 1
+            memory: "96Gi"
+            cpu: "40"
+        
+        # Set working directory
+        workingDir: /workspace
