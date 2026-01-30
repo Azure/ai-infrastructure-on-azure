@@ -1,0 +1,49 @@
+# AKS GPU Fine-tuning Project Configuration Template
+# Copy this to config.sh and fill in your values
+# DO NOT commit config.sh to version control
+
+# Fix Git Bash path conversion issue on Windows (safe to keep on all platforms)
+# Set this in your shell: export MSYS_NO_PATHCONV=1
+MSYS_NO_PATHCONV=1
+
+# Azure Subscription
+SUBSCRIPTION_ID=""
+
+# Project Configuration
+PROJECT_NAME="aks-gpu-finetune"
+LOCATION="switzerlandnorth"
+
+# UNIQUE SUFFIX - Required for globally unique resource names!
+# Option 1: Set your own suffix (e.g., your initials + random: "cp1234")
+# Option 2: Leave empty to auto-generate on first run
+UNIQUE_SUFFIX=""
+
+# Resource Names (defaults are set from PROJECT_NAME in scripts)
+# Override below ONLY if you want fully custom names
+RESOURCE_GROUP_NAME=""
+AKS_CLUSTER_NAME=""
+# For custom storage/ACR names, uncomment and set these in your config.env
+STORAGE_ACCOUNT_NAME=""
+ACR_NAME=""
+
+# Storage configuration
+STORAGE_CONTAINER_NAME="models"
+STORAGE_DATASET_CONTAINER="datasets"
+
+# AKS configuration
+AKS_SYSTEM_NODE_COUNT=1
+AKS_SYSTEM_NODE_SIZE="Standard_D2s_v6"
+AKS_GPU_NODE_POOL_NAME="gpupool"
+AKS_GPU_NODE_MIN_COUNT=0
+# Max 1 node
+AKS_GPU_NODE_MAX_COUNT=1
+# 2 H100 GPUs per node
+AKS_GPU_NODE_SIZE="Standard_NC80adis_H100_v5"
+AKS_NODE_DISK_SIZE=100
+AKS_VERSION="1.32"
+
+# Container Registry
+ACR_SKU="Basic"
+
+# Common tags (set dynamically from PROJECT_NAME in scripts)
+TAGS=""

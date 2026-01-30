@@ -48,8 +48,8 @@ This repo demonstrates fine-tuning GPT-OSS 20B to achieve this behavior using Lo
 
 ```bash
 # 1. Configure your environment
-cp config.env.template config.env
-# Edit config.env with your Azure subscription and settings
+cp config.sh.template config.sh
+# Edit config.sh with your Azure subscription and settings
 # Requires Azure subscription with GPU quota for NC80adis_H100_v5 adjust region if needed
 
 # 2. Login to Azure

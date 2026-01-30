@@ -9,9 +9,9 @@ export MSYS_NO_PATHCONV=1
 
 # Load config with Windows/Linux line ending compatibility
 load_config() {
-    local config_file="${1:-./config.env}"
+    local config_file="${1:-./config.sh}"
     if [[ ! -f "$config_file" ]]; then
-        echo "Error: $config_file not found. Copy config.env.template to config.env"
+        echo "Error: $config_file not found. Copy config.sh.template to config.sh"
         exit 1
     fi
     
@@ -35,15 +35,20 @@ build_resource_names() {
         fi
         echo "⚠ No UNIQUE_SUFFIX set - generated: $UNIQUE_SUFFIX"
     fi
-    
-    # Build names with suffix
+
+    # Build names from PROJECT_NAME if not explicitly set
+    RESOURCE_GROUP_NAME="${RESOURCE_GROUP_NAME:-${PROJECT_NAME}-rg}"
+    AKS_CLUSTER_NAME="${AKS_CLUSTER_NAME:-${PROJECT_NAME}-aks}"
+    TAGS="${TAGS:-project=${PROJECT_NAME} environment=dev purpose=ml-training}"
+
+    # Build storage/ACR names with suffix
     STORAGE_ACCOUNT_NAME="${STORAGE_ACCOUNT_NAME:-aksgpustorage${UNIQUE_SUFFIX}}"
     ACR_NAME="${ACR_NAME:-aksgpuacr${UNIQUE_SUFFIX}}"
-    
+
     # Validate storage account name (lowercase, alphanumeric, max 24 chars)
     STORAGE_ACCOUNT_NAME=$(echo "$STORAGE_ACCOUNT_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9' | cut -c1-24)
-    
-    export UNIQUE_SUFFIX STORAGE_ACCOUNT_NAME ACR_NAME
+
+    export UNIQUE_SUFFIX STORAGE_ACCOUNT_NAME ACR_NAME RESOURCE_GROUP_NAME AKS_CLUSTER_NAME TAGS
 }
 
 # Check prerequisites
