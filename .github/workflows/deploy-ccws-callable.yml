@@ -39,9 +39,8 @@ on:
         default: "ccw"
         type: string
       workspace_ref:
-        description: "Git ref (branch/tag) to checkout"
+        description: "Git ref (branch/tag) to checkout (defaults to latest release)"
         required: false
-        default: "2025.12.01"
         type: string
       htc_max_nodes:
         description: "Maximum nodes for HTC partition"
@@ -193,12 +192,15 @@ jobs:
             --scheduler-sku "$SCHEDULER_SKU"
             --login-sku "$LOGIN_SKU"
             --cluster-name "$CLUSTER_NAME"
-            --workspace-ref "$WORKSPACE_REF"
             --htc-max-nodes "$HTC_MAX"
             --hpc-max-nodes "$HPC_MAX"
             --gpu-max-nodes "$GPU_MAX"
             --bastion --accept-marketplace --no-az --silent
           )
+
+          if [ -n "${WORKSPACE_REF}" ]; then
+            cmd+=(--workspace-ref "$WORKSPACE_REF")
+          fi
 
           if [ -n "${IMAGE}" ]; then
             cmd+=(--htc-image "$IMAGE")
@@ -247,12 +249,14 @@ jobs:
             --admin-username "hpcadmin"
             --scheduler-sku "${{ inputs.scheduler_sku }}"
             --login-sku "${{ inputs.login_sku }}"
-            --workspace-ref "${{ inputs.workspace_ref }}"
             --htc-max-nodes "${{ inputs.htc_max_nodes }}"
             --hpc-max-nodes "${{ inputs.hpc_max_nodes }}"
             --gpu-max-nodes "${{ inputs.gpu_max_nodes }}"
             --bastion --accept-marketplace --no-az --silent
           )
+          if [ -n "${{ inputs.workspace_ref }}" ]; then
+            args+=(--workspace-ref "${{ inputs.workspace_ref }}")
+          fi
           if [ -n "${{ inputs.image }}" ]; then
             args+=(--htc-image "${{ inputs.image }}")
             args+=(--hpc-image "${{ inputs.image }}")
