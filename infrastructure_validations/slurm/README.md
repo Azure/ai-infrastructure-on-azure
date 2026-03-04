@@ -21,6 +21,13 @@ sudo nvidia-smi -pm 1
 sudo nvidia-smi -lgc 1980 --mode 1
 ```
 
+Example for NDv6 GB300 GPU
+
+```bash
+sudo nvidia-smi -pm 1
+# Check supported clock ranges with: nvidia-smi -q -d SUPPORTED_CLOCKS
+```
+
 ## 2. Node Health Checks (NHC)
 
 We used AzureHPC Node Health Checks (AzNHC) to validate node-level functionality. This solution builds on the well-established LBNL NHC framework and adds Azure-specific hardware validation for various HPC and AI VM SKUs, including the NDv5 H100-series used in this benchmark. AzNHC runs inside a Docker container and can be invoked directly via a wrapper script:
@@ -37,7 +44,7 @@ The firmware version check ensures consistent InfiniBand HCA firmware across nod
 
 Following node-level validation, we verified inter-node GPU communication performance using NCCL all-reduce tests. The Azure HPC image includes a prebuilt version of the NCCL test suite under `/opt/nccl-tests/build/`. The all-reduce test was run at full scale using MPI, testing collective bandwidth across all GPUs:
 
-We configured the NCCL environment for optimal collective performance, including CollNet/NVLS, GDR, and relaxed PCI ordering. If aggregate bandwidth deviated from expected baselines, we performed binary search and pairwise NCCL tests to isolate underperforming nodes. This method quickly identifies outliers that degrade collective performance.
+The test scripts auto-detect the GPU SKU (H100/H200 or GB300) and apply the appropriate NCCL settings — including CollNet/SHARP for NDv5, and MNNVL/NVLS for GB300. If aggregate bandwidth deviated from expected baselines, we performed binary search and pairwise NCCL tests to isolate underperforming nodes.
 
 ## 4. GPU Thermal Screening
 
