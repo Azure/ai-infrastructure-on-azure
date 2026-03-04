@@ -89,4 +89,4 @@ echo "$header"
 # ---------------------------------------------------------------------------
 # Run on all allocated nodes
 # ---------------------------------------------------------------------------
-srun --ntasks-per-node=1 bash -c 'run_node_test'
+srun --export=ALL --ntasks-per-node=1 /bin/bash -c 'run_node_test'
