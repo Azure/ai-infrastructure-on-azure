@@ -1,3 +1,8 @@
+---
+name: rack-topology
+description: "MNNVL domain discovery on Azure GB300 clusters. ClusterUUID lookup via nvidia-smi, expected rack sizes per SKU, FabricManager troubleshooting."
+---
+
 # Rack Topology
 
 How MNNVL domains work on Azure GB300 clusters, how to discover rack membership, and expected rack structure per SKU.

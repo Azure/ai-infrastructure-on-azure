@@ -1,3 +1,8 @@
+---
+name: thermal-stress-test
+description: "Run GPU thermal stress tests using dcgmproftester. Interpret pass/fail results, check temperatures, throttle reasons, and DCGMI diagnostic levels."
+---
+
 # Thermal Stress Test
 
 How to run GPU thermal stress tests using dcgmproftester and interpret the results.

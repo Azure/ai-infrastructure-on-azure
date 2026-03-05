@@ -1,3 +1,8 @@
+---
+name: node-drain-and-replace
+description: "Slurm node lifecycle management — drain, undrain, reboot, and file for replacement. Decision tree for when to drain vs reboot vs GHR."
+---
+
 # Node Drain and Replace
 
 Slurm node lifecycle management: when and how to drain, undrain, reboot, and file for replacement.

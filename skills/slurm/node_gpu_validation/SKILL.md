@@ -1,3 +1,8 @@
+---
+name: node-gpu-validation
+description: "Test GPU compute performance using ubergemm GEMM benchmarks. Parse CSV output, identify underperforming GPUs, run fleet-wide analysis."
+---
+
 # Node GPU Validation
 
 How to test GPU compute performance on individual nodes using NVIDIA's ubergemm GEMM benchmark.

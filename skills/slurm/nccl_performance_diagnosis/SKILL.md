@@ -1,3 +1,8 @@
+---
+name: nccl-performance-diagnosis
+description: "Analyze NCCL bandwidth results, scope intra-rack vs inter-rack failures, and use bisection algorithm to isolate bad nodes. GPU vs network root cause analysis."
+---
+
 # NCCL Performance Diagnosis
 
 How to analyze NCCL bandwidth results, identify what type of failure is occurring, and isolate the bad node(s).

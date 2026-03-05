@@ -1,3 +1,8 @@
+---
+name: sku-performance-baseline
+description: "Expected NCCL busbw, GPU GFlops, thermal limits, IB port counts, and rack sizes for GB300 and H100 SKUs. Warn and GHR thresholds."
+---
+
 # SKU Performance Baseline
 
 Expected performance values for Azure HPC GPU SKUs. Use these baselines to determine whether test results indicate healthy or degraded hardware.
