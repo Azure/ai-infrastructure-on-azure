@@ -10,26 +10,45 @@ These skills give the assistant the domain knowledge it needs to actually help �
 
 ## How to Use
 
-### Automatic (just open the repo)
+### Automatic discovery (just open the repo)
 
-The repo includes instruction files that AI assistants pick up automatically:
+Different AI assistants have their own conventions for auto-loading context from a repo. This repo includes files for the most common ones:
 
-- **GitHub Copilot** reads `.github/copilot-instructions.md`
-- **Claude** reads `CLAUDE.md`
+| Assistant | Discovery mechanism | What this repo provides |
+|-----------|-------------------|------------------------|
+| **GitHub Copilot** | `.github/copilot-instructions.md` — auto-loaded for every chat in this workspace | ✅ Points to skills in `skills/slurm/` |
+| **GitHub Copilot** | `.copilot/skills/<name>/SKILL.md` — each skill has a description and is selectively loaded when relevant to the query (not always-on) | ❌ Not yet added — see below |
+| **Claude (VS Code)** | `CLAUDE.md` at repo root — auto-loaded when the repo is opened | ✅ Points to skills in `skills/slurm/` |
+| **Claude Code** | `CLAUDE.md` at repo root + `CLAUDE.md` in subdirectories for scoped context | ✅ Repo-root file exists |
+| **Cursor** | `.cursor/rules/*.mdc` files with frontmatter (`description`, `globs`, `alwaysApply`) | ❌ Not yet added |
+| **Windsurf** | `.windsurfrules` at repo root | ❌ Not yet added |
 
-Both point the assistant to these skills. When you open this repo in VS Code and ask about cluster operations, the assistant already knows to look here.
+#### Adding `.copilot/skills/`
+
+Copilot skills use a directory structure where each skill gets a `SKILL.md` file with YAML-like metadata:
+
+```
+.copilot/skills/
+  nccl-diagnosis/
+    SKILL.md          # description + full skill content
+  gpu-validation/
+    SKILL.md
+  ...
+```
+
+Unlike `.github/copilot-instructions.md` (which is always loaded), skills are **selectively loaded based on query relevance** — better for large knowledge bases. If you want Copilot to pick the right skill automatically instead of loading everything, add this structure.
 
 ### On demand (attach to chat)
 
-Reference a specific skill when you need it:
+Reference a specific skill file directly in chat when you need it:
 
 - **Copilot Chat**: type `#file:skills/slurm/nccl_performance_diagnosis.md`
-- **Claude Chat**: drag the file into the chat input
-- Any assistant: paste or attach the skill markdown
+- **Claude Chat**: drag the file into the chat input or use `@file`
+- **Any assistant**: paste or attach the skill markdown
 
 ### As agent system prompts
 
-If you're building an AI agent, load the relevant skill markdown into the system prompt. The skills are written to be directly usable as context — they contain commands, thresholds, and decision logic, not just descriptions.
+If you're building an AI agent (e.g., with OpenAI, LangChain, or the `clusteradmin` agents in this project), load the relevant skill markdown into the system prompt. The skills are written to be directly usable as context — they contain commands, thresholds, and decision logic, not just descriptions.
 
 ## Skills Reference
 
