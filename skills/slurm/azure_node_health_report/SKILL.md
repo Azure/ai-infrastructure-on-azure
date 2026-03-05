@@ -1,3 +1,8 @@
+---
+name: azure-node-health-report
+description: "File Azure Guest Health Reports for node investigation or replacement. Complete impact category reference (26 categories), PhysicalHostName and Resource ID collection, REST API format, and insight polling."
+---
+
 # Azure Node Health Report (GHR)
 
 How to file an Azure Guest Health Report to request node investigation or replacement. Includes the complete impact category reference from official Microsoft documentation, data collection procedures, and REST API format.

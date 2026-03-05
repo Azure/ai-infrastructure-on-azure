@@ -1,3 +1,8 @@
+---
+name: nccl-allreduce-test
+description: "Run NCCL all_reduce_perf bandwidth tests via Slurm, configure per-SKU environment variables (MNNVL, SHARP, GDR), and interpret busbw results."
+---
+
 # NCCL AllReduce Test
 
 How to run NCCL all_reduce_perf bandwidth tests, configure environment variables per SKU, and interpret results.

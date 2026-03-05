@@ -1,3 +1,8 @@
+---
+name: ib-link-validation
+description: "Check InfiniBand connectivity, port state, partition keys, and error counters on Azure HPC nodes. Covers operstate, ibstat, pkey verification, link flap detection, and soft fixes."
+---
+
 # InfiniBand Link Validation
 
 How to check InfiniBand connectivity, port state, partition keys, and error counters on Azure HPC nodes.

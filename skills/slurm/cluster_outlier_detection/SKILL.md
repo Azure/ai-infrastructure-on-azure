@@ -1,3 +1,8 @@
+---
+name: cluster-outlier-detection
+description: "Statistical methods for identifying underperforming nodes from batch test results. Absolute thresholds, z-score, and MAD methods for fleet-wide GPU and NCCL analysis."
+---
+
 # Cluster Outlier Detection
 
 Statistical methods for identifying underperforming nodes from batch test results.
