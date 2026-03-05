@@ -10,34 +10,26 @@ These skills give the assistant the domain knowledge it needs to actually help �
 
 ## How to Use
 
-### As Copilot custom instructions
+### Automatic (just open the repo)
 
-Add skills as custom instructions so Copilot has them in context for every chat:
+The repo includes instruction files that AI assistants pick up automatically:
 
-1. Create `.github/copilot-instructions.md` in the repo (or your home directory) referencing the skills you need.
-2. Or point to them directly in VS Code settings:
+- **GitHub Copilot** reads `.github/copilot-instructions.md`
+- **Claude** reads `CLAUDE.md`
 
-```jsonc
-// .vscode/settings.json
-{
-  "github.copilot.chat.codeGeneration.instructions": [
-    { "file": "skills/slurm/sku_performance_baseline.md" },
-    { "file": "skills/slurm/nccl_allreduce_test.md" },
-    { "file": "skills/slurm/azure_node_health_report.md" }
-  ]
-}
-```
+Both point the assistant to these skills. When you open this repo in VS Code and ask about cluster operations, the assistant already knows to look here.
 
-### As chat context (on demand)
+### On demand (attach to chat)
 
-Attach a skill to a chat when you need it:
+Reference a specific skill when you need it:
 
-- In VS Code Copilot Chat, use `#file:skills/slurm/nccl_performance_diagnosis.md` to include a specific skill.
-- Or drag the file into the chat input.
+- **Copilot Chat**: type `#file:skills/slurm/nccl_performance_diagnosis.md`
+- **Claude Chat**: drag the file into the chat input
+- Any assistant: paste or attach the skill markdown
 
-### As agent skills
+### As agent system prompts
 
-If you're building an AI agent (e.g., with Claude, OpenAI, or Azure AI Foundry), load the relevant skill markdown into the agent's system prompt. The skills are written to be directly usable as system prompt context — they contain commands, thresholds, and decision logic, not just descriptions.
+If you're building an AI agent, load the relevant skill markdown into the system prompt. The skills are written to be directly usable as context — they contain commands, thresholds, and decision logic, not just descriptions.
 
 ## Skills Reference
 
