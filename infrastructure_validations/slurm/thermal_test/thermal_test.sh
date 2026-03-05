@@ -11,12 +11,15 @@ echo "Log directory: $LOGDIR"
 
 target=1004
 
+# Find the dcgmproftester binary (version may vary across images)
+DCGMPROFTESTER=$(command -v dcgmproftester13 2>/dev/null || command -v dcgmproftester12 2>/dev/null || echo "dcgmproftester")
+
 # Create the log file name using the hostname and current date
 LOGFILE="thermal_results.$(hostname).${target}.${DURATION}.${CURRENT_DATE}.csv"
 LOGPATH="${LOGDIR}/${LOGFILE}"
 
 # Runs the stress/diagnostic test on all GPUs (as background process)
-dcgmproftester12 --no-dcgm-validation --max-processes 0 -t $target -d $DURATION &
+$DCGMPROFTESTER --no-dcgm-validation --max-processes 0 -t $target -d $DURATION &
 
 # Capture the process ID (PID) of the last command (workload)
 WORKLOAD_PID=$!
