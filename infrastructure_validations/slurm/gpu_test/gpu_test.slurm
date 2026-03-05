@@ -1,46 +1,29 @@
 #!/bin/bash
 #SBATCH -p gpu
 #SBATCH --exclusive
+#SBATCH --ntasks-per-node=1
 #SBATCH --time=00:30:00
 #SBATCH --output=gpu_test.%J.out
 
 ###############################################################################
-# GPU GEMM (ubergemm) performance test  (batch script)
+# GPU GEMM (ubergemm) performance test
 #
-# Do NOT call sbatch directly on this file — use the launcher instead:
-#   ./gpu_test.sh --sku graceblackwell -N 4
-#   ./gpu_test.sh --sku hopper -N 8 -w ccw-gpu-[1-8]
-#
-# The launcher reads configs/<gen>.conf and passes --gpus-per-node and
-# --export=SKU to sbatch.
+# Pass --gpus-per-node on the sbatch command line:
+#   sbatch --gpus-per-node=4 -N 4 gpu_test.slurm                    # GB300
+#   sbatch --gpus-per-node=8 -N 8 -w ccw-gpu-[1-8] gpu_test.slurm   # H100
 ###############################################################################
 
 set -euo pipefail
 
-# SKU is passed via --export from the launcher
-if [ -z "${SKU:-}" ]; then
-	echo "ERROR: SKU not set. Use the launcher: ./gpu_test.sh --sku <name> -N <nodes>"
-	exit 1
-fi
-
-# Load generation config
-SCRIPT_PATH=$(scontrol show job "$SLURM_JOB_ID" | grep -oP 'Command=\K\S+')
-SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
-CONF="${SCRIPT_DIR}/configs/${SKU}.conf"
-
-if [ ! -f "$CONF" ]; then
-	echo "ERROR: Config not found: $CONF"
-	exit 1
-fi
-
-source "$CONF"
+UBERGEMM="/usr/libexec/datacenter-gpu-manager-4/plugins/cuda13/updated/ubergemm"
+TEST_DURATION=60
+NUM_GPUS="${SLURM_GPUS_ON_NODE:-8}"
 
 echo "=== GPU GEMM (ubergemm) performance test ==="
-echo "  Generation    : ${SKU}"
 echo "  Nodes         : ${SLURM_JOB_NUM_NODES}"
-echo "  GPUs/node     : ${GPUS_PER_NODE}"
+echo "  GPUs/node     : ${NUM_GPUS}"
 echo "  Test duration : ${TEST_DURATION}s per GPU"
-echo "  ubergemm      : ${UBERGEMM_PATH}"
+echo "  ubergemm      : ${UBERGEMM}"
 echo ""
 
 # ---------------------------------------------------------------------------
@@ -77,15 +60,13 @@ run_node_test() {
 }
 
 export -f run_node_test
-export UBERGEMM="$UBERGEMM_PATH"
-export TEST_DURATION
-export NUM_GPUS="$GPUS_PER_NODE"
+export UBERGEMM TEST_DURATION NUM_GPUS
 
 # ---------------------------------------------------------------------------
 # Print CSV header
 # ---------------------------------------------------------------------------
 header="hostname"
-for gpu in $(seq 0 $((GPUS_PER_NODE - 1))); do
+for gpu in $(seq 0 $((NUM_GPUS - 1))); do
 	header="$header,gpu${gpu}_gflops"
 done
 echo "$header"
