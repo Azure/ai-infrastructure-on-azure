@@ -15,5 +15,9 @@
 #   sbatch --gpus-per-node=4 -w ccw-gpu-[1-10] thermal_test.slurm   # GB300
 ###############################################################################
 
+# Resolve path to thermal_test.sh relative to this script
+SCRIPT_PATH=$(scontrol show job "$SLURM_JOB_ID" | grep -oP 'Command=\K\S+')
+SCRIPT_DIR=$(dirname "$SCRIPT_PATH")
+
 # Run the thermal test script on each node
-srun --ntasks-per-node=1 --export=ALL /bin/bash ./thermal_test.sh
+srun --ntasks-per-node=1 --export=ALL /bin/bash "${SCRIPT_DIR}/thermal_test.sh"
