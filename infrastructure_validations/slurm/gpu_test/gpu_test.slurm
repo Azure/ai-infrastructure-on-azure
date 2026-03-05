@@ -8,8 +8,8 @@
 # GPU GEMM (ubergemm) performance test  (batch script)
 #
 # Do NOT call sbatch directly on this file — use the launcher instead:
-#   ./gpu_test.sh -N 4
-#   SKU=graceblackwell ./gpu_test.sh -N 4 -w ccw-gpu-[1-4]
+#   ./gpu_test.sh --sku graceblackwell -N 4
+#   ./gpu_test.sh --sku hopper -N 8 -w ccw-gpu-[1-8]
 #
 # The launcher reads configs/<gen>.conf and passes --gpus-per-node and
 # --export=SKU to sbatch.
@@ -19,7 +19,7 @@ set -euo pipefail
 
 # SKU is passed via --export from the launcher
 if [ -z "${SKU:-}" ]; then
-	echo "ERROR: SKU not set. Use the launcher: ./gpu_test.sh -N <nodes>"
+	echo "ERROR: SKU not set. Use the launcher: ./gpu_test.sh --sku <name> -N <nodes>"
 	exit 1
 fi
 

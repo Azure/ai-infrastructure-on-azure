@@ -3,15 +3,18 @@
 # GPU GEMM (ubergemm) performance test launcher
 #
 # Reads a generation config from configs/<gen>.conf, then calls sbatch with
-# the correct resource directives. Auto-detects GPU generation if not set.
+# the correct resource directives. Auto-detects GPU generation from nvidia-smi
+# when --sku is omitted and -w (nodelist) is given.
 #
 # Usage:
-#   ./gpu_test.sh -N 4                                    # auto-detect
-#   ./gpu_test.sh -N 4 -w ccw-gpu-[1-4]                   # specific nodes
-#   SKU=graceblackwell ./gpu_test.sh -N 4                       # explicit
-#   SKU=graceblackwell ./gpu_test.sh -N 4 -w ccw-gpu-[1-4]     # explicit + nodes
+#   ./gpu_test.sh --sku graceblackwell -N 4
+#   ./gpu_test.sh --sku hopper -N 8 -w ccw-gpu-[1-8]
+#   ./gpu_test.sh -N 4 -w ccw-gpu-[1-4]            # auto-detect from node
 #
-# Any additional arguments are passed through to sbatch.
+# Options:
+#   --sku NAME    GPU generation config name (e.g. hopper, graceblackwell)
+#
+# All other arguments are passed through to sbatch.
 ###############################################################################
 
 set -euo pipefail
@@ -19,13 +22,25 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ---------------------------------------------------------------------------
-# Auto-detect GPU generation if not set — try to ssh to a node from -w arg
+# Parse our options, collect everything else for sbatch
 # ---------------------------------------------------------------------------
-if [ -z "${SKU:-}" ]; then
-	# Try to extract a node name from -w argument for auto-detection
+SKU=""
+SBATCH_ARGS=()
+
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+		--sku)  SKU="$2"; shift 2 ;;
+		*)      SBATCH_ARGS+=("$1"); shift ;;
+	esac
+done
+
+# ---------------------------------------------------------------------------
+# Auto-detect GPU generation if --sku not given — probe a node from -w arg
+# ---------------------------------------------------------------------------
+if [ -z "$SKU" ]; then
 	NODE=""
 	PREV=""
-	for i in "$@"; do
+	for i in "${SBATCH_ARGS[@]}"; do
 		if [[ "$PREV" == "-w" || "$PREV" == "--nodelist" ]]; then
 			NODE=$(scontrol show hostnames "$i" 2>/dev/null | head -1)
 			break
@@ -47,9 +62,9 @@ if [ -z "${SKU:-}" ]; then
 		esac
 	fi
 
-	if [ -z "${SKU:-}" ]; then
-		echo "ERROR: Cannot auto-detect GPU generation. Set SKU= or provide -w <nodelist>."
-		echo "  e.g.  SKU=graceblackwell $0 -N 4"
+	if [ -z "$SKU" ]; then
+		echo "ERROR: Cannot auto-detect GPU generation. Use --sku or provide -w <nodelist>."
+		echo "  e.g.  $0 --sku graceblackwell -N 4"
 		echo "  e.g.  $0 -N 4 -w ccw-gpu-[1-4]"
 		echo ""
 		echo "Available configs:"
@@ -91,5 +106,5 @@ sbatch \
 	--gpus-per-node="${GPUS_PER_NODE}" \
 	--ntasks-per-node=1 \
 	--export="NONE,SKU=${SKU}" \
-	"$@" \
+	"${SBATCH_ARGS[@]}" \
 	"${SCRIPT_DIR}/gpu_test.slurm"

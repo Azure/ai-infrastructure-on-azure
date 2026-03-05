@@ -47,9 +47,24 @@ Use the launcher script — it reads the config and submits with correct
 ./nccl_test.sh -N 4 -w ccw-gpu-[1-4]
 
 # Explicit generation
-SKU=graceblackwell ./nccl_test.sh -N 4 -w ccw-gpu-[1-4]
-SKU=hopper         ./nccl_test.sh -N 10 -w ccw-gpu-[1-10]
+./nccl_test.sh --sku graceblackwell -N 4 -w ccw-gpu-[1-4]
+./nccl_test.sh --sku hopper -N 10 -w ccw-gpu-[1-10]
+
+# Quick bandwidth check — large messages only, 10 iterations
+./nccl_test.sh --sku graceblackwell --begin-size 16G --end-size 16G --iters 10 -N 18
 ```
+
+### Launcher options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--sku NAME` | auto-detect | GPU generation config name |
+| `--begin-size SIZE` | `1K` | Start message size |
+| `--end-size SIZE` | `16G` | End message size |
+| `--iters N` | all_reduce_perf default | Iterations per message size |
+| `--check` | off | Enable data validation |
+
+All other arguments (e.g. `-N`, `-w`, `--time`) are passed through to `sbatch`.
 
 ## 2. Launch with mpirun
 
@@ -58,5 +73,8 @@ SKU=hopper         ./nccl_test.sh -N 10 -w ccw-gpu-[1-10]
 ./nccl_test_mpirun.sh ccw-gpu-[1-10]
 
 # Explicit generation
-SKU=graceblackwell ./nccl_test_mpirun.sh ccw-gpu-[1-4]
+./nccl_test_mpirun.sh --sku graceblackwell ccw-gpu-[1-4]
+
+# Quick bandwidth check
+./nccl_test_mpirun.sh --sku graceblackwell --begin-size 16G --end-size 16G --iters 10 ccw-gpu-[1-18]
 ```
