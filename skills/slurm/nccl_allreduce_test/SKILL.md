@@ -7,6 +7,8 @@ description: "Run NCCL all_reduce_perf bandwidth tests via Slurm, configure per-
 
 How to run NCCL all_reduce_perf bandwidth tests, configure environment variables per SKU, and interpret results.
 
+> **Scripts**: This skill references test scripts from the [Azure/ai-infrastructure-on-azure](https://github.com/Azure/ai-infrastructure-on-azure) repo. Clone it and run from the repo root.
+
 ## Test Binary
 
 ```

@@ -7,6 +7,8 @@ description: "MNNVL domain discovery on Azure GB300 clusters. ClusterUUID lookup
 
 How MNNVL domains work on Azure GB300 clusters, how to discover rack membership, and expected rack structure per SKU.
 
+> **Scripts**: This skill references test scripts from the [Azure/ai-infrastructure-on-azure](https://github.com/Azure/ai-infrastructure-on-azure) repo. Clone it and run from the repo root.
+
 ## What Is a Rack / MNNVL Domain?
 
 On GB300 (NDv6) clusters, nodes within a physical rack are connected via NVSwitch/NVLink in an MNNVL (Multi-Node NVLink) domain. This gives intra-rack bandwidth of ~900+ GB/s for allreduce operations — far higher than the ~200 GB/s available over InfiniBand between racks.
