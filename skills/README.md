@@ -54,6 +54,12 @@ If you're building an AI agent, load the relevant `SKILL.md` content into the sy
 
 ## Skills Reference
 
+### Routing — Choose the right skill set first
+
+| Skill | What It Covers |
+|-------|---------------|
+| [slurm_router](slurm/slurm_router/SKILL.md) | Intent-to-skill routing for Slurm operations. Selects the correct skills first, then enforces exact commands, thresholds, and action decisions from those skills. |
+
 ### Diagnostic — How to run tests and read results
 
 | Skill | What It Covers |
@@ -83,7 +89,7 @@ If you're building an AI agent, load the relevant `SKILL.md` content into the sy
 
 ### "I just got a new cluster, validate everything"
 
-Skills needed: `sku_performance_baseline`, `rack_topology`, `nccl_allreduce_test`, `node_gpu_validation`, `thermal_stress_test`
+Skills needed: `slurm_router`, `sku_performance_baseline`, `rack_topology`, `nccl_allreduce_test`, `node_gpu_validation`, `thermal_stress_test`
 
 1. Discover rack topology (ClusterUUIDs).
 2. Run NCCL all_reduce per rack (MNNVL test).
@@ -93,7 +99,7 @@ Skills needed: `sku_performance_baseline`, `rack_topology`, `nccl_allreduce_test
 
 ### "A training job is running slow"
 
-Skills needed: `nccl_performance_diagnosis`, `sku_performance_baseline`, `ib_link_validation`
+Skills needed: `slurm_router`, `nccl_performance_diagnosis`, `sku_performance_baseline`, `ib_link_validation`
 
 1. Run a quick NCCL check on the job's nodelist.
 2. If bandwidth is low, identify which rack is affected.
@@ -102,7 +108,7 @@ Skills needed: `nccl_performance_diagnosis`, `sku_performance_baseline`, `ib_lin
 
 ### "I found a bad node, now what?"
 
-Skills needed: `node_drain_and_replace`, `azure_node_health_report`
+Skills needed: `slurm_router`, `node_drain_and_replace`, `azure_node_health_report`
 
 1. Collect metadata (PhysicalHostName, Resource ID) **before** rebooting.
 2. Drain the node.
