@@ -7,6 +7,8 @@ description: "Test GPU compute performance using ubergemm GEMM benchmarks. Parse
 
 How to test GPU compute performance on individual nodes using NVIDIA's ubergemm GEMM benchmark.
 
+> **Scripts**: This skill references test scripts from the [Azure/ai-infrastructure-on-azure](https://github.com/Azure/ai-infrastructure-on-azure) repo. Clone it and run from the repo root.
+
 ## What It Tests
 
 ubergemm runs a sustained General Matrix Multiply workload on each GPU independently. The output is GFlops per GPU. A healthy GPU produces consistent results near the SKU baseline; a degraded GPU will show significantly lower throughput.

@@ -7,6 +7,8 @@ description: "Analyze NCCL bandwidth results, scope intra-rack vs inter-rack fai
 
 How to analyze NCCL bandwidth results, identify what type of failure is occurring, and isolate the bad node(s).
 
+> **Scripts**: This skill references test scripts from the [Azure/ai-infrastructure-on-azure](https://github.com/Azure/ai-infrastructure-on-azure) repo. Clone it and run from the repo root.
+
 ## Diagnosis Framework
 
 When NCCL bandwidth is below the expected baseline, work through these levels:

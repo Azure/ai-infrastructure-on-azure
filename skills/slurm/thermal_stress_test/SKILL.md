@@ -7,6 +7,8 @@ description: "Run GPU thermal stress tests using dcgmproftester. Interpret pass/
 
 How to run GPU thermal stress tests using dcgmproftester and interpret the results.
 
+> **Scripts**: This skill references test scripts from the [Azure/ai-infrastructure-on-azure](https://github.com/Azure/ai-infrastructure-on-azure) repo. Clone it and run from the repo root.
+
 ## What It Tests
 
 dcgmproftester drives sustained GPU compute load to stress thermal limits. The test verifies that GPUs can maintain target performance under full thermal load without throttling or errors. A healthy GPU sustains the target workload for the full duration; a failing GPU throttles, produces errors, or crashes.
