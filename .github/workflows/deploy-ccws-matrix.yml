@@ -21,7 +21,7 @@ jobs:
       matrix:
         data_filesystem: [true]
         image: ["cycle.image.ubuntu24", "almalinux9"]
-        ood : [true]
+        ood: [true]
     uses: ./.github/workflows/deploy-ccws-callable.yml
     with:
       location: westus3
@@ -39,7 +39,7 @@ jobs:
       matrix:
         data_filesystem: [false]
         image: ["cycle.image.ubuntu22", "almalinux8"]
-        ood : [false]
+        ood: [false]
     uses: ./.github/workflows/deploy-ccws-callable.yml
     with:
       location: westus3

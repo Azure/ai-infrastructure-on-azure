@@ -137,7 +137,7 @@ Once deployed, NVIDIA Dynamo creates a Kubernetes Service for the inference endp
 kubectl get svc
 
 # Port forward to the inference service for local testing
-kubectl port-forward scc/<inference endpoint> 8000:8000
+kubectl port-forward svc/<inference endpoint> 8000:8000
 ```
 
 ### Test the API
