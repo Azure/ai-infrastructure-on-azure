@@ -368,12 +368,12 @@ Or install it independently:
 
 ### Dynamo Configuration
 
-| Variable | Default | Description |
-|---|---|---|
-| `INSTALL_DYNAMO` | `false` | Enable Dynamo platform installation |
-| `DYNAMO_NAMESPACE` | `dynamo-system` | Kubernetes namespace for Dynamo components |
-| `DYNAMO_RELEASE` | `dynamo-platform` | Helm release name |
-| `DYNAMO_VERSION` | `1.0.1` | Dynamo platform version ([releases](https://github.com/ai-dynamo/dynamo/releases)) |
+| Variable           | Default           | Description                                                                        |
+| ------------------ | ----------------- | ---------------------------------------------------------------------------------- |
+| `INSTALL_DYNAMO`   | `false`           | Enable Dynamo platform installation                                                |
+| `DYNAMO_NAMESPACE` | `dynamo-system`   | Kubernetes namespace for Dynamo components                                         |
+| `DYNAMO_RELEASE`   | `dynamo-platform` | Helm release name                                                                  |
+| `DYNAMO_VERSION`   | `1.0.1`           | Dynamo platform version ([releases](https://github.com/ai-dynamo/dynamo/releases)) |
 
 ### Verify Installation
 

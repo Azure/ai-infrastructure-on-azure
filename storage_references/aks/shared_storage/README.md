@@ -84,19 +84,19 @@ helm install shared-storage storage_references/aks/shared_storage/helm/blob-shar
 
 ### 3.3 Configuration Reference
 
-| Parameter | Default | Description |
-|---|---|---|
-| `storage.provisioning` | `dynamic` | `"dynamic"` or `"static"` |
-| `storage.pvcName` | `shared-blob-storage` | Name of the PVC to create |
-| `storage.size` | `100Ti` | Storage size |
-| `storage.skuName` | `Standard_LRS` | Azure storage SKU (dynamic only) |
-| `storage.accessModes` | `[ReadWriteMany]` | PVC access modes |
-| `storage.reclaimPolicy` | `Delete` | PV reclaim policy (`Retain` recommended for static) |
-| `storage.volumeBindingMode` | `Immediate` | Volume binding mode (dynamic only) |
-| `storage.storageAccount.name` | `""` | Existing storage account name (static only, **required**) |
-| `storage.storageAccount.resourceGroup` | `""` | Storage account resource group (static only, **required**) |
-| `storage.storageAccount.containerName` | `""` | Blob container name (static only, **required**) |
-| `storage.mountOptions` | See values.yaml | BlobFuse mount options |
+| Parameter                              | Default               | Description                                                |
+| -------------------------------------- | --------------------- | ---------------------------------------------------------- |
+| `storage.provisioning`                 | `dynamic`             | `"dynamic"` or `"static"`                                  |
+| `storage.pvcName`                      | `shared-blob-storage` | Name of the PVC to create                                  |
+| `storage.size`                         | `100Ti`               | Storage size                                               |
+| `storage.skuName`                      | `Standard_LRS`        | Azure storage SKU (dynamic only)                           |
+| `storage.accessModes`                  | `[ReadWriteMany]`     | PVC access modes                                           |
+| `storage.reclaimPolicy`                | `Delete`              | PV reclaim policy (`Retain` recommended for static)        |
+| `storage.volumeBindingMode`            | `Immediate`           | Volume binding mode (dynamic only)                         |
+| `storage.storageAccount.name`          | `""`                  | Existing storage account name (static only, **required**)  |
+| `storage.storageAccount.resourceGroup` | `""`                  | Storage account resource group (static only, **required**) |
+| `storage.storageAccount.containerName` | `""`                  | Blob container name (static only, **required**)            |
+| `storage.mountOptions`                 | See values.yaml       | BlobFuse mount options                                     |
 
 ### 3.4 Performance Testing
 
@@ -246,21 +246,21 @@ helm install shared-storage storage_references/aks/shared_storage/helm/amlfs-sha
 
 ### 4.3 Configuration Reference
 
-| Parameter | Default | Description |
-|---|---|---|
-| `storage.provisioning` | `dynamic` | `"dynamic"` or `"static"` |
-| `storage.pvcName` | `shared-amlfs-storage` | Name of the PVC to create |
-| `storage.size` | `16Ti` | Storage size |
-| `storage.accessModes` | `[ReadWriteMany]` | PVC access modes |
-| `storage.reclaimPolicy` | `Delete` | PV reclaim policy (`Retain` recommended for static) |
-| `storage.volumeBindingMode` | `Immediate` | Volume binding mode (dynamic only) |
-| `storage.amlfs.skuName` | `AMLFS-Durable-Premium-125` | AMLFS SKU (dynamic only) |
-| `storage.amlfs.zones` | `1` | Availability zone (dynamic only) |
-| `storage.amlfs.maintenanceDayOfWeek` | `Sunday` | Maintenance day (dynamic only) |
-| `storage.amlfs.maintenanceTimeOfDayUtc` | `02:00` | Maintenance time UTC (dynamic only) |
-| `storage.existingFilesystem.mgsIPAddress` | `""` | MGS IP address (static only, **required**) |
-| `storage.existingFilesystem.filesystemName` | `lustrefs` | Lustre filesystem name (static only) |
-| `storage.mountOptions` | `["noatime", "flock"]` | Lustre mount options |
+| Parameter                                   | Default                     | Description                                         |
+| ------------------------------------------- | --------------------------- | --------------------------------------------------- |
+| `storage.provisioning`                      | `dynamic`                   | `"dynamic"` or `"static"`                           |
+| `storage.pvcName`                           | `shared-amlfs-storage`      | Name of the PVC to create                           |
+| `storage.size`                              | `16Ti`                      | Storage size                                        |
+| `storage.accessModes`                       | `[ReadWriteMany]`           | PVC access modes                                    |
+| `storage.reclaimPolicy`                     | `Delete`                    | PV reclaim policy (`Retain` recommended for static) |
+| `storage.volumeBindingMode`                 | `Immediate`                 | Volume binding mode (dynamic only)                  |
+| `storage.amlfs.skuName`                     | `AMLFS-Durable-Premium-125` | AMLFS SKU (dynamic only)                            |
+| `storage.amlfs.zones`                       | `1`                         | Availability zone (dynamic only)                    |
+| `storage.amlfs.maintenanceDayOfWeek`        | `Sunday`                    | Maintenance day (dynamic only)                      |
+| `storage.amlfs.maintenanceTimeOfDayUtc`     | `02:00`                     | Maintenance time UTC (dynamic only)                 |
+| `storage.existingFilesystem.mgsIPAddress`   | `""`                        | MGS IP address (static only, **required**)          |
+| `storage.existingFilesystem.filesystemName` | `lustrefs`                  | Lustre filesystem name (static only)                |
+| `storage.mountOptions`                      | `["noatime", "flock"]`      | Lustre mount options                                |
 
 ## 5. Azure Files Premium NFS
 
@@ -318,30 +318,30 @@ helm install shared-storage storage_references/aks/shared_storage/helm/azurefile
 
 The chart uses optimized mount options for high-performance NFS access:
 
-| Option | Default Value | Description |
-|--------|---------------|-------------|
-| `nconnect` | `8` | Number of TCP connections. Maximum 8 for NFS 4.1. Improves throughput for parallel I/O. |
-| `rsize` | `1048576` | Read buffer size (1 MiB). Optimized for large sequential reads. |
-| `wsize` | `1048576` | Write buffer size (1 MiB). Optimized for large sequential writes. |
-| `actimeo` | `30` | Attribute cache timeout in seconds. Balances consistency and performance. |
-| `noresvport` | - | Do not use privileged source port. Required for some network configurations. |
+| Option       | Default Value | Description                                                                             |
+| ------------ | ------------- | --------------------------------------------------------------------------------------- |
+| `nconnect`   | `8`           | Number of TCP connections. Maximum 8 for NFS 4.1. Improves throughput for parallel I/O. |
+| `rsize`      | `1048576`     | Read buffer size (1 MiB). Optimized for large sequential reads.                         |
+| `wsize`      | `1048576`     | Write buffer size (1 MiB). Optimized for large sequential writes.                       |
+| `actimeo`    | `30`          | Attribute cache timeout in seconds. Balances consistency and performance.               |
+| `noresvport` | -             | Do not use privileged source port. Required for some network configurations.            |
 
 ### 5.4 Configuration Reference
 
-| Parameter | Default | Description |
-|---|---|---|
-| `storage.provisioning` | `dynamic` | `"dynamic"` or `"static"` |
-| `storage.pvcName` | `shared-azurefiles-storage` | Name of the PVC to create |
-| `storage.size` | `100Gi` | Storage size (minimum 100Gi for Premium NFS) |
-| `storage.accessModes` | `[ReadWriteMany]` | PVC access modes |
-| `storage.reclaimPolicy` | `Delete` | PV reclaim policy (`Retain` recommended for static) |
-| `storage.volumeBindingMode` | `Immediate` | Volume binding mode (dynamic only) |
-| `storage.azureFiles.skuName` | `Premium_LRS` | Azure Files SKU (dynamic only) |
-| `storage.azureFiles.protocol` | `nfs` | Protocol type (dynamic only) |
-| `storage.existingFileShare.storageAccountName` | `""` | Storage account name (static only, **required**) |
-| `storage.existingFileShare.resourceGroup` | `""` | Resource group (static only, **required**) |
-| `storage.existingFileShare.shareName` | `""` | File share name (static only, **required**) |
-| `storage.mountOptions` | See values.yaml | NFS mount options |
+| Parameter                                      | Default                     | Description                                         |
+| ---------------------------------------------- | --------------------------- | --------------------------------------------------- |
+| `storage.provisioning`                         | `dynamic`                   | `"dynamic"` or `"static"`                           |
+| `storage.pvcName`                              | `shared-azurefiles-storage` | Name of the PVC to create                           |
+| `storage.size`                                 | `100Gi`                     | Storage size (minimum 100Gi for Premium NFS)        |
+| `storage.accessModes`                          | `[ReadWriteMany]`           | PVC access modes                                    |
+| `storage.reclaimPolicy`                        | `Delete`                    | PV reclaim policy (`Retain` recommended for static) |
+| `storage.volumeBindingMode`                    | `Immediate`                 | Volume binding mode (dynamic only)                  |
+| `storage.azureFiles.skuName`                   | `Premium_LRS`               | Azure Files SKU (dynamic only)                      |
+| `storage.azureFiles.protocol`                  | `nfs`                       | Protocol type (dynamic only)                        |
+| `storage.existingFileShare.storageAccountName` | `""`                        | Storage account name (static only, **required**)    |
+| `storage.existingFileShare.resourceGroup`      | `""`                        | Resource group (static only, **required**)          |
+| `storage.existingFileShare.shareName`          | `""`                        | File share name (static only, **required**)         |
+| `storage.mountOptions`                         | See values.yaml             | NFS mount options                                   |
 
 ### 5.5 Network Requirements
 
@@ -366,5 +366,3 @@ az network private-endpoint create \
   --group-id file \
   --connection-name "${STORAGE_ACCOUNT}-connection"
 ```
-
-

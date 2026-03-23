@@ -53,10 +53,10 @@ fi
 
 # Dynamo Platform Configuration
 # Ref: https://github.com/ai-dynamo/dynamo/blob/main/docs/kubernetes/README.md
-: "${INSTALL_DYNAMO:=false}"       # Set to true to install Dynamo platform
+: "${INSTALL_DYNAMO:=false}"           # Set to true to install Dynamo platform
 : "${DYNAMO_NAMESPACE:=dynamo-system}" # Kubernetes namespace for Dynamo platform
 : "${DYNAMO_RELEASE:=dynamo-platform}" # Helm release name for Dynamo platform
-: "${DYNAMO_VERSION:=1.0.1}"     # Latest version: https://github.com/ai-dynamo/dynamo/releases
+: "${DYNAMO_VERSION:=1.0.1}"           # Latest version: https://github.com/ai-dynamo/dynamo/releases
 
 : "${NETWORK_OPERATOR_NS:=network-operator}"
 : "${GPU_OPERATOR_NS:=gpu-operator}"

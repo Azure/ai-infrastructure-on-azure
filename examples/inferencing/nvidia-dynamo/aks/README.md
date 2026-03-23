@@ -104,14 +104,14 @@ helm install gpt-inference examples/inferencing/nvidia-dynamo/aks/helm/dynamo-de
 
 #### Configuration Options
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `model.name` | HuggingFace model identifier or path | `openai/gpt-oss-120b` |
-| `model.backend` | Inference backend (`vllm`, `tensorrt-llm`) | `vllm` |
-| `image.repository` | Container image repository | `nvcr.io/nvidia/ai-dynamo/dynamo-frontend` |
-| `image.tag` | Container image tag | `1.0.1` |
-| `modelCache.pvcName` | PVC name for model storage | `shared-azurefiles-storage` |
-| `modelCache.pvcModelPath` | Path within PVC to model weights | `gpt-oss-120b` |
+| Parameter                 | Description                                | Default                                    |
+| ------------------------- | ------------------------------------------ | ------------------------------------------ |
+| `model.name`              | HuggingFace model identifier or path       | `openai/gpt-oss-120b`                      |
+| `model.backend`           | Inference backend (`vllm`, `tensorrt-llm`) | `vllm`                                     |
+| `image.repository`        | Container image repository                 | `nvcr.io/nvidia/ai-dynamo/dynamo-frontend` |
+| `image.tag`               | Container image tag                        | `1.0.1`                                    |
+| `modelCache.pvcName`      | PVC name for model storage                 | `shared-azurefiles-storage`                |
+| `modelCache.pvcModelPath` | Path within PVC to model weights           | `gpt-oss-120b`                             |
 
 #### Verify Deployment
 
