@@ -39,13 +39,13 @@ cd infrastructure_validations/slurm/NCCL
 
 ### CLI options
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--sku NAME` | auto-detect | Config name: `graceblackwell` or `hopper` |
-| `--begin-size SIZE` | `1K` | Start message size |
-| `--end-size SIZE` | `16G` | End message size |
-| `--iters N` | nccl default | Iterations per message size |
-| `--check` | off | Enable data correctness validation |
+| Option              | Default      | Description                               |
+| ------------------- | ------------ | ----------------------------------------- |
+| `--sku NAME`        | auto-detect  | Config name: `graceblackwell` or `hopper` |
+| `--begin-size SIZE` | `1K`         | Start message size                        |
+| `--end-size SIZE`   | `16G`        | End message size                          |
+| `--iters N`         | nccl default | Iterations per message size               |
+| `--check`           | off          | Enable data correctness validation        |
 
 All other arguments pass through to sbatch (e.g., `-N 4`, `-w nodelist`).
 
@@ -56,6 +56,7 @@ All other arguments pass through to sbatch (e.g., `-N 4`, `-w nodelist`).
 Config file: `configs/graceblackwell.conf`
 
 Key settings:
+
 - 4 GPUs per node, 4 tasks per node, 24 CPUs per task
 - MNNVL enabled (`NCCL_MNNVL_ENABLE=1`, `NCCL_NVLS_ENABLE=1`)
 - DMA-BUF for GPU-direct (`NCCL_DMABUF_ENABLE=1`)
@@ -69,6 +70,7 @@ Key settings:
 Config file: `configs/hopper.conf`
 
 Key settings:
+
 - 8 GPUs per node, 8 tasks per node, 12 CPUs per task
 - CPU affinity mask binding (complex hex mask per GPU)
 - Topology file: `NCCL_TOPO_FILE=/opt/microsoft/ndv5-topo.xml`
@@ -105,33 +107,36 @@ Key settings:
 
 ## Quick vs Full Sweep
 
-| Mode | Begin | End | Iters | Duration | Purpose |
-|------|-------|-----|-------|----------|---------|
-| Quick check | 16G | 16G | 10 | ~2 min | Validate peak bandwidth |
-| Full sweep | 1K | 16G | default | ~15-30 min | Profile across all sizes, detect small-message regressions |
-| Bisection test | 8G | 16G | 20 | ~5 min | Balance speed and confidence during fault isolation |
+| Mode           | Begin | End | Iters   | Duration   | Purpose                                                    |
+| -------------- | ----- | --- | ------- | ---------- | ---------------------------------------------------------- |
+| Quick check    | 16G   | 16G | 10      | ~2 min     | Validate peak bandwidth                                    |
+| Full sweep     | 1K    | 16G | default | ~15-30 min | Profile across all sizes, detect small-message regressions |
+| Bisection test | 8G    | 16G | 20      | ~5 min     | Balance speed and confidence during fault isolation        |
 
 ## Expected Results
 
 See `sku_performance_baseline` skill for per-SKU busbw targets.
 
 ### GB300 intra-rack (MNNVL, 18 nodes)
+
 - Peak busbw at 16 G: ~937 GB/s
 - This tests NVLink/NVSwitch/MNNVL interconnect within the rack.
 
 ### GB300 inter-rack (IB-only, across racks)
+
 - Peak busbw at 16 G: ~200 GB/s
 - This tests InfiniBand interconnect between racks.
 
 ### H100 (8 nodes, full IB)
+
 - Peak busbw at 16 G: ~450 GB/s
 
 ## Failure Indicators
 
-| Observation | What It Means |
-|------------|---------------|
-| busbw near zero | NCCL could not establish communication — check IB links, pkeys |
-| busbw < 50 % of expected | Likely a bad node dragging down the collective |
-| #wrong > 0 | Data corruption — hardware fault, file GHR immediately |
-| Job hangs (no output growth) | NCCL initialization stuck — likely a downed IB link or pkey mismatch |
-| "NCCL WARN" in output about IB | IB fabric issue — check ibstat on all nodes |
+| Observation                    | What It Means                                                        |
+| ------------------------------ | -------------------------------------------------------------------- |
+| busbw near zero                | NCCL could not establish communication — check IB links, pkeys       |
+| busbw < 50 % of expected       | Likely a bad node dragging down the collective                       |
+| #wrong > 0                     | Data corruption — hardware fault, file GHR immediately               |
+| Job hangs (no output growth)   | NCCL initialization stuck — likely a downed IB link or pkey mismatch |
+| "NCCL WARN" in output about IB | IB fabric issue — check ibstat on all nodes                          |

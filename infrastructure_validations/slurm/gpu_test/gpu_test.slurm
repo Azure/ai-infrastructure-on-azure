@@ -37,12 +37,12 @@ run_node_test() {
 			output=$($UBERGEMM --adapters "$gpu" --time_to_run "$TEST_DURATION" 2>&1)
 			# Parse GFlops from lines after "starting...." (steady-state only)
 			# Output format: GFlops:1.7933e+06
-			gflops=$(echo "$output" | \
-				sed -n '/starting/,$p' | \
-				grep -oP 'GFlops:[0-9.e+]+' | \
-				sed 's/GFlops://' | \
+			gflops=$(echo "$output" |
+				sed -n '/starting/,$p' |
+				grep -oP 'GFlops:[0-9.e+]+' |
+				sed 's/GFlops://' |
 				awk '{ sum += $1; count++ } END { if (count > 0) printf "%.0f", sum/count; else print "0" }')
-			echo "$gflops" > "$TMPDIR/gpu$gpu"
+			echo "$gflops" >"$TMPDIR/gpu$gpu"
 		) &
 	done
 
