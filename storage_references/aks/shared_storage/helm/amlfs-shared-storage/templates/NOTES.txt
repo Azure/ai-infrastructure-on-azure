@@ -1,3 +1,4 @@
+{{- if eq .Values.storage.provisioning "dynamic" }}
 1. The Azure Managed Lustre File System (AMLFS) has been configured with the following components:
    - StorageClass: {{ include "amlfs-shared-storage.fullname" . }}-azurelustre
    - PersistentVolumeClaim: {{ .Values.storage.pvcName }}
@@ -24,9 +25,39 @@
    ```
 
 5. Storage Details:
+   - Provisioning: Dynamic
    - Size: {{ .Values.storage.size }}
    - Access Modes: {{ join ", " .Values.storage.accessModes }}
    - Reclaim Policy: {{ .Values.storage.reclaimPolicy }}
+{{- else }}
+1. The existing AMLFS instance has been mounted with the following components:
+   - PersistentVolume: {{ include "amlfs-shared-storage.fullname" . }}-pv
+   - PersistentVolumeClaim: {{ .Values.storage.pvcName }}
+
+2. AMLFS Details:
+   - MGS IP Address: {{ .Values.storage.existingFilesystem.mgsIPAddress }}
+   - Filesystem Name: {{ .Values.storage.existingFilesystem.filesystemName }}
+
+3. **IMPORTANT**: Ensure that:
+   - The Azure Lustre CSI driver is installed in your AKS cluster
+   - The AKS nodes have network connectivity to the AMLFS MGS IP address
+
+4. To use this storage in other applications:
+
+   Reference the PVC name in your deployments:
+   ```yaml
+   volumes:
+     - name: lustre-data
+       persistentVolumeClaim:
+         claimName: {{ .Values.storage.pvcName }}
+   ```
+
+5. Storage Details:
+   - Provisioning: Static
+   - Size: {{ .Values.storage.size }}
+   - Access Modes: {{ join ", " .Values.storage.accessModes }}
+   - Reclaim Policy: {{ .Values.storage.reclaimPolicy }}
+{{- end }}
 
 6. Mount Options configured:
    {{- range .Values.storage.mountOptions }}

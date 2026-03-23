@@ -6,7 +6,7 @@ on:
       - main
       - feature/megatronlm-aks
     paths:
-      - examples/megatron-lm/GPT3-175B/docker/Dockerfile
+      - examples/training/megatron-lm/GPT3-175B/docker/Dockerfile
       - .github/workflows/build_megatron_image.yaml
 
   workflow_dispatch:
@@ -52,8 +52,8 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          context: examples/megatron-lm/GPT3-175B/docker
-          file: examples/megatron-lm/GPT3-175B/docker/Dockerfile
+          context: examples/training/megatron-lm/GPT3-175B/docker
+          file: examples/training/megatron-lm/GPT3-175B/docker/Dockerfile
           push: true
           tags: ${{ steps.tag.outputs.tags }}
           labels: ${{ steps.tag.outputs.labels }}
