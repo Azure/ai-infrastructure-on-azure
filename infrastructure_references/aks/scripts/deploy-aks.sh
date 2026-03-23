@@ -797,7 +797,7 @@ function print_usage() {
 	echo "  INSTALL_DYNAMO           Install Dynamo platform (default: false)"
 	echo "  DYNAMO_NAMESPACE         Namespace for Dynamo platform (default: dynamo-system)"
 	echo "  DYNAMO_RELEASE           Helm release name for Dynamo platform (default: dynamo-platform)"
-	echo "  DYNAMO_VERSION           Version of Dynamo platform to install (default: 0.9.0-post1)"
+	echo "  DYNAMO_VERSION           Version of Dynamo platform to install (default: 1.0.1)"
 	echo "  ENABLE_AZURE_CONTAINER_STORAGE Enable Azure Container Storage (default: true)"
 	echo "                           Note: Automatically installs k8s-extension Azure CLI extension when enabled"
 	echo "  CREATE_DEDICATED_VNET    Create & use dedicated VNet/subnets for AKS (default: true)"
