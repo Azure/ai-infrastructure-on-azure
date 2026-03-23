@@ -55,7 +55,7 @@ Alternatively, use Azure Blob Storage for larger scale scenarios:
 
 ```bash
 helm install shared-storage storage_references/aks/shared_storage/helm/blob-shared-storage \
-  --set storage.pvcName="shared-azurefiles-storage"
+  --set storage.pvcName="shared-blob-storage"
 ```
 
 For detailed configuration options, see the [shared storage README](../../../../storage_references/aks/shared_storage/README.md).
