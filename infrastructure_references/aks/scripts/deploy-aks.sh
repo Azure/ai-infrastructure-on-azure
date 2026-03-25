@@ -655,8 +655,8 @@ function dynamo_precheck() {
 	TEMP_DIR=$(mktemp -d)
 	pushd "${TEMP_DIR}" >/dev/null
 
-	# Download the precheck script from the Dynamo repository
-	local precheck_url="https://raw.githubusercontent.com/ai-dynamo/dynamo/main/deploy/pre-deployment/pre-deployment-check.sh"
+	# Download the precheck script from the Dynamo repository, pinned to DYNAMO_VERSION
+	local precheck_url="https://raw.githubusercontent.com/ai-dynamo/dynamo/v${DYNAMO_VERSION}/deploy/pre-deployment/pre-deployment-check.sh"
 	echo "⏳ Downloading precheck script from ${precheck_url}..."
 	curl -fsSL -o pre-deployment-check.sh "${precheck_url}"
 	chmod +x pre-deployment-check.sh
