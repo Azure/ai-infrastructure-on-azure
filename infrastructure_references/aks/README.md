@@ -10,7 +10,8 @@
 6. [RDMA Device Plugin Configuration](#6-rdma-device-plugin-configuration)
 7. [Azure Managed Lustre File System (AMLFS) Support](#7-azure-managed-lustre-file-system-amlfs-support)
 8. [Azure Container Storage Support](#8-azure-container-storage-support)
-9. [Monitoring](#9-monitoring)
+9. [Dynamo Platform Support](#9-dynamo-platform-support)
+10. [Monitoring](#10-monitoring)
 
 ## 1. Overview
 
@@ -81,11 +82,13 @@ The `deploy-aks.sh` script supports the following commands:
 - **`install-mpi-operator`** - Install MPI Operator for distributed computing workloads
 - **`install-pytorch-operator`** - Install PyTorch Operator (includes cert-manager) for PyTorch distributed training
 - **`install-amlfs`** - Install Azure Managed Lustre File System (AMLFS) CSI driver and configure required roles
+- **`install-dynamo`** - Install [Dynamo](https://github.com/ai-dynamo/dynamo) platform for inference graph orchestration
 
 ### Operator Removal Commands
 
 - **`uninstall-mpi-operator`** - Remove MPI Operator from the cluster
 - **`uninstall-pytorch-operator`** - Remove PyTorch Operator and cert-manager from the cluster
+- **`uninstall-dynamo`** - Remove Dynamo platform from the cluster
 
 ### Usage Examples
 
@@ -112,6 +115,12 @@ VNET_ADDRESS_SPACE=10.32.0.0/12 AKS_SUBNET_PREFIX=10.32.0.0/16 SERVICE_SUBNET_PR
 
 # Skip AMLFS installation in complete setup
 INSTALL_AMLFS=false ./scripts/deploy-aks.sh all
+
+# Install Dynamo platform separately
+./scripts/deploy-aks.sh install-dynamo
+
+# Deploy everything with Dynamo enabled
+INSTALL_DYNAMO=true ./scripts/deploy-aks.sh all
 ```
 
 ## 5. Environment Variables
@@ -138,11 +147,13 @@ INSTALL_AMLFS=false ./scripts/deploy-aks.sh all
 - **`MPI_OPERATOR_VERSION`** - Version of MPI Operator to install (default: "v0.6.0")
 - **`CERT_MANAGER_VERSION`** - Version of cert-manager to install (default: "v1.18.2")
 - **`PYTORCH_OPERATOR_VERSION`** - Version of PyTorch Operator to install (default: "v1.8.1")
+- **`DYNAMO_VERSION`** - Version of Dynamo platform to install (default: "0.9.0-post1")
 
 ### Namespace Configuration
 
 - **`NETWORK_OPERATOR_NS`** - Namespace for Network Operator (default: "network-operator")
 - **`GPU_OPERATOR_NS`** - Namespace for GPU Operator (default: "gpu-operator")
+- **`DYNAMO_NAMESPACE`** - Namespace for Dynamo platform (default: "dynamo-system")
 
 ### RDMA Configuration
 
@@ -156,6 +167,9 @@ INSTALL_AMLFS=false ./scripts/deploy-aks.sh all
 
 ### Azure Container Storage Configuration
 
+- **`INSTALL_DYNAMO`** - Install Dynamo platform (default: "false")
+  - Set to "true" to enable Dynamo installation in the 'all' command
+- **`DYNAMO_RELEASE`** - Helm release name for Dynamo platform (default: "dynamo-platform")
 - **`ENABLE_AZURE_CONTAINER_STORAGE`** - Enable Azure Container Storage during cluster creation (default: "true")
   - Set to "false" to disable Azure Container Storage
 
@@ -332,7 +346,56 @@ See the [FIO testing documentation](../../infrastructure_validations/aks/fio/REA
 - [Install Azure Container Storage on AKS](https://learn.microsoft.com/en-us/azure/storage/container-storage/install-container-storage-aks)
 - [Use Container Storage with Local Disk](https://learn.microsoft.com/en-us/azure/storage/container-storage/use-container-storage-with-local-disk)
 
-## 9. Monitoring
+## 9. Dynamo Platform Support
+
+[Dynamo](https://github.com/ai-dynamo/dynamo) is NVIDIA's inference graph orchestration platform for deploying and managing LLM inference pipelines on Kubernetes. It provides custom resources (`DynamoGraphDeployment`, `DynamoGraphDeploymentRequest`) for defining inference graphs with automated scaling, routing, and disaggregated serving.
+
+For full details, see the [Dynamo Kubernetes documentation](https://github.com/ai-dynamo/dynamo/blob/main/docs/kubernetes/README.md).
+
+### Dynamo Installation
+
+Dynamo is **not** installed by default. To enable it during a full `all` deployment, set `INSTALL_DYNAMO=true`:
+
+```bash
+INSTALL_DYNAMO=true ./scripts/deploy-aks.sh all
+```
+
+Or install it independently:
+
+```bash
+./scripts/deploy-aks.sh install-dynamo
+```
+
+### Dynamo Configuration
+
+| Variable           | Default           | Description                                                                        |
+| ------------------ | ----------------- | ---------------------------------------------------------------------------------- |
+| `INSTALL_DYNAMO`   | `false`           | Enable Dynamo platform installation                                                |
+| `DYNAMO_NAMESPACE` | `dynamo-system`   | Kubernetes namespace for Dynamo components                                         |
+| `DYNAMO_RELEASE`   | `dynamo-platform` | Helm release name                                                                  |
+| `DYNAMO_VERSION`   | `1.0.1`           | Dynamo platform version ([releases](https://github.com/ai-dynamo/dynamo/releases)) |
+
+### Verify Installation
+
+After installation, verify that Dynamo CRDs and pods are running:
+
+```bash
+# Check CRDs
+kubectl get crd | grep dynamo
+
+# Check operator and platform pods
+kubectl get pods -n dynamo-system
+```
+
+You should see `dynamo-operator-*`, `etcd-*`, and `nats-*` pods in Running state.
+
+### Uninstall Dynamo
+
+```bash
+./scripts/deploy-aks.sh uninstall-dynamo
+```
+
+## 10. Monitoring
 
 ### Installation
 

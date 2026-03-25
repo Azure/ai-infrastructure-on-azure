@@ -16,4 +16,9 @@ spec:
   resources:
     requests:
       storage: {{ .Values.storage.size }}
+  {{- if eq .Values.storage.provisioning "dynamic" }}
   storageClassName: {{ include "blob-shared-storage.fullname" . }}-blob-storage
+  {{- else }}
+  volumeName: {{ include "blob-shared-storage.fullname" . }}-pv
+  storageClassName: ""
+  {{- end }}

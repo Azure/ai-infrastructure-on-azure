@@ -51,6 +51,13 @@ fi
 : "${INSTALL_NETWORK_OPERATOR:=true}" # Set to false to skip Network Operator installation
 : "${INSTALL_GPU_OPERATOR:=true}"     # Set to false to skip GPU Operator installation
 
+# Dynamo Platform Configuration
+# Ref: https://github.com/ai-dynamo/dynamo/blob/main/docs/kubernetes/README.md
+: "${INSTALL_DYNAMO:=false}"           # Set to true to install Dynamo platform
+: "${DYNAMO_NAMESPACE:=dynamo-system}" # Kubernetes namespace for Dynamo platform
+: "${DYNAMO_RELEASE:=dynamo-platform}" # Helm release name for Dynamo platform
+: "${DYNAMO_VERSION:=1.0.1}"           # Latest version: https://github.com/ai-dynamo/dynamo/releases
+
 : "${NETWORK_OPERATOR_NS:=network-operator}"
 : "${GPU_OPERATOR_NS:=gpu-operator}"
 
@@ -639,6 +646,82 @@ function uninstall_amlfs() {
 	echo "💡 AMLFS roles have been left intact and can be removed separately if needed using Azure CLI."
 }
 
+function dynamo_precheck() {
+	echo "⏳ Running Dynamo platform pre-installation checks..."
+	echo "📖 Ref: https://github.com/ai-dynamo/dynamo/blob/main/docs/kubernetes/installation-guide.md#pre-deployment-checks"
+
+	# Create temporary directory for precheck script
+	local TEMP_DIR
+	TEMP_DIR=$(mktemp -d)
+	pushd "${TEMP_DIR}" >/dev/null
+
+	# Download the precheck script from the Dynamo repository, pinned to DYNAMO_VERSION
+	local precheck_url="https://raw.githubusercontent.com/ai-dynamo/dynamo/v${DYNAMO_VERSION}/deploy/pre-deployment/pre-deployment-check.sh"
+	echo "⏳ Downloading precheck script from ${precheck_url}..."
+	curl -fsSL -o pre-deployment-check.sh "${precheck_url}"
+	chmod +x pre-deployment-check.sh
+
+	# Run the precheck script
+	echo "⏳ Executing precheck script..."
+	if ./pre-deployment-check.sh; then
+		echo "✅ Dynamo precheck passed successfully."
+	else
+		echo "❌ Dynamo precheck failed. Please address the issues above before installing Dynamo."
+		popd >/dev/null
+		rm -rf "${TEMP_DIR}"
+		exit 1
+	fi
+
+	# Clean up
+	popd >/dev/null
+	rm -rf "${TEMP_DIR}"
+}
+
+function install_dynamo() {
+	echo "⏳ Installing Dynamo platform (version ${DYNAMO_VERSION})..."
+	echo "📖 Ref: https://github.com/ai-dynamo/dynamo/blob/main/docs/kubernetes/README.md"
+
+	# Run precheck before installation
+	dynamo_precheck
+
+	# Fetch the Dynamo platform Helm chart from NGC
+	local chart_tgz="dynamo-platform-${DYNAMO_VERSION}.tgz"
+	local chart_url="https://helm.ngc.nvidia.com/nvidia/ai-dynamo/charts/${chart_tgz}"
+
+	echo "⏳ Fetching Dynamo Helm chart from ${chart_url}..."
+	helm fetch "${chart_url}"
+
+	# Install or upgrade the Dynamo platform
+	helm upgrade -i \
+		--wait \
+		--create-namespace \
+		--namespace "${DYNAMO_NAMESPACE}" \
+		"${DYNAMO_RELEASE}" \
+		"${chart_tgz}"
+
+	# Clean up downloaded chart archive
+	rm -f "${chart_tgz}"
+
+	echo "✅ Dynamo platform installed successfully."
+	echo -e "\n📊 Dynamo platform status:\n"
+	kubectl get pods -n "${DYNAMO_NAMESPACE}"
+	echo ""
+	kubectl get crd | grep dynamo || true
+}
+
+function uninstall_dynamo() {
+	echo "⏳ Uninstalling Dynamo platform..."
+
+	# Uninstall the Helm release
+	helm uninstall "${DYNAMO_RELEASE}" --namespace "${DYNAMO_NAMESPACE}" || true
+
+	# Optionally clean up the namespace
+	echo "💡 Dynamo CRDs have been left intact. To remove them run:"
+	echo "  kubectl get crd | grep 'dynamo.*nvidia.com' | awk '{print \$1}' | xargs kubectl delete crd"
+
+	echo "✅ Dynamo platform uninstalled successfully."
+}
+
 function install_kueue() {
 	helm upgrade -i \
 		--wait \
@@ -674,6 +757,9 @@ function print_usage() {
 	echo "  install-amlfs            Install Azure Managed Lustre File System (AMLFS) CSI driver and setup roles"
 	echo "  uninstall-amlfs          Uninstall AMLFS CSI driver (leaves roles intact)"
 	echo "  setup-amlfs-roles        Setup AMLFS roles for kubelet identity (without installing CSI driver)"
+	echo "  dynamo-precheck          Run Dynamo platform pre-installation checks"
+	echo "  install-dynamo           Install Dynamo platform for inference graph orchestration (includes precheck)"
+	echo "  uninstall-dynamo         Uninstall Dynamo platform from the cluster"
 	echo "  install-kueue            Install Kueue for workload queue management"
 	echo "  uninstall-kueue          Uninstall Kueue from the cluster"
 	echo "  all                      Deploy AKS cluster and install all operators (full setup)"
@@ -708,6 +794,10 @@ function print_usage() {
 	echo "  INSTALL_AMLFS            Install AMLFS CSI driver (default: true)"
 	echo "  INSTALL_AMLFS_ROLES      Install AMLFS roles for kubelet identity (default: true)"
 	echo "                           Note: Both INSTALL_AMLFS and INSTALL_AMLFS_ROLES must be true for role assignment"
+	echo "  INSTALL_DYNAMO           Install Dynamo platform (default: false)"
+	echo "  DYNAMO_NAMESPACE         Namespace for Dynamo platform (default: dynamo-system)"
+	echo "  DYNAMO_RELEASE           Helm release name for Dynamo platform (default: dynamo-platform)"
+	echo "  DYNAMO_VERSION           Version of Dynamo platform to install (default: 1.0.1)"
 	echo "  ENABLE_AZURE_CONTAINER_STORAGE Enable Azure Container Storage (default: true)"
 	echo "                           Note: Automatically installs k8s-extension Azure CLI extension when enabled"
 	echo "  CREATE_DEDICATED_VNET    Create & use dedicated VNet/subnets for AKS (default: true)"
@@ -765,6 +855,15 @@ uninstall-amlfs | uninstall_amlfs)
 setup-amlfs-roles | setup_amlfs_roles)
 	setup_amlfs_roles
 	;;
+dynamo-precheck | dynamo_precheck)
+	dynamo_precheck
+	;;
+install-dynamo | install_dynamo)
+	install_dynamo
+	;;
+uninstall-dynamo | uninstall_dynamo)
+	uninstall_dynamo
+	;;
 install-kueue | install_kueue)
 	install_kueue
 	;;
@@ -786,6 +885,9 @@ all)
 	fi
 	if [[ "${INSTALL_AMLFS}" == "true" ]]; then
 		install_amlfs
+	fi
+	if [[ "${INSTALL_DYNAMO}" == "true" ]]; then
+		install_dynamo
 	fi
 	;;
 *)

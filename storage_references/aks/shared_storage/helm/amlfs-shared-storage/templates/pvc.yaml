@@ -13,7 +13,12 @@ spec:
     {{- range .Values.storage.accessModes }}
     - {{ . }}
     {{- end }}
-  storageClassName: {{ include "amlfs-shared-storage.fullname" . }}-azurelustre
   resources:
     requests:
       storage: {{ .Values.storage.size }}
+  {{- if eq .Values.storage.provisioning "dynamic" }}
+  storageClassName: {{ include "amlfs-shared-storage.fullname" . }}-azurelustre
+  {{- else }}
+  volumeName: {{ include "amlfs-shared-storage.fullname" . }}-pv
+  storageClassName: ""
+  {{- end }}
