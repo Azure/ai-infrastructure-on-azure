@@ -47,6 +47,12 @@ fi
 # Azure Container Storage Configuration
 : "${ENABLE_AZURE_CONTAINER_STORAGE:=true}" # Set to false to disable Azure Container Storage
 
+# Node Pool OS SKU Configuration
+: "${NODE_POOL_OS_SKU:=}" # OS SKU for GPU node pool (e.g. Ubuntu, Ubuntu2404). GB300/GB200 require Ubuntu2404.
+
+# InfiniBand Feature Registration
+: "${REGISTER_AKS_INFINIBAND:=true}" # Set to false to skip AKSInfinibandSupport registration (e.g. for GB300)
+
 # Operator Installation Configuration
 : "${INSTALL_NETWORK_OPERATOR:=true}" # Set to false to skip Network Operator installation
 : "${INSTALL_GPU_OPERATOR:=true}"     # Set to false to skip GPU Operator installation
@@ -208,16 +214,20 @@ function add_nodepool() {
 	: "${NODE_POOL_NODE_COUNT:=2}"
 	: "${NODE_POOL_TAG:=}"
 
-	aks_infiniband_support="az feature show \
-        --namespace Microsoft.ContainerService \
-        --name AKSInfinibandSupport -o tsv --query 'properties.state'"
+	if [[ "${REGISTER_AKS_INFINIBAND}" == "true" ]]; then
+		aks_infiniband_support="az feature show \
+			--namespace Microsoft.ContainerService \
+			--name AKSInfinibandSupport -o tsv --query 'properties.state'"
 
-	# Until the output of the above command is not "Registered", keep running the command.
-	while [[ "$(eval "$aks_infiniband_support" | tr -d '\r')" != "Registered" ]]; do
-		az feature register --name AKSInfinibandSupport --namespace Microsoft.ContainerService
-		echo "⏳ Waiting for the feature 'AKSInfinibandSupport' to be registered..."
-		sleep 10
-	done
+		# Until the output of the above command is not "Registered", keep running the command.
+		while [[ "$(eval "$aks_infiniband_support" | tr -d '\r')" != "Registered" ]]; do
+			az feature register --name AKSInfinibandSupport --namespace Microsoft.ContainerService
+			echo "⏳ Waiting for the feature 'AKSInfinibandSupport' to be registered..."
+			sleep 10
+		done
+	else
+		echo "⏠ Skipping AKSInfinibandSupport registration (REGISTER_AKS_INFINIBAND=false)"
+	fi
 
 	echo "⏳ Adding node pool '${NODE_POOL_NAME}', SKU: '${NODE_POOL_VM_SIZE}', Count: '${NODE_POOL_NODE_COUNT}' to AKS cluster '${CLUSTER_NAME}' in resource group '${AZURE_RESOURCE_GROUP}'!..."
 
@@ -230,6 +240,11 @@ function add_nodepool() {
 		--node-count "${NODE_POOL_NODE_COUNT}"
 		--node-vm-size "${NODE_POOL_VM_SIZE}"
 	)
+
+	# Add OS SKU if NODE_POOL_OS_SKU is set
+	if [[ -n "${NODE_POOL_OS_SKU}" ]]; then
+		nodepool_cmd+=(--os-sku "${NODE_POOL_OS_SKU}")
+	fi
 
 	# Add tags if NODE_POOL_TAG is set
 	if [[ -n "${NODE_POOL_TAG}" ]]; then
