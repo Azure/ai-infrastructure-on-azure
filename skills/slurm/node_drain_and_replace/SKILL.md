@@ -9,15 +9,15 @@ Slurm node lifecycle management: when and how to drain, undrain, reboot, and fil
 
 ## Slurm Node States
 
-| State | Meaning |
-|-------|---------|
-| `idle` | Available for jobs |
-| `allocated` | Running a job |
-| `mixed` | Some CPUs/GPUs allocated, some free |
-| `drained` | Administratively removed from scheduling; no new jobs |
-| `draining` | Drained but still running existing job(s) |
-| `down` | Node is unreachable or failed healthcheck |
-| `down*` | Node is down with a reason |
+| State       | Meaning                                               |
+| ----------- | ----------------------------------------------------- |
+| `idle`      | Available for jobs                                    |
+| `allocated` | Running a job                                         |
+| `mixed`     | Some CPUs/GPUs allocated, some free                   |
+| `drained`   | Administratively removed from scheduling; no new jobs |
+| `draining`  | Drained but still running existing job(s)             |
+| `down`      | Node is unreachable or failed healthcheck             |
+| `down*`     | Node is down with a reason                            |
 
 ## Drain a Node
 

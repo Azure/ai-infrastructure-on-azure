@@ -41,12 +41,30 @@ SBATCH_ARGS=()
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
-		--sku)        SKU="$2";        shift 2 ;;
-		--begin-size) BEGIN_SIZE="$2";  shift 2 ;;
-		--end-size)   END_SIZE="$2";    shift 2 ;;
-		--iters)      ITERS="$2";       shift 2 ;;
-		--check)      CHECK=1;          shift   ;;
-		*)            SBATCH_ARGS+=("$1"); shift ;;
+	--sku)
+		SKU="$2"
+		shift 2
+		;;
+	--begin-size)
+		BEGIN_SIZE="$2"
+		shift 2
+		;;
+	--end-size)
+		END_SIZE="$2"
+		shift 2
+		;;
+	--iters)
+		ITERS="$2"
+		shift 2
+		;;
+	--check)
+		CHECK=1
+		shift
+		;;
+	*)
+		SBATCH_ARGS+=("$1")
+		shift
+		;;
 	esac
 done
 
@@ -73,8 +91,8 @@ if [ -z "$SKU" ]; then
 	if [ -n "$NODE" ]; then
 		GPU_NAME=$(ssh "$NODE" "nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1" 2>/dev/null || true)
 		case "$GPU_NAME" in
-			*H100*|*H200*)              SKU="hopper"         ;;
-			*GB200*|*GB300*)            SKU="graceblackwell" ;;
+		*H100* | *H200*) SKU="hopper" ;;
+		*GB200* | *GB300*) SKU="graceblackwell" ;;
 		esac
 	fi
 

@@ -10,11 +10,13 @@ How to check InfiniBand connectivity, port state, partition keys, and error coun
 ## IB Interface Layout
 
 ### GB300 (Standard_ND128isr_GB300_v6)
+
 - 4 IB ports: `ib0`, `ib1`, `ib2`, `ib3`
 - 4 × 400 Gb/s (NDR)
 - HCA devices: `mlx5_ib0` through `mlx5_ib3` (plus additional for management)
 
 ### H100 (Standard_ND96isr_H100_v5)
+
 - 8 IB ports: `ib0` through `ib7`
 - 8 × 400 Gb/s (NDR)
 - HCA devices: `mlx5_ib0` through `mlx5_ib7`
@@ -46,6 +48,7 @@ ibstat | grep -A5 "Port 1"
 ```
 
 Key fields:
+
 - `State: Active` — link is up and routed
 - `Physical state: LinkUp` — physical layer is connected
 - `Rate: 400` — NDR speed
@@ -100,6 +103,7 @@ done
 ```
 
 Key counters:
+
 - `SymbolErrorCounter` — encoding errors (cable/transceiver issue)
 - `LinkErrorRecoveryCounter` — link retrained (flapping)
 - `LinkDownedCounter` — link went down
@@ -108,13 +112,13 @@ Key counters:
 
 ### Threshold guidance
 
-| Counter | Normal | Investigate |
-|---------|--------|-------------|
-| SymbolErrorCounter | 0 | > 0 (cable issue) |
-| LinkErrorRecoveryCounter | 0 | > 0 (flapping) |
-| LinkDownedCounter | 0 | > 0 (link failure history) |
-| PortRcvErrors | 0 | > 100 |
-| PortXmitDiscards | 0–low | > 1000 (congestion or config) |
+| Counter                  | Normal | Investigate                   |
+| ------------------------ | ------ | ----------------------------- |
+| SymbolErrorCounter       | 0      | > 0 (cable issue)             |
+| LinkErrorRecoveryCounter | 0      | > 0 (flapping)                |
+| LinkDownedCounter        | 0      | > 0 (link failure history)    |
+| PortRcvErrors            | 0      | > 100                         |
+| PortXmitDiscards         | 0–low  | > 1000 (congestion or config) |
 
 ## Link Flap Detection
 
@@ -157,7 +161,7 @@ sudo dmesg | grep -i "link_state\|link down\|port_inactive"
 
 ## GHR Categories for IB Issues
 
-| Issue | GHR Category |
-|-------|-------------|
-| Port down (carrier=-1, not recoverable by reboot) | `ib_down` |
+| Issue                                                    | GHR Category  |
+| -------------------------------------------------------- | ------------- |
+| Port down (carrier=-1, not recoverable by reboot)        | `ib_down`     |
 | Port flapping (high carrier_changes / LinkErrorRecovery) | `ib_flapping` |

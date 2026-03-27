@@ -42,6 +42,7 @@ nvidia-smi -q | grep ClusterUUID
 ```
 
 Output:
+
 ```
     ClusterUUID                       : a1b2c3d4-e5f6-7890-abcd-ef1234567890
 ```
@@ -55,6 +56,7 @@ parallel-ssh -H "ccw-gpu-1 ccw-gpu-2 ccw-gpu-3 ..." -t 15 -i \
 ```
 
 Output:
+
 ```
 [1] 14:23:45 [SUCCESS] ccw-gpu-1
 a1b2c3d4-e5f6-7890-abcd-ef1234567890
@@ -89,11 +91,12 @@ parallel-ssh -H "$NODES" -t 15 -i \
 
 After discovery, verify each rack has the expected number of nodes:
 
-| SKU | Expected Rack Size |
-|-----|-------------------|
-| GB300 (NDv6) | 18 nodes |
+| SKU          | Expected Rack Size |
+| ------------ | ------------------ |
+| GB300 (NDv6) | 18 nodes           |
 
 If a rack has fewer than expected nodes:
+
 - Check if the missing nodes are drained/down (expected — they were filtered out).
 - If nodes are in `idle` or `allocated` state but didn't return a ClusterUUID, investigate those nodes.
 
@@ -136,6 +139,7 @@ systemctl status nvidia-fabricmanager
 Healthy output includes `Active: active (running)`.
 
 Common FabricManager issues:
+
 - **"training in progress"** with ClusterUUID all zeros → NVLink fabric failed to initialize. GHR category: `nvlink_down`.
 - **"FabricManager not running"** → Service crashed or failed to start. Try `sudo systemctl restart nvidia-fabricmanager`. If it won't start, GHR.
 - **DCGM NVSwitch errors** → `dcgmi discovery -l | grep -i nvswitch` to check NVSwitch visibility.

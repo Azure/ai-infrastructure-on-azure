@@ -42,7 +42,7 @@ fi
 # Load system profile and MPI before sourcing config so that
 # LD_LIBRARY_PATH etc. are available for any config-time checks.
 # ---------------------------------------------------------------------------
-set +u  # system profile scripts may use unbound variables
+set +u # system profile scripts may use unbound variables
 source /etc/profile
 module load mpi/hpcx
 set -u
@@ -65,9 +65,9 @@ echo "  Data check  : ${NCCL_CHECK}"
 # ---------------------------------------------------------------------------
 # Build all_reduce_perf arguments
 # ---------------------------------------------------------------------------
-PERF_ARGS=( -b "$NCCL_BEGIN_SIZE" -e "$NCCL_END_SIZE" -f 2 -g 1 -c "$NCCL_CHECK" )
+PERF_ARGS=(-b "$NCCL_BEGIN_SIZE" -e "$NCCL_END_SIZE" -f 2 -g 1 -c "$NCCL_CHECK")
 if [ -n "$NCCL_ITERS" ]; then
-	PERF_ARGS+=( -n "$NCCL_ITERS" )
+	PERF_ARGS+=(-n "$NCCL_ITERS")
 fi
 
 srun --mpi=pmix \
