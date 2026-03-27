@@ -22,7 +22,9 @@ Map user intent to the correct skill(s), then execute only the procedures and th
 ## Intent Map
 
 ### New cluster bring-up / full validation
+
 Use:
+
 - `sku_performance_baseline`
 - `rack_topology`
 - `nccl_allreduce_test`
@@ -30,45 +32,59 @@ Use:
 - `thermal_stress_test`
 
 ### Slow training or low multi-node throughput
+
 Use:
+
 - `nccl_performance_diagnosis`
 - `sku_performance_baseline`
 - `ib_link_validation`
 - `rack_topology` (when topology correlation is needed)
 
 ### NCCL failures or low all-reduce bandwidth
+
 Use:
+
 - `nccl_allreduce_test`
 - `nccl_performance_diagnosis`
 - `ib_link_validation`
 - `cluster_outlier_detection` (fleet-wide analysis)
 
 ### GPU underperformance on one or more nodes
+
 Use:
+
 - `node_gpu_validation`
 - `cluster_outlier_detection`
 - `sku_performance_baseline`
 
 ### Thermal throttling or suspected cooling issues
+
 Use:
+
 - `thermal_stress_test`
 - `sku_performance_baseline`
 - `node_gpu_validation` (if thermal impact on GEMM performance is suspected)
 
 ### InfiniBand link/pkey/errors investigation
+
 Use:
+
 - `ib_link_validation`
 - `nccl_performance_diagnosis`
 - `rack_topology` (when rack-locality matters)
 
 ### Identify degraded nodes across fleet
+
 Use:
+
 - `cluster_outlier_detection`
 - `sku_performance_baseline`
 - `node_gpu_validation` and/or `nccl_allreduce_test` (depending on metric source)
 
 ### Node remediation / drain / replace / GHR
+
 Use:
+
 - `node_drain_and_replace`
 - `azure_node_health_report`
 

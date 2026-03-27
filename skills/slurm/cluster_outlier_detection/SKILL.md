@@ -40,11 +40,11 @@ if z_score < -2.0:
 
 ### Threshold guidance
 
-| Z-score | Percentile | Action |
-|---------|-----------|--------|
-| < -1.5 | ~7th percentile | Monitor — performance is below peers |
-| < -2.0 | ~2nd percentile | Investigate — likely degraded |
-| < -3.0 | ~0.1th percentile | Drain — almost certainly hardware issue |
+| Z-score | Percentile        | Action                                  |
+| ------- | ----------------- | --------------------------------------- |
+| < -1.5  | ~7th percentile   | Monitor — performance is below peers    |
+| < -2.0  | ~2nd percentile   | Investigate — likely degraded           |
+| < -3.0  | ~0.1th percentile | Drain — almost certainly hardware issue |
 
 Pros: Adapts to actual fleet performance. Catches relative degradation.
 Cons: Requires enough data points (≥ 10 nodes). Sensitive to outliers in the dataset itself (one very bad node inflates stdev).

@@ -87,12 +87,12 @@ When the fleet is large (> 10 nodes), also flag nodes more than 2 standard devia
 
 ## Common Failure Patterns
 
-| Pattern | Likely Cause |
-|---------|-------------|
-| All GPUs on a node are equally low | Thermal throttling, power capping, or PCIe bandwidth issue |
-| One GPU significantly lower than others | Degraded GPU — hardware fault |
-| All nodes in a rack are low | Power or cooling issue at rack level |
-| GFlops near zero or parse error | GPU not visible, driver crash, XID error in dmesg |
+| Pattern                                 | Likely Cause                                               |
+| --------------------------------------- | ---------------------------------------------------------- |
+| All GPUs on a node are equally low      | Thermal throttling, power capping, or PCIe bandwidth issue |
+| One GPU significantly lower than others | Degraded GPU — hardware fault                              |
+| All nodes in a rack are low             | Power or cooling issue at rack level                       |
+| GFlops near zero or parse error         | GPU not visible, driver crash, XID error in dmesg          |
 
 ## What to Do with Results
 

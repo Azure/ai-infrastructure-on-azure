@@ -68,63 +68,64 @@ nvidia-smi -i 2 --query-gpu=serial,pci.bus_id,name --format=csv,noheader
 Source: [Impact categories for Guest Health Reporting](https://learn.microsoft.com/en-us/azure/azure-impact-reporting/guest-health-impact-categories)
 
 Three main types:
+
 - **Reset**: Refresh node health state.
 - **Reboot**: Request node restart.
 - **Unhealthy**: Node has issues — take out of production for diagnostics and repair.
 
 ### Full Category List
 
-| Category | Description | Node Removed? |
-|----------|-------------|:------------:|
-| `Resource.Hpc.Reset` | Reset node health status | No |
-| `Resource.Hpc.Reboot` | Restart the node | No |
-| `Resource.Hpc.Unhealthy.HpcMissingGpu` | Missing GPU | Yes |
-| `Resource.Hpc.Unhealthy.MissingIB` | Missing InfiniBand port | Yes |
-| `Resource.Hpc.Unhealthy.IBPerformance` | Degraded InfiniBand performance | Yes |
-| `Resource.Hpc.Unhealthy.IBPortDown` | InfiniBand port is in a down state | Yes |
-| `Resource.Hpc.Unhealthy.IBPortFlapping` | InfiniBand port flapping | Yes |
-| `Resource.Hpc.Unhealthy.HpcGpuDcgmDiagFailure` | DCGMI diagnostic failure | Yes |
-| `Resource.Hpc.Unhealthy.HpcRowRemapFailure` | GPU row remapping failure | Yes |
-| `Resource.Hpc.Unhealthy.HpcInforomCorruption` | GPU infoROM corruption | Yes |
-| `Resource.Hpc.Unhealthy.HpcGenericFailure` | Issue doesn't fit other categories | Yes |
-| `Resource.Hpc.Unhealthy.ManualInvestigation` | Request manual investigation by HPC team | Yes |
-| `Resource.Hpc.Unhealthy.XID95UncontainedECCError` | GPU uncontained ECC error (XID 95) | Yes |
-| `Resource.Hpc.Unhealthy.XID94ContainedECCError` | GPU contained ECC error (XID 94) | Yes |
-| `Resource.Hpc.Unhealthy.XID79FallenOffBus` | GPU fell off PCIe bus (XID 79) | Yes |
-| `Resource.Hpc.Unhealthy.XID48DoubleBitECC` | GPU double-bit ECC error (XID 48) | Yes |
-| `Resource.Hpc.Unhealthy.UnhealthyGPUNvidiasmi` | nvidia-smi unresponsive | Yes |
-| `Resource.Hpc.Unhealthy.NvLink` | NVLink is down | Yes |
-| `Resource.Hpc.Unhealthy.HpcDcgmiThermalReport` | DCGMI thermal violations | Yes |
-| `Resource.Hpc.Unhealthy.ECCPageRetirementTableFull` | Page retirements over threshold | Yes |
-| `Resource.Hpc.Unhealthy.DBEOverLimit` | >10 retired pages for double-bit ECC in 7 days | Yes |
-| `Resource.Hpc.Unhealthy.GpuXIDError` | GPU XID error (other than 48, 79, 94, 95) | Yes |
-| `Resource.Hpc.Unhealthy.AmdGpuResetFailed` | AMD GPU unrecoverable reset failure | Yes |
-| `Resource.Hpc.Unhealthy.EROTFailure` | GPU memory External Root of Trust failure | Yes |
-| `Resource.Hpc.Unhealthy.GPUMemoryBWFailure` | GPU memory bandwidth failure | Yes |
-| `Resource.Hpc.Unhealthy.CPUPerformance` | CPU performance issue | Yes |
+| Category                                            | Description                                    | Node Removed? |
+| --------------------------------------------------- | ---------------------------------------------- | :-----------: |
+| `Resource.Hpc.Reset`                                | Reset node health status                       |      No       |
+| `Resource.Hpc.Reboot`                               | Restart the node                               |      No       |
+| `Resource.Hpc.Unhealthy.HpcMissingGpu`              | Missing GPU                                    |      Yes      |
+| `Resource.Hpc.Unhealthy.MissingIB`                  | Missing InfiniBand port                        |      Yes      |
+| `Resource.Hpc.Unhealthy.IBPerformance`              | Degraded InfiniBand performance                |      Yes      |
+| `Resource.Hpc.Unhealthy.IBPortDown`                 | InfiniBand port is in a down state             |      Yes      |
+| `Resource.Hpc.Unhealthy.IBPortFlapping`             | InfiniBand port flapping                       |      Yes      |
+| `Resource.Hpc.Unhealthy.HpcGpuDcgmDiagFailure`      | DCGMI diagnostic failure                       |      Yes      |
+| `Resource.Hpc.Unhealthy.HpcRowRemapFailure`         | GPU row remapping failure                      |      Yes      |
+| `Resource.Hpc.Unhealthy.HpcInforomCorruption`       | GPU infoROM corruption                         |      Yes      |
+| `Resource.Hpc.Unhealthy.HpcGenericFailure`          | Issue doesn't fit other categories             |      Yes      |
+| `Resource.Hpc.Unhealthy.ManualInvestigation`        | Request manual investigation by HPC team       |      Yes      |
+| `Resource.Hpc.Unhealthy.XID95UncontainedECCError`   | GPU uncontained ECC error (XID 95)             |      Yes      |
+| `Resource.Hpc.Unhealthy.XID94ContainedECCError`     | GPU contained ECC error (XID 94)               |      Yes      |
+| `Resource.Hpc.Unhealthy.XID79FallenOffBus`          | GPU fell off PCIe bus (XID 79)                 |      Yes      |
+| `Resource.Hpc.Unhealthy.XID48DoubleBitECC`          | GPU double-bit ECC error (XID 48)              |      Yes      |
+| `Resource.Hpc.Unhealthy.UnhealthyGPUNvidiasmi`      | nvidia-smi unresponsive                        |      Yes      |
+| `Resource.Hpc.Unhealthy.NvLink`                     | NVLink is down                                 |      Yes      |
+| `Resource.Hpc.Unhealthy.HpcDcgmiThermalReport`      | DCGMI thermal violations                       |      Yes      |
+| `Resource.Hpc.Unhealthy.ECCPageRetirementTableFull` | Page retirements over threshold                |      Yes      |
+| `Resource.Hpc.Unhealthy.DBEOverLimit`               | >10 retired pages for double-bit ECC in 7 days |      Yes      |
+| `Resource.Hpc.Unhealthy.GpuXIDError`                | GPU XID error (other than 48, 79, 94, 95)      |      Yes      |
+| `Resource.Hpc.Unhealthy.AmdGpuResetFailed`          | AMD GPU unrecoverable reset failure            |      Yes      |
+| `Resource.Hpc.Unhealthy.EROTFailure`                | GPU memory External Root of Trust failure      |      Yes      |
+| `Resource.Hpc.Unhealthy.GPUMemoryBWFailure`         | GPU memory bandwidth failure                   |      Yes      |
+| `Resource.Hpc.Unhealthy.CPUPerformance`             | CPU performance issue                          |      Yes      |
 
 ### Choosing the Right Category
 
-| Observed Issue | Category |
-|---------------|----------|
-| GPU not visible in nvidia-smi | `HpcMissingGpu` |
-| IB port shows carrier=-1, won't come up after reboot | `IBPortDown` |
-| IB port carrier_changes count is high | `IBPortFlapping` |
-| IB bandwidth test consistently degraded | `IBPerformance` |
-| IB interface completely missing | `MissingIB` |
-| dcgmi diag -r 3 fails | `HpcGpuDcgmDiagFailure` |
-| Thermal throttling under load | `HpcDcgmiThermalReport` |
-| XID 79 in dmesg (GPU fallen off bus) | `XID79FallenOffBus` |
-| XID 94 in dmesg (contained ECC error) | `XID94ContainedECCError` |
-| XID 95 in dmesg (uncontained ECC error) | `XID95UncontainedECCError` |
-| XID 48 in dmesg (double-bit ECC) | `XID48DoubleBitECC` |
-| Other XID errors | `GpuXIDError` |
-| nvidia-smi hangs or crashes | `UnhealthyGPUNvidiasmi` |
-| NVLink down / FabricManager errors / ClusterUUID all zeros | `NvLink` |
-| GPU row remap failure | `HpcRowRemapFailure` |
-| GPU infoROM corruption | `HpcInforomCorruption` |
-| None of the above fits | `HpcGenericFailure` |
-| Need Azure HPC team to investigate | `ManualInvestigation` |
+| Observed Issue                                             | Category                   |
+| ---------------------------------------------------------- | -------------------------- |
+| GPU not visible in nvidia-smi                              | `HpcMissingGpu`            |
+| IB port shows carrier=-1, won't come up after reboot       | `IBPortDown`               |
+| IB port carrier_changes count is high                      | `IBPortFlapping`           |
+| IB bandwidth test consistently degraded                    | `IBPerformance`            |
+| IB interface completely missing                            | `MissingIB`                |
+| dcgmi diag -r 3 fails                                      | `HpcGpuDcgmDiagFailure`    |
+| Thermal throttling under load                              | `HpcDcgmiThermalReport`    |
+| XID 79 in dmesg (GPU fallen off bus)                       | `XID79FallenOffBus`        |
+| XID 94 in dmesg (contained ECC error)                      | `XID94ContainedECCError`   |
+| XID 95 in dmesg (uncontained ECC error)                    | `XID95UncontainedECCError` |
+| XID 48 in dmesg (double-bit ECC)                           | `XID48DoubleBitECC`        |
+| Other XID errors                                           | `GpuXIDError`              |
+| nvidia-smi hangs or crashes                                | `UnhealthyGPUNvidiasmi`    |
+| NVLink down / FabricManager errors / ClusterUUID all zeros | `NvLink`                   |
+| GPU row remap failure                                      | `HpcRowRemapFailure`       |
+| GPU infoROM corruption                                     | `HpcInforomCorruption`     |
+| None of the above fits                                     | `HpcGenericFailure`        |
+| Need Azure HPC team to investigate                         | `ManualInvestigation`      |
 
 ## REST API Format
 
@@ -213,15 +214,16 @@ GET "https://management.azure.com/subscriptions/{subscriptionId}/providers/Micro
 
 ### Insight Status Codes
 
-| statusCode | terminalInsight | Meaning |
-|-----------|:-:|---------|
-| `AcknowledgedUnhealthy` | false | Azure acknowledged the report; investigation in progress |
-| `NodeRemovedFromService` | true | Node removed for repair; expect replacement |
-| `TooManyRequests` | true | Rate limited — wait before resubmitting |
+| statusCode               | terminalInsight | Meaning                                                  |
+| ------------------------ | :-------------: | -------------------------------------------------------- |
+| `AcknowledgedUnhealthy`  |      false      | Azure acknowledged the report; investigation in progress |
+| `NodeRemovedFromService` |      true       | Node removed for repair; expect replacement              |
+| `TooManyRequests`        |      true       | Rate limited — wait before resubmitting                  |
 
 ### Interpreting Insights
 
 Insights arrive as a sequence. Check `additionalDetails.terminalInsight`:
+
 - `false` — still being processed, check again later.
 - `true` — final state, no more updates coming.
 
