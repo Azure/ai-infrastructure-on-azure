@@ -178,13 +178,13 @@ H100/H200 deployments:
 
 ### Key Differences from H100/H200
 
-| Requirement | H100/H200 | GB200/GB300 |
-|---|---|---|
-| OS SKU | `Ubuntu` (default) | `Ubuntu2404` (required) |
-| `AKSInfinibandSupport` feature | Registered | **Must be unregistered** |
-| GPU driver flag | `--gpu-driver=none` | `--gpu-driver None` |
-| Disk controller | SCSI (ephemeral default) | NVMe only |
-| GPU Operator | Standard install | Requires NVIDIA DRA driver |
+| Requirement                    | H100/H200                | GB200/GB300                |
+| ------------------------------ | ------------------------ | -------------------------- |
+| OS SKU                         | `Ubuntu` (default)       | `Ubuntu2404` (required)    |
+| `AKSInfinibandSupport` feature | Registered               | **Must be unregistered**   |
+| GPU driver flag                | `--gpu-driver=none`      | `--gpu-driver None`        |
+| Disk controller                | SCSI (ephemeral default) | NVMe only                  |
+| GPU Operator                   | Standard install         | Requires NVIDIA DRA driver |
 
 > **Note:** The GB300 SKU string is `Standard_ND128isr_GB300_v6`, while GB200 is
 > `Standard_ND128isr_NDR_GB200_v6`. Note the `NDR_` infix in the GB200 string.

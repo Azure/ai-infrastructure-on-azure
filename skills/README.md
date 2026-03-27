@@ -56,34 +56,34 @@ If you're building an AI agent, load the relevant `SKILL.md` content into the sy
 
 ### Routing — Choose the right skill set first
 
-| Skill | What It Covers |
-|-------|---------------|
+| Skill                                       | What It Covers                                                                                                                                                    |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [slurm_router](slurm/slurm_router/SKILL.md) | Intent-to-skill routing for Slurm operations. Selects the correct skills first, then enforces exact commands, thresholds, and action decisions from those skills. |
 
 ### Diagnostic — How to run tests and read results
 
-| Skill | What It Covers |
-|-------|---------------|
-| [sku_performance_baseline](slurm/sku_performance_baseline/SKILL.md) | Expected NCCL busbw, GPU GFlops, thermal limits, IB ports, and rack sizes for GB300 and H100 SKUs. Warn and GHR thresholds. |
-| [node_gpu_validation](slurm/node_gpu_validation/SKILL.md) | Running ubergemm GEMM benchmarks, parsing CSV output, identifying underperforming GPUs, fleet-wide analysis. |
-| [ib_link_validation](slurm/ib_link_validation/SKILL.md) | Checking IB port state (operstate, ibstat), partition keys, error counters, link flap detection, and soft fixes. |
-| [nccl_allreduce_test](slurm/nccl_allreduce_test/SKILL.md) | Running NCCL all_reduce_perf via the launcher, per-SKU environment variables (MNNVL, SHARP, GDR), output columns, quick vs full sweep. |
-| [thermal_stress_test](slurm/thermal_stress_test/SKILL.md) | Running dcgmproftester thermal stress, interpreting pass/fail, supplementary diagnostics (temperatures, throttle reasons, DCGMI levels). |
+| Skill                                                               | What It Covers                                                                                                                           |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| [sku_performance_baseline](slurm/sku_performance_baseline/SKILL.md) | Expected NCCL busbw, GPU GFlops, thermal limits, IB ports, and rack sizes for GB300 and H100 SKUs. Warn and GHR thresholds.              |
+| [node_gpu_validation](slurm/node_gpu_validation/SKILL.md)           | Running ubergemm GEMM benchmarks, parsing CSV output, identifying underperforming GPUs, fleet-wide analysis.                             |
+| [ib_link_validation](slurm/ib_link_validation/SKILL.md)             | Checking IB port state (operstate, ibstat), partition keys, error counters, link flap detection, and soft fixes.                         |
+| [nccl_allreduce_test](slurm/nccl_allreduce_test/SKILL.md)           | Running NCCL all_reduce_perf via the launcher, per-SKU environment variables (MNNVL, SHARP, GDR), output columns, quick vs full sweep.   |
+| [thermal_stress_test](slurm/thermal_stress_test/SKILL.md)           | Running dcgmproftester thermal stress, interpreting pass/fail, supplementary diagnostics (temperatures, throttle reasons, DCGMI levels). |
 
 ### Reasoning — How to analyze and isolate problems
 
-| Skill | What It Covers |
-|-------|---------------|
+| Skill                                                                   | What It Covers                                                                                                              |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | [nccl_performance_diagnosis](slurm/nccl_performance_diagnosis/SKILL.md) | Scoping intra-rack vs inter-rack failures, bisection algorithm for isolating bad nodes, GPU vs network root cause analysis. |
-| [cluster_outlier_detection](slurm/cluster_outlier_detection/SKILL.md) | Statistical methods (absolute threshold, z-score, MAD) for finding degraded nodes in fleet-wide test results. |
-| [rack_topology](slurm/rack_topology/SKILL.md) | MNNVL domains, ClusterUUID discovery via nvidia-smi, expected rack sizes, FabricManager troubleshooting. |
+| [cluster_outlier_detection](slurm/cluster_outlier_detection/SKILL.md)   | Statistical methods (absolute threshold, z-score, MAD) for finding degraded nodes in fleet-wide test results.               |
+| [rack_topology](slurm/rack_topology/SKILL.md)                           | MNNVL domains, ClusterUUID discovery via nvidia-smi, expected rack sizes, FabricManager troubleshooting.                    |
 
 ### Remediation — How to fix or replace bad hardware
 
-| Skill | What It Covers |
-|-------|---------------|
+| Skill                                                               | What It Covers                                                                                                                          |
+| ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | [azure_node_health_report](slurm/azure_node_health_report/SKILL.md) | Complete GHR impact category reference (26 categories), collecting PhysicalHostName and Resource ID, REST API format, polling insights. |
-| [node_drain_and_replace](slurm/node_drain_and_replace/SKILL.md) | Slurm drain/undrain commands, reboot procedure, decision tree for when to drain vs reboot vs GHR, post-replacement validation. |
+| [node_drain_and_replace](slurm/node_drain_and_replace/SKILL.md)     | Slurm drain/undrain commands, reboot procedure, decision tree for when to drain vs reboot vs GHR, post-replacement validation.          |
 
 ## Example Workflows
 
