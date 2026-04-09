@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - feature/gb300-support
     paths:
       - infrastructure_validations/aks/NCCL/docker/Dockerfile
       - .github/workflows/build_nccl_image.yaml
@@ -29,6 +30,9 @@ jobs:
           remove-docker-images: "true"
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -54,6 +58,7 @@ jobs:
         with:
           context: infrastructure_validations/aks/NCCL/docker
           file: infrastructure_validations/aks/NCCL/docker/Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.tag.outputs.tags }}
           labels: ${{ steps.tag.outputs.labels }}
