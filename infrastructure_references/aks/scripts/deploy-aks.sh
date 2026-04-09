@@ -17,6 +17,7 @@ fi
 : "${CLUSTER_NAME:=ai-infra}"
 : "${USER_NAME:=azureuser}"
 : "${SYSTEM_POOL_VM_SIZE:=}"
+: "${K8S_VERSION:=}"               # Kubernetes version (e.g. 1.33). If empty, AKS picks the default.
 : "${GRAFANA_PASSWORD:=$(LC_ALL=C tr </dev/urandom -dc 'A-Za-z0-9!@#$%&*_-' | head -c 30)}"
 
 # Virtual Network configuration (optional dedicated VNet for AKS)
@@ -30,12 +31,13 @@ fi
 : "${USE_EXISTING_SUBNET_ID:=}"            # If set, use this subnet id directly and skip VNet creation
 
 # Versions
-: "${GPU_OPERATOR_VERSION:=v25.3.4}"     # Latest version: https://github.com/NVIDIA/gpu-operator/releases
-: "${NETWORK_OPERATOR_VERSION:=v25.7.0}" # Latest version: https://github.com/Mellanox/network-operator/releases
+: "${GPU_OPERATOR_VERSION:=v26.3.0}"     # Latest version: https://github.com/NVIDIA/gpu-operator/releases
+: "${NETWORK_OPERATOR_VERSION:=v26.1.0}" # Latest version: https://github.com/Mellanox/network-operator/releases
 : "${MPI_OPERATOR_VERSION:=v0.6.0}"      # Latest version: https://github.com/kubeflow/mpi-operator/releases
 : "${CERT_MANAGER_VERSION:=v1.18.2}"     # Latest version: https://github.com/cert-manager/cert-manager/releases
 : "${PYTORCH_OPERATOR_VERSION:=v1.8.1}"  # Latest version: https://github.com/kubeflow/training-operator/releases
 : "${KUEUE_VERSION:=v0.13.0}"            # Latest version: https://github.com/kubernetes-sigs/kueue/releases
+: "${DRA_DRIVER_VERSION:=25.12.0}"       # Latest version: https://github.com/NVIDIA/k8s-dra-driver-gpu/releases
 
 # Network Operator Device Plugin Configuration
 : "${RDMA_DEVICE_PLUGIN:=sriov-device-plugin}" # Options: sriov-device-plugin, rdma-shared-device-plugin
@@ -50,12 +52,17 @@ fi
 # Node Pool OS SKU Configuration
 : "${NODE_POOL_OS_SKU:=}" # OS SKU for GPU node pool (e.g. Ubuntu, Ubuntu2404). GB300/GB200 require Ubuntu2404.
 
+# Node Pool Best Effort Configuration
+: "${NODE_POOL_BEST_EFFORT:=false}" # Set to true to allow partial node allocation (e.g. GB300 rack availability)
+
 # InfiniBand Feature Registration
 : "${REGISTER_AKS_INFINIBAND:=true}" # Set to false to skip AKSInfinibandSupport registration (e.g. for GB300)
 
 # Operator Installation Configuration
 : "${INSTALL_NETWORK_OPERATOR:=true}" # Set to false to skip Network Operator installation
 : "${INSTALL_GPU_OPERATOR:=true}"     # Set to false to skip GPU Operator installation
+: "${INSTALL_DRA_DRIVER:=false}"      # Set to true to install NVIDIA DRA driver (requires DRA-capable K8s)
+: "${GPU_OPERATOR_VALUES:=values.yaml}" # GPU Operator values file (relative to configs/gpu-operator/)
 
 : "${NETWORK_OPERATOR_NS:=network-operator}"
 : "${GPU_OPERATOR_NS:=gpu-operator}"
@@ -181,6 +188,11 @@ function deploy_aks() {
 		--os-sku Ubuntu
 	)
 
+	# Add kubernetes version if K8S_VERSION is set
+	if [[ -n "${K8S_VERSION}" ]]; then
+		aks_create_cmd+=(--kubernetes-version "${K8S_VERSION}")
+	fi
+
 	# Attach cluster to subnet if one was selected/provided
 	if [[ -n "${AKS_SUBNET_ID:-}" ]]; then
 		aks_create_cmd+=(--vnet-subnet-id "${AKS_SUBNET_ID}")
@@ -255,7 +267,27 @@ function add_nodepool() {
 	nodepool_cmd+=("$@")
 
 	# Execute the command
-	"${nodepool_cmd[@]}"
+	if [[ "${NODE_POOL_BEST_EFFORT}" == "true" ]]; then
+		# Allow partial node allocation — don't fail if not all nodes come up
+		# This is common for large GPU SKUs where full rack availability isn't guaranteed
+		set +e
+		"${nodepool_cmd[@]}"
+		local rc=$?
+		set -e
+		if [[ $rc -ne 0 ]]; then
+			echo "⚠️ Node pool add exited with code $rc (NODE_POOL_BEST_EFFORT=true, continuing...)"
+			local actual_count
+			actual_count=$(kubectl get nodes -l agentpool="${NODE_POOL_NAME}" --no-headers 2>/dev/null | wc -l)
+			if [[ "${actual_count}" -gt 0 ]]; then
+				echo "✅ ${actual_count}/${NODE_POOL_NODE_COUNT} nodes came up for pool '${NODE_POOL_NAME}'"
+			else
+				echo "❌ No nodes came up for pool '${NODE_POOL_NAME}' — this is a hard failure"
+				return 1
+			fi
+		fi
+	else
+		"${nodepool_cmd[@]}"
+	fi
 
 	echo "✅ Node pool '${NODE_POOL_NAME}', SKU: '${NODE_POOL_VM_SIZE}', Count: '${NODE_POOL_NODE_COUNT}' added to AKS cluster '${CLUSTER_NAME}' in resource group '${AZURE_RESOURCE_GROUP}'!"
 }
@@ -298,6 +330,15 @@ function install_network_operator() {
 	kubectl apply -f "${CONFIGS_DIR}"/network-operator/node-feature-rule.yaml
 	kubectl apply -k "${CONFIGS_DIR}"/network-operator/nicclusterpolicy/"${RDMA_DEVICE_PLUGIN}"/
 
+	# Remove docaTelemetryService on arm64 clusters (crashes on GB300/arm64)
+	local node_arch
+	node_arch=$(kubectl get nodes -l agentpool="${NODE_POOL_NAME:-gpu}" -o jsonpath='{.items[0].metadata.labels.kubernetes\.io/arch}' 2>/dev/null || true)
+	if [[ "${node_arch}" == "arm64" ]]; then
+		echo "⏳ Removing docaTelemetryService (not supported on arm64)..."
+		kubectl patch nicclusterpolicy nic-cluster-policy --type=json \
+			-p='[{"op":"remove","path":"/spec/docaTelemetryService"}]' 2>/dev/null || true
+	fi
+
 	echo -e "⏳ Waiting for Nvidia Network Operator to be ready, to see behind the scenes run:\n"
 	echo "kubectl get NicClusterPolicy nic-cluster-policy"
 	echo -e "kubectl get pods -n ${NETWORK_OPERATOR_NS} -o wide\n"
@@ -335,14 +376,29 @@ function install_gpu_operator() {
 	helm repo add nvidia https://helm.ngc.nvidia.com/nvidia >/dev/null
 	helm repo update >/dev/null
 
-	helm upgrade -i \
-		--wait \
-		-n "${GPU_OPERATOR_NS}" \
-		--create-namespace \
-		--values "${CONFIGS_DIR}"/gpu-operator/values.yaml \
-		gpu-operator \
-		nvidia/gpu-operator \
+	local gpu_helm_cmd=(
+		helm upgrade -i
+		--wait
+		-n "${GPU_OPERATOR_NS}"
+		--create-namespace
+		--values "${CONFIGS_DIR}/gpu-operator/${GPU_OPERATOR_VALUES}"
+		gpu-operator
+		nvidia/gpu-operator
 		--version "${GPU_OPERATOR_VERSION}"
+	)
+
+	# When DRA driver is enabled, disable the legacy device plugin and
+	# configure the driver manager to evict the DRA kubelet plugin correctly.
+	if [[ "${INSTALL_DRA_DRIVER}" == "true" ]]; then
+		echo "⏳ DRA mode: disabling devicePlugin, setting driver.manager.env for DRA..."
+		gpu_helm_cmd+=(
+			--set devicePlugin.enabled=false
+			--set 'driver.manager.env[0].name=NODE_LABEL_FOR_GPU_POD_EVICTION'
+			--set 'driver.manager.env[0].value=nvidia.com/dra-kubelet-plugin'
+		)
+	fi
+
+	"${gpu_helm_cmd[@]}"
 
 	# Wait for the GPU Operator to be ready
 	echo -e "⏳ Waiting for GPU Operator to be ready, to see behind the scenes run:\n"
@@ -364,6 +420,60 @@ function install_gpu_operator() {
 	gpu_on_nodes_cmd="kubectl get nodes -l accelerator=nvidia -o json | jq -r '.items[] | {name: .metadata.name, \"nvidia.com/gpu\": .status.allocatable[\"nvidia.com/gpu\"]}'"
 	echo "$ ${gpu_on_nodes_cmd}"
 	eval "${gpu_on_nodes_cmd}"
+}
+
+# install_dra_driver installs the NVIDIA DRA driver for dynamic GPU resource
+# allocation. Required for GB300/GB200 to get GPU drivers, IMEX, ComputeDomains.
+# Requires K8s v1.34.2+ and GPU Operator v25.10.0+ with devicePlugin disabled.
+# Ref: https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/dra-intro-install.html
+function install_dra_driver() {
+	echo "⏳ Installing NVIDIA DRA Driver v${DRA_DRIVER_VERSION}..."
+
+	# Label GPU nodes for DRA kubelet plugin scheduling
+	echo "⏳ Labeling GPU nodes with nvidia.com/dra-kubelet-plugin=true..."
+	local gpu_nodes
+	gpu_nodes=$(kubectl get nodes -l agentpool="${NODE_POOL_NAME}" -o name 2>/dev/null || true)
+	if [[ -z "${gpu_nodes}" ]]; then
+		gpu_nodes=$(kubectl get nodes -l accelerator=nvidia -o name 2>/dev/null || true)
+	fi
+	for node in ${gpu_nodes}; do
+		kubectl label --overwrite "${node}" nvidia.com/dra-kubelet-plugin=true
+	done
+	echo "✅ Labeled $(echo "${gpu_nodes}" | wc -w) nodes for DRA."
+
+	helm repo add nvidia https://helm.ngc.nvidia.com/nvidia >/dev/null
+	helm repo update >/dev/null
+
+	# Create a temp values file for nodeSelector (--set can't handle dots in keys)
+	local dra_values
+	dra_values=$(mktemp)
+	cat >"${dra_values}" <<-'EOF'
+		image:
+		  pullPolicy: IfNotPresent
+		kubeletPlugin:
+		  nodeSelector:
+		    nvidia.com/dra-kubelet-plugin: "true"
+		controller:
+		  affinity: {}
+	EOF
+
+	helm upgrade -i nvidia-dra-driver-gpu nvidia/nvidia-dra-driver-gpu \
+		--version "${DRA_DRIVER_VERSION}" \
+		-n nvidia-dra-driver-gpu --create-namespace \
+		--set nvidiaDriverRoot=/run/nvidia/driver \
+		--set gpuResourcesEnabledOverride=true \
+		-f "${dra_values}" \
+		--wait
+
+	rm -f "${dra_values}"
+
+	echo "✅ NVIDIA DRA Driver v${DRA_DRIVER_VERSION} installed successfully."
+
+	# Validation
+	echo "📊 DRA driver pods:"
+	kubectl get pods -n nvidia-dra-driver-gpu
+	echo "📊 DeviceClasses:"
+	kubectl get deviceclass 2>/dev/null || echo "  (no deviceclasses yet — may take a moment)"
 }
 
 function install_grafana_dashboards() {
@@ -756,6 +866,9 @@ install-network-operator | install_network_operator)
 install-gpu-operator | install_gpu_operator)
 	install_gpu_operator
 	;;
+install-dra-driver | install_dra_driver)
+	install_dra_driver
+	;;
 install-kube-prometheus | install_kube_prometheus)
 	install_kube_prometheus
 	;;
@@ -798,6 +911,9 @@ all)
 	fi
 	if [[ "${INSTALL_GPU_OPERATOR}" == "true" ]]; then
 		install_gpu_operator
+	fi
+	if [[ "${INSTALL_DRA_DRIVER}" == "true" ]]; then
+		install_dra_driver
 	fi
 	if [[ "${INSTALL_AMLFS}" == "true" ]]; then
 		install_amlfs
