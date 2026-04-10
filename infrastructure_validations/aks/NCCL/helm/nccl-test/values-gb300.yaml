@@ -1,0 +1,53 @@
+# Values override for Standard_ND128isr_GB300_v6 (Grace Blackwell)
+#
+# Usage:
+#   helm install nccl-test infrastructure_validations/aks/NCCL/helm/nccl-test \
+#     -f infrastructure_validations/aks/NCCL/helm/nccl-test/values-gb300.yaml \
+#     --set nodes=14
+
+# GB300 has 4 GPUs per node
+gpusPerNode: 4
+
+# Uses the same custom nccl-test image as H100 (default values.yaml)
+
+# GB300 MNNVL handles topology — no NUMA core binding needed
+mpi:
+  bindToCore: false
+
+# NCCL test configuration
+ncclTest:
+  testArgs: "-b 1K -e 16G -f 2 -g 1 -c 0"
+
+  env:
+    CUDA_DEVICE_ORDER: "PCI_BUS_ID"
+    NCCL_SOCKET_IFNAME: "eth0"
+    NCCL_DEBUG: "WARN"
+
+    # Null out H100-specific settings that don't apply to GB300
+    NCCL_TOPO_FILE: null
+    NCCL_IB_PCI_RELAXED_ORDERING: null
+    NCCL_IB_QPS_PER_CONNECTION: null
+    NCCL_IGNORE_CPU_AFFINITY: null
+    NCCL_P2P_NET_CHUNKSIZE: null
+    NCCL_PXN_DISABLE: null
+    NCCL_MIN_NCHANNELS: null
+    NCCL_COLLNET_ENABLE: null
+    UCX_TLS: null
+    UCX_NET_DEVICES: null
+    SHARP_SMX_UCX_INTERFACE: null
+    SHARP_COLL_ENABLE_SAT: null
+    SHARP_COLL_LOG_LEVEL: null
+    SHARP_COLL_ENABLE_PCI_RELAXED_ORDERING: null
+    OMPI_ALLOW_RUN_AS_ROOT: null
+    OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: null
+
+# Enable DRA for MNNVL / ComputeDomain scheduling
+dra:
+  enabled: true
+  claimTemplateName: "nccl-test-channel"
+
+# Affinity: co-locate workers within the same MNNVL clique
+affinity:
+  required:
+    - topologyKey: nvidia.com/gpu.clique
+  preferred: []

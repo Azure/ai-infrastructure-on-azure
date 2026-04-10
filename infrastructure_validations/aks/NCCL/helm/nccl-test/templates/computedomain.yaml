@@ -1,0 +1,11 @@
+{{- if .Values.dra.enabled }}
+apiVersion: resource.nvidia.com/v1beta1
+kind: ComputeDomain
+metadata:
+  name: {{ include "nccl-test.fullname" . }}-compute-domain
+spec:
+  numNodes: 0
+  channel:
+    resourceClaimTemplate:
+      name: {{ .Values.dra.claimTemplateName }}
+{{- end }}
