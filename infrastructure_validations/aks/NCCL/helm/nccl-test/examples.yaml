@@ -7,6 +7,13 @@ repeat-16G-test:
   ncclTest:
     testArgs: "-b 16G -e 16G -f 2 -g 1 -c 0 -n 10"
 
+# Repeat test - 10 separate runs at 16G (re-initializes each time)
+repeat-16G-Nruns:
+  nodes: 2
+  gpusPerNode: 8
+  ncclTest:
+    testArgs: "-b 16G -e 16G -N 10 -f 2 -g 1"
+
 # Debug configuration - verbose NCCL logging
 debug-test:
   nodes: 2
@@ -14,3 +21,21 @@ debug-test:
   ncclTest:
     env:
       NCCL_DEBUG: "INFO"
+
+# GB300 full rack MNNVL test (14 nodes, 56 GPUs)
+gb300-full-rack:
+  nodes: 14
+  gpusPerNode: 4
+  ncclTest:
+    testArgs: "-b 16G -e 16G -N 10 -f 2 -g 1"
+    env:
+      CUDA_DEVICE_ORDER: "PCI_BUS_ID"
+      NCCL_SOCKET_IFNAME: "eth0"
+      NCCL_DEBUG: "WARN"
+  dra:
+    enabled: true
+    claimTemplateName: "nccl-test-channel"
+  affinity:
+    required:
+      - topologyKey: nvidia.com/gpu.clique
+    preferred: []
