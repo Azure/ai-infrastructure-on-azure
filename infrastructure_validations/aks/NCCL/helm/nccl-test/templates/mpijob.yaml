@@ -115,9 +115,8 @@ spec:
               - name: {{ .Values.dra.claimTemplateName }}
               {{- end }}
             securityContext:
-              privileged: true
               capabilities:
-                add: ["IPC_LOCK", "SYS_PTRACE", "SYS_ADMIN"]
+                add: ["IPC_LOCK"]
             volumeMounts:
             - name: shm
               mountPath: /dev/shm
