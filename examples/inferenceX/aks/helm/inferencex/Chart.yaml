@@ -1,0 +1,18 @@
+apiVersion: v2
+name: inferencex
+description: InferenceX disaggregated inference benchmark on AKS with GB300
+type: application
+version: 0.1.0
+appVersion: "0.8.1"
+keywords:
+  - inferencex
+  - inference
+  - tensorrt-llm
+  - dynamo
+  - gb300
+  - mpi
+  - benchmark
+home: https://github.com/SemiAnalysisAI/InferenceX
+sources:
+  - https://github.com/SemiAnalysisAI/InferenceX
+  - https://github.com/Azure/ai-infrastructure-on-azure

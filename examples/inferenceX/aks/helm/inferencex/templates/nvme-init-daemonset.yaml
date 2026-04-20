@@ -1,0 +1,115 @@
+{{- if .Values.nvmeInit.enabled }}
+{{- /*
+  Idempotent NVMe initializer for /mnt/nvme.
+
+  The Standard_ND128isr_GB300_v6 VHD ships with 4x 3.5 TB local NVMe disks
+  exposed as raw block devices. AKS does NOT auto-assemble or mount them.
+  This DaemonSet is what creates /mnt/nvme on every nodepool node:
+
+    1. If /host/mnt/nvme is already a mountpoint  -> exit (no-op).
+    2. Else create /dev/md0 raid0 across the 4 NVMe disks (mdadm).
+    3. mkfs.ext4 with stride/stripe-width tuned for the raid geometry.
+    4. mkdir -p /mnt/nvme && mount -o defaults,noatime,discard /dev/md0 /mnt/nvme.
+
+  The /mnt/nvme bind is purely runtime (no /etc/fstab entry) so it does NOT
+  survive node reboot; this DaemonSet must keep running so any replaced or
+  rebooted node is re-initialised within seconds of joining.
+
+  Idempotency is critical: nodes whose array was already created keep using
+  the existing filesystem (we re-mount by UUID rather than re-formatting).
+*/}}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "inferencex.fullname" . }}-nvme-init
+  labels:
+    {{- include "inferencex.labels" . | nindent 4 }}
+    component: nvme-init
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      component: nvme-init
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        component: nvme-init
+    spec:
+      hostPID: true
+      hostNetwork: true
+      priorityClassName: system-node-critical
+      automountServiceAccountToken: false
+      tolerations:
+      - operator: Exists
+      nodeSelector:
+        {{ .Values.affinity.nodePoolLabel }}: {{ .Values.affinity.nodePoolValue }}
+      containers:
+      - name: nvme-init
+        image: {{ .Values.nvmeInit.image }}
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          privileged: true
+          runAsUser: 0
+        command: ["nsenter", "--target", "1", "--mount", "--uts", "--ipc", "--net", "--pid", "--", "bash", "-euo", "pipefail", "-c"]
+        args:
+        - |
+          MOUNT_POINT="{{ .Values.nvmeInit.mountPoint }}"
+          RAID_DEVICE="{{ .Values.nvmeInit.raidDevice }}"
+          CHUNK_KB={{ .Values.nvmeInit.raidChunkKB }}
+          BLOCK_BYTES={{ .Values.nvmeInit.fsBlockBytes }}
+
+          if mountpoint -q "${MOUNT_POINT}"; then
+            echo "[nvme-init] ${MOUNT_POINT} already mounted on $(findmnt -nfo SOURCE ${MOUNT_POINT}); nothing to do"
+            exec sleep infinity
+          fi
+
+          mapfile -t NVME_DISKS < <(lsblk -dno NAME,MODEL | awk '/Microsoft NVMe Direct Disk/ {print "/dev/"$1}')
+          if [ ${#NVME_DISKS[@]} -lt 2 ]; then
+            echo "[nvme-init] ERROR: expected >=2 'Microsoft NVMe Direct Disk' devices, found ${#NVME_DISKS[@]}: ${NVME_DISKS[*]}"
+            exit 1
+          fi
+          echo "[nvme-init] using NVMe disks: ${NVME_DISKS[*]}"
+
+          if [ ! -b "${RAID_DEVICE}" ] || ! mdadm --detail "${RAID_DEVICE}" >/dev/null 2>&1; then
+            echo "[nvme-init] creating raid0 ${RAID_DEVICE} across ${#NVME_DISKS[@]} disks"
+            mdadm --create --verbose --run "${RAID_DEVICE}" --level=0 \
+              --chunk="${CHUNK_KB}" --raid-devices=${#NVME_DISKS[@]} "${NVME_DISKS[@]}"
+            while mdadm --detail "${RAID_DEVICE}" | grep -qE 'State :.*resyncing'; do
+              echo "[nvme-init] raid resyncing..."; sleep 1
+            done
+          else
+            echo "[nvme-init] ${RAID_DEVICE} already assembled"
+          fi
+
+          EXISTING_FS=$(blkid -o value -s TYPE "${RAID_DEVICE}" 2>/dev/null || true)
+          if [ "${EXISTING_FS}" != "ext4" ]; then
+            if [ -n "${EXISTING_FS}" ]; then
+              # Stale signature (e.g. LVM2_member from a prior bring-up attempt)
+              # blocks mkfs/mount; clear it before re-formatting.
+              echo "[nvme-init] wiping unwanted '${EXISTING_FS}' signature from ${RAID_DEVICE}"
+              wipefs -a "${RAID_DEVICE}"
+            fi
+            STRIDE=$(( CHUNK_KB * 1024 / BLOCK_BYTES ))
+            STRIPE_WIDTH=$(( ${#NVME_DISKS[@]} * STRIDE ))
+            echo "[nvme-init] mkfs.ext4 (stride=${STRIDE} stripe-width=${STRIPE_WIDTH})"
+            mkfs.ext4 -F -m 0 -b "${BLOCK_BYTES}" \
+              -E "stride=${STRIDE},stripe-width=${STRIPE_WIDTH}" "${RAID_DEVICE}"
+          else
+            echo "[nvme-init] ${RAID_DEVICE} already ext4"
+          fi
+
+          mkdir -p "${MOUNT_POINT}"
+          UUID=$(blkid -s UUID -o value "${RAID_DEVICE}")
+          mount -o defaults,noatime,discard --uuid "${UUID}" "${MOUNT_POINT}"
+          echo "[nvme-init] mounted ${RAID_DEVICE} (UUID=${UUID}) on ${MOUNT_POINT}"
+          df -h "${MOUNT_POINT}"
+          exec sleep infinity
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+{{- end }}

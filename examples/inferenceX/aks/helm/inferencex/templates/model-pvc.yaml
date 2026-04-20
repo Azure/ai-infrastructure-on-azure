@@ -1,0 +1,16 @@
+{{- if eq .Values.storage.type "pvc" }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "inferencex.fullname" . }}-model
+  labels:
+    {{- include "inferencex.labels" . | nindent 4 }}
+    app.kubernetes.io/component: model-storage
+spec:
+  accessModes:
+  - ReadWriteMany
+  storageClassName: {{ .Values.storage.storageClass }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.size }}
+{{- end }}
