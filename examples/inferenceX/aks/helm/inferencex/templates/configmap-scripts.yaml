@@ -1,0 +1,248 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "inferencex.fullname" . }}-scripts
+  labels:
+    {{- include "inferencex.labels" . | nindent 4 }}
+data:
+  worker-entrypoint.sh: |
+    #!/bin/bash
+    set -e
+
+    export PATH="/opt/dynamo/venv/bin:/usr/local/ucx/bin:/opt/hpcx/ompi/bin:/usr/local/cuda/bin:${PATH}"
+    export LD_LIBRARY_PATH="/opt/dynamo/venv/lib:/usr/local/cuda/lib64:/usr/local/ucx/lib:${LD_LIBRARY_PATH}"
+
+    TRITON_PTXAS="/opt/dynamo/venv/lib/python3.12/site-packages/triton/backends/nvidia/bin/ptxas"
+    if [ -f "$TRITON_PTXAS" ] && [ -f /usr/local/cuda/bin/ptxas ]; then
+      ln -sf /usr/local/cuda/bin/ptxas "$TRITON_PTXAS"
+    fi
+
+    # Create a symlink so the HF model ID resolves to the local model directory.
+    # TRT-LLM checks Path(model).exists() from CWD (/workspace). If found locally
+    # it skips HF download. The registered model_path (the HF ID) is then advertised
+    # to the frontend, which can fetch tokenizer config from HuggingFace using it.
+    HF_MODEL_ID="${MODEL_HF_ID}"
+    LOCAL_MODEL_DIR="${MODEL_LOCAL_DIR}"
+    if [ -n "$HF_MODEL_ID" ] && [ -d "$LOCAL_MODEL_DIR" ]; then
+      mkdir -p "$(dirname "$HF_MODEL_ID")"
+      ln -sfn "$LOCAL_MODEL_DIR" "$HF_MODEL_ID"
+    fi
+
+    RANK=${OMPI_COMM_WORLD_RANK:-0}
+    LOCAL_RANK=${OMPI_COMM_WORLD_LOCAL_RANK:-0}
+    WORLD_SIZE=${OMPI_COMM_WORLD_SIZE:-1}
+
+    echo "[rank=$RANK/$WORLD_SIZE local=$LOCAL_RANK] Starting ${WORKER_ROLE} worker"
+    echo "  Model (HF ID): ${HF_MODEL_ID}"
+    echo "  Model (local): ${LOCAL_MODEL_DIR}"
+    echo "  Engine config: /engine-config/${WORKER_ROLE}.yaml"
+    echo "  ETCD: ${ETCD_ENDPOINTS}"
+    echo "  NATS: ${NATS_SERVER}"
+
+    export TRTLLM_EPLB_SHM_NAME="moe_shared_$(cat /proc/sys/kernel/random/uuid)"
+
+    exec trtllm-llmapi-launch \
+      python3 -m dynamo.trtllm \
+        --model-path "${HF_MODEL_ID}" \
+        --served-model-name "${MODEL_NAME}" \
+        --disaggregation-mode "${WORKER_ROLE}" \
+        --extra-engine-args "/engine-config/${WORKER_ROLE}.yaml" \
+        --request-plane nats
+
+  distribute-model.sh: |
+    #!/bin/bash
+    set -e
+
+    export PATH="/opt/dynamo/venv/bin:/usr/local/ucx/bin:/opt/hpcx/ompi/bin:/usr/local/cuda/bin:${PATH}"
+
+    RANK=${OMPI_COMM_WORLD_RANK:-0}
+    WORLD_SIZE=${OMPI_COMM_WORLD_SIZE:-1}
+    MODEL_DIR="${MODEL_LOCAL_DIR}"
+    MARKER="${MODEL_DIR}/download-complete"
+    BLOB_ACCOUNT="${BLOB_STORAGE_ACCOUNT:-}"
+    BLOB_CONTAINER="${BLOB_CONTAINER_NAME:-}"
+    BLOB_ENABLED="${BLOB_CACHE_ENABLED:-false}"
+    MSI_CLIENT_ID="${AZURE_CLIENT_ID:-}"
+
+    echo "[rank=$RANK/$WORLD_SIZE] Model distribution starting"
+    echo "  Model ID: ${MODEL_HF_ID}"
+    echo "  Local dir: ${MODEL_DIR}"
+    echo "  Blob cache: ${BLOB_ENABLED} (${BLOB_ACCOUNT}/${BLOB_CONTAINER})"
+
+    # Install azcopy if blob cache is enabled and azcopy is not already present.
+    # The NVIDIA runtime container does not include azcopy.
+    install_azcopy() {
+      if command -v azcopy &>/dev/null; then
+        return 0
+      fi
+      echo "[rank=$RANK] Installing azcopy..."
+      ARCH=$(uname -m)
+      case "$ARCH" in
+        aarch64|arm64) AZCOPY_ARCH="arm64" ;;
+        x86_64|amd64)  AZCOPY_ARCH="amd64" ;;
+        *) echo "ERROR: Unsupported architecture $ARCH"; return 1 ;;
+      esac
+      AZCOPY_URL="https://aka.ms/downloadazcopy-v10-linux-${AZCOPY_ARCH}"
+      TMP_DIR=$(mktemp -d)
+      wget -qO "${TMP_DIR}/azcopy.tar.gz" "$AZCOPY_URL"
+      tar -xzf "${TMP_DIR}/azcopy.tar.gz" -C "$TMP_DIR" --strip-components=1
+      install -m 0755 "${TMP_DIR}/azcopy" /usr/local/bin/azcopy 2>/dev/null \
+        || { mkdir -p /tmp/bin && mv "${TMP_DIR}/azcopy" /tmp/bin/azcopy && chmod +x /tmp/bin/azcopy && export PATH="/tmp/bin:${PATH}"; }
+      rm -rf "$TMP_DIR"
+      echo "[rank=$RANK] azcopy installed: $(azcopy --version)"
+    }
+
+    # Login azcopy with managed identity if client ID is provided
+    azcopy_configure_msi() {
+      if [ -n "$MSI_CLIENT_ID" ]; then
+        echo "[rank=$RANK] Configuring azcopy MSI auto-login (client-id=$MSI_CLIENT_ID)"
+        export AZCOPY_AUTO_LOGIN_TYPE=MSI
+        export AZCOPY_MSI_CLIENT_ID="$MSI_CLIENT_ID"
+      else
+        echo "[rank=$RANK] WARNING: No AZURE_CLIENT_ID set, azcopy will use anonymous access"
+      fi
+    }
+
+    if [ "$RANK" = "0" ]; then
+      mkdir -p "$MODEL_DIR"
+
+      if [ -f "$MARKER" ]; then
+        echo "[rank=0] Model already present, skipping download"
+      else
+        BLOB_URL="https://${BLOB_ACCOUNT}.blob.core.windows.net/${BLOB_CONTAINER}/${MODEL_LOCAL_DIR_NAME}"
+        GOT_FROM_BLOB=false
+
+        if [ "$BLOB_ENABLED" = "true" ] && [ -n "$BLOB_ACCOUNT" ]; then
+          install_azcopy
+          azcopy_configure_msi
+          echo "[rank=0] Checking blob cache at ${BLOB_URL}..."
+          if azcopy list "${BLOB_URL}" --log-level ERROR 2>/dev/null | grep -q "INFO:"; then
+            echo "[rank=0] Found in blob cache, downloading with azcopy..."
+            azcopy copy "${BLOB_URL}/*" "$MODEL_DIR/" --recursive --log-level ERROR
+            GOT_FROM_BLOB=true
+          else
+            echo "[rank=0] Not in blob cache"
+          fi
+        fi
+
+        if [ "$GOT_FROM_BLOB" = "false" ]; then
+          echo "[rank=0] Downloading from HuggingFace..."
+          pip install -q huggingface_hub hf_transfer 2>/dev/null
+          export HF_HUB_ENABLE_HF_TRANSFER=1
+          if [ -n "$HF_TOKEN" ]; then
+            export HF_TOKEN
+          fi
+          for attempt in 1 2 3 4 5; do
+            echo "[rank=0] Download attempt $attempt/5"
+            if python3 -c "from huggingface_hub import snapshot_download; snapshot_download('${MODEL_HF_ID}', local_dir='${MODEL_DIR}')"; then
+              break
+            fi
+            [ "$attempt" -eq 5 ] && { echo "[rank=0] All download attempts failed"; exit 1; }
+            sleep 10
+          done
+
+          if [ "$BLOB_ENABLED" = "true" ] && [ -n "$BLOB_ACCOUNT" ]; then
+            install_azcopy
+            azcopy_configure_msi
+            echo "[rank=0] Caching to blob storage..."
+            azcopy copy "$MODEL_DIR/*" "${BLOB_URL}/" --recursive --log-level ERROR || \
+              echo "[rank=0] WARNING: blob cache upload failed (non-fatal)"
+          fi
+        fi
+
+        touch "$MARKER"
+      fi
+    fi
+
+    echo "[rank=$RANK] Starting MPI barrier and file broadcast..."
+    python3 - << 'PYEOF'
+    import os, sys
+    import numpy as np
+    from mpi4py import MPI
+
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+    model_dir = os.environ["MODEL_LOCAL_DIR"]
+    marker = os.path.join(model_dir, "download-complete")
+
+    print(f"[rank={rank}] Waiting at barrier for rank 0 to finish download...")
+    comm.Barrier()
+    print(f"[rank={rank}] Barrier passed")
+
+    if rank != 0:
+        os.makedirs(model_dir, exist_ok=True)
+
+    need_data = np.array([0 if os.path.exists(marker) else 1], dtype=np.int32)
+    total_need = np.zeros(1, dtype=np.int32)
+    comm.Allreduce(need_data, total_need, op=MPI.SUM)
+    receivers = int(total_need[0])
+
+    if receivers == 0:
+        print(f"[rank={rank}] All ranks have model, skipping broadcast")
+        print(f"[rank={rank}] Distribution complete")
+        sys.exit(0)
+
+    print(f"[rank={rank}] {receivers} rank(s) need data, starting broadcast")
+
+    if rank == 0:
+        file_list = []
+        for root, dirs, files in os.walk(model_dir):
+            for f in files:
+                if f == "download-complete":
+                    continue
+                full = os.path.join(root, f)
+                rel = os.path.relpath(full, model_dir)
+                file_list.append(rel)
+        file_list.sort()
+        print(f"[rank=0] Broadcasting {len(file_list)} files to {receivers} peers")
+    else:
+        file_list = None
+
+    file_list = comm.bcast(file_list, root=0)
+
+    CHUNK = 64 * 1024 * 1024
+
+    for rel_path in file_list:
+        full_path = os.path.join(model_dir, rel_path)
+
+        if rank == 0:
+            fsize = os.path.getsize(full_path)
+        else:
+            fsize = None
+        fsize = comm.bcast(fsize, root=0)
+
+        if rank != 0 and need_data[0]:
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            fh = open(full_path, "wb")
+
+        offset = 0
+        while offset < fsize:
+            chunk_size = min(CHUNK, fsize - offset)
+            if rank == 0:
+                with open(full_path, "rb") as f:
+                    f.seek(offset)
+                    data = f.read(chunk_size)
+            else:
+                data = None
+            data = comm.bcast(data, root=0)
+            if rank != 0 and need_data[0]:
+                fh.write(data)
+            offset += chunk_size
+
+        if rank != 0 and need_data[0]:
+            fh.close()
+
+        if rank == 0 and fsize > 100 * 1024 * 1024:
+            print(f"  Broadcast: {rel_path} ({fsize / 1024**3:.1f} GB)")
+
+    if rank != 0 and need_data[0]:
+        with open(marker, "w") as f:
+            f.write("distributed\n")
+        print(f"[rank={rank}] Received {len(file_list)} files")
+
+    comm.Barrier()
+    print(f"[rank={rank}] Distribution complete")
+    PYEOF
+
+    echo "[rank=$RANK] Model distribution finished"

@@ -1,0 +1,39 @@
+# Benchmark: concurrency 180
+
+name: conc-180
+recipe: ctx4_gen1_dep32_batch4_eplb0_mtp3
+values_file: values-gb300-ctx4-gen1-dep32.yaml
+
+# Topology
+sku: gb300
+precision: fp4
+spec_method: mtp
+prefill_workers: 4
+prefill_gpus_each: 2
+decode_workers: 1
+decode_gpus_each: 32
+total_gpus: 40
+
+# Benchmark parameters
+concurrency: 180
+isl: 8192
+osl: 1024
+request_count: 1800
+warmup_count: 360
+num_dataset_entries: 1440
+
+# Official InferenceX reference (dynamo-trt, MTP, fp4, 8k1k, conc=180, gpus=40)
+# Source: https://inferencex.semianalysis.com/api/v1/benchmarks?model=DeepSeek-R1-0528&date=2026-02-03&exact=true
+# Run:    https://github.com/SemiAnalysisAI/InferenceX/actions/runs/21640109636/attempts/1
+# Image:  nvcr.io/nvidia/ai-dynamo/tensorrtllm-runtime:0.8.1.post2
+inferencex_date: 2026-02-03
+inferencex_fetched: 2026-04-20
+inferencex_tput_per_gpu: 4730.81
+inferencex_output_tput_per_gpu: 655.79
+inferencex_median_tpot_ms: 5.98
+inferencex_median_ttft_ms: 2114.3
+
+# AKS run (this repo, sa-bench + dynamo backend)
+aks_total_tok_per_s: 186107
+aks_tok_per_s_per_gpu: 4653
+aks_pct_of_inferencex: 98.4
