@@ -1,0 +1,6 @@
+# Local benchmark output (not checked in)
+results/
+
+# Python bytecode
+__pycache__/
+*.pyc
