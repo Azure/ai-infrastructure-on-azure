@@ -132,6 +132,46 @@ sequenceDiagram
 
 Workers mount the same hostPath read-only once the distribute job completes; subsequent recipe swaps reuse the cached model with no re-download. The blob cache is optional (`modelDistribution.blobCache.enabled=false` skips it and always uses HuggingFace) but makes cold starts ~10× faster for large clusters.
 
+### 3.1 TRT-LLM autotuner cache
+
+Separate from the model cache, TRT-LLM runs an **autotuner** on every worker startup to pick optimal kernels for the current shapes. On GB300 with DeepSeek-R1 this takes **~2.5 min** per pod start — the same cost Slurm `srt-slurm` pays today (we checked; it does not cache either). TRT-LLM supports `TLLM_AUTOTUNER_CACHE_PATH`, which reads/writes per-rank JSON files (`{base}.rank{N}.json`) so a warm restart is ~1s instead of 2.5 min.
+
+Enabling that in a Kubernetes chart hits two design problems:
+
+1. **Model collision.** A single flat cache directory would mix entries from different models. Autotuner keys are shape-based (arch × dtype × parallelism), so a stale entry from a previous model could be silently selected.
+2. **Rank ↔ node shuffle.** Cache files are keyed by MPI rank, but Kubernetes re-shuffles which node gets which rank on every redeploy. A hostPath cache on node A might hold `rank3.json` from run 1, then rank 3 lands on node B for run 2 and the autotune re-runs from scratch.
+
+The chart solves both in ~15 lines of `worker-entrypoint.sh`:
+
+```mermaid
+flowchart TB
+    start["Worker pod starts<br/>TLLM_AUTOTUNER_CACHE_PATH=/autotuner-cache/inferencex.cache"] --> scope
+    scope["Rewrite path to include sanitized model name<br/>→ /autotuner-cache/deepseek-r1-0528-fp4-v2/inferencex.cache"] --> check
+    check{"rank{MY_RANK}.json<br/>exists in dir?"}
+    check -- yes --> hit["Use it — warm start<br/>~1s autotune"]
+    check -- no --> donor{"Any other<br/>rank*.json<br/>in dir?"}
+    donor -- yes --> seed["cp donor → rank{MY_RANK}.json<br/>warm start"]
+    donor -- no --> cold["Tune from scratch<br/>~2.5 min, then write cache"]
+    hit --> run["exec trtllm-llmapi-launch"]
+    seed --> run
+    cold --> run
+```
+
+**Why rank-agnostic seeding is safe.** The autotuner key is a shape tuple (model arch, dtype, tensor-parallel degree, batch/seq shapes); MPI rank is not part of the key. All ranks in a given MPI world tune identical kernels. Copying a sibling-rank file is therefore equivalent to using our own — no kernel-selection drift.
+
+**Why per-model scoping matters.** Without it, the above seed would happily copy a DeepSeek cache file over a Llama rank file, producing semantically wrong kernel choices. The sanitized-model-name subdirectory (`tr '/: ' '___'` on `model.name`) gives every model its own namespace; switching models gets a clean slate, and wiping `/mnt/nvme/autotuner-cache/<model>/` on every node forces a re-tune for that model only.
+
+**Alternatives considered and rejected.**
+- **Node pinning** (`nodePinning.enabled: true`) — would stabilize rank→node mapping and make the cache trivially correct, but sacrifices scheduler flexibility and breaks on cordoned nodes / multiple concurrent jobs.
+- **Shared cache on NFS/PVC** — globally consistent, but adds a ReadWriteMany volume dependency on every pod startup and is slower than hostPath on first read.
+- **Accept partial hits, run suite 3–4× until cache converges naturally** — works, but wastes compute on every fresh cluster.
+
+The rank-agnostic hostPath approach gives the full speedup (warm start ≈ 1s) with no scheduler impact and no new infra.
+
+**Disabling.** Set `autotunerCache.enabled: false` in values. The hostPath volume, env var, and `mpirun -x` forwarding all drop out; the bash block in `worker-entrypoint.sh` short-circuits because `TLLM_AUTOTUNER_CACHE_PATH` is unset. TRT-LLM then re-tunes on every pod start (~2.5 min penalty).
+
+Tunables live under `autotunerCache:` in `values-gb300-base.yaml`. Measured impact on GB300 is in [gb300-benchmark-walkthrough.md §Autotuner cache](gb300-benchmark-walkthrough.md#autotuner-cache).
+
 ---
 
 ## 4. Prerequisites
