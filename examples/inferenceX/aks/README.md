@@ -170,6 +170,11 @@ The rank-agnostic hostPath approach gives the full speedup (warm start ≈ 1s) w
 
 **Disabling.** Set `autotunerCache.enabled: false` in values. The hostPath volume, env var, and `mpirun -x` forwarding all drop out; the bash block in `worker-entrypoint.sh` short-circuits because `TLLM_AUTOTUNER_CACHE_PATH` is unset. TRT-LLM then re-tunes on every pod start (~2.5 min penalty).
 
+**Reuse scope — same recipe only.** TRT-LLM's autotuner key is the *bucketed input shape* (see `tensorrt_llm/_torch/autotuner.py:442-461`); concurrency is not literally in the key, but different concurrencies map to different shape buckets and therefore different cache entries. Two consequences:
+
+1. The cache is **safe to reuse across pod restarts of the same recipe** (rolling updates, evictions, suite re-runs against the same `values-gb300-*.yaml`). This is the supported path.
+2. The cache is **NOT safe to reuse across recipes** that change concurrency or topology. Mixing recipes against the same long-lived deployment via `-s` has been observed to inflate prefill TTFT 2–4× because runtime traffic hits shape buckets that warmup never primed (cache miss → in-line autotune on the first request of each new bucket, and TRT-LLM only persists warmup-tuned shapes to disk — runtime tunes are in-memory only). `run-suite.sh` calls `-t` between every recipe to ensure each starts with a deploy whose warmup matches the workload.
+
 Tunables live under `autotunerCache:` in `values-gb300-base.yaml`. Measured impact on GB300 is in [gb300-benchmark-walkthrough.md §Autotuner cache](gb300-benchmark-walkthrough.md#autotuner-cache).
 
 ---

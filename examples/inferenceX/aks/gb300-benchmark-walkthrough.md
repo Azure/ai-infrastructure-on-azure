@@ -169,6 +169,18 @@ Measured on conc-5 (`values-gb300-ctx1-gen4.yaml`, 34 GPUs, DeepSeek-R1 FP4, 18-
 
 Throughput identical between cold and warm runs → no kernel-quality regression from sibling-rank seeding (the key correctness check; the autotuner key is shape-based and rank-independent, so cloning a sibling-rank file is equivalent to running tuning ourselves).
 
+**Re-validation on a different recipe** (conc-33, `values-gb300-ctx1-gen3.yaml`, 26 GPUs, two clean back-to-back runs on the 18-node cluster, `2026-04-22T12:46Z` cold and `2026-04-22T12:58Z` warm):
+
+| Run | State | `WAIT_READY → MODELS_POPULATED` | `WAIT_READY → WORKERS_READY` | Throughput |
+|---|---|---:|---:|---:|
+| Cold (cache wiped fleet-wide) | first deploy | 6 min 11 s | 8 min 58 s | 1607.2 tok/s/GPU (99.7%) |
+| Warm (cache from cold run on `/mnt/nvme`) | second deploy | 5 min 22 s | 8 min 9 s | 1606.9 tok/s/GPU (99.7%) |
+| Δ | | **−49 s (−13%)** | **−49 s (−9%)** | identical |
+
+Top-level wall-clock savings on a single warm run (49 s) are smaller than the autotune sub-phase delta (~2 min) because parallel costs — pod scheduling, model load from local NVMe, NCCL init, Dynamo router registration — overlap with the autotune work and dominate the critical path. The throughput-identical PASS in both runs is the important signal: the cache reload produces the same kernels and the same end-state performance.
+
+**Caveat — cross-recipe reuse is unsafe.** The cache is shape-bucketed (see [README §3.1](README.md#31-trt-llm-autotuner-cache)); reusing it across recipes that differ in concurrency or topology has been observed to inflate TTFT 2–4× on a deployment shared via `-s` (skip-deploy). Always teardown (`-t`) between recipes that change concurrency. `run-suite.sh` does this automatically.
+
 **Cache decisions across all 34 GPUs in Run 2** (rank-agnostic seed in action — Kubernetes shuffled rank→node assignments between runs, so most ranks needed seeding):
 
 | MPIJob | Cache hits | Seeded from sibling | Empty (must tune) |
