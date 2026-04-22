@@ -38,7 +38,9 @@ Usage: run-test.sh <test-config> [OPTIONS]
 
 Options:
   -n NAMESPACE   Kubernetes namespace (default: inferencex)
-  -t             Teardown helm release after benchmark
+  -t             Teardown chart (workloads + infra: frontend/etcd/NATS/configmaps)
+                 after benchmark. Required between recipes that change topology
+                 to avoid stale Dynamo router state inflating prefill latency.
   -s             Skip deploy (assume chart already running with correct config)
   -d             Dry run — print commands without executing
   -S             Skip Prometheus stats + plots collection at end
@@ -727,10 +729,13 @@ EOF
 }
 
 teardown_chart() {
-	echo ">>> Tearing down..."
+	echo ">>> Tearing down (full: workloads + infra)..."
 	run_cmd kubectl delete mpijobs --all -n "$NAMESPACE" 2>/dev/null || true
 	run_cmd kubectl delete computedomain inferencex -n "$NAMESPACE" 2>/dev/null || true
 	run_cmd kubectl delete resourceclaims --all -n "$NAMESPACE" 2>/dev/null || true
+	run_cmd kubectl delete deployment,statefulset,daemonset,configmap,service,secret \
+		-l app.kubernetes.io/instance=inferencex \
+		-n "$NAMESPACE" 2>/dev/null || true
 }
 
 LOCAL_DIR="${RESULTS_DIR}/${NAME}_${TIMESTAMP}"

@@ -349,6 +349,12 @@ results/conc-24_20260417T143022Z/
 
 The `pod-placement.tsv` and `timings.txt` files are used for Grafana correlation when generating plots after the run.
 
+### Teardown between recipes (`-t`)
+
+`-t` does a **full chart teardown**: workloads (MPIJobs, ComputeDomain, ResourceClaims) **and** chart infra (frontend Deployment, etcd/NATS StatefulSets, ConfigMaps, Services, Secrets — selected via `app.kubernetes.io/instance=inferencex`). It is required between recipes that change topology, and recommended any time you've redeployed several recipes onto a long-lived frontend.
+
+The reason is **stale Dynamo router state**. Each `helm template | kubectl apply` adds new prefill/decode workers to the router's worker registry but never removes the previous ones. A frontend that has served many redeploys throttles prefill dispatch through a saturated worker list — TTFT inflates from ~1.8 s to ~7 s on conc-24 even though TPOT is unchanged. `run-suite.sh` uses `-t` between every topology group for this reason.
+
 ### Pass criteria
 
 A run `PASS`es if AKS per-GPU throughput lands within ±5% of `inferencex_tput_per_gpu`. The runner prints the verdict and writes it to `summary.txt`.
