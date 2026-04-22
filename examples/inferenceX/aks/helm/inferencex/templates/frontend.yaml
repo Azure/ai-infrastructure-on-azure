@@ -1,0 +1,72 @@
+{{- $fullname := include "inferencex.fullname" . -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}-frontend
+  labels:
+    {{- include "inferencex.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: frontend
+  template:
+    metadata:
+      labels:
+        {{- include "inferencex.labels" . | nindent 8 }}
+        app.kubernetes.io/component: frontend
+    spec:
+      nodeSelector:
+        {{ .Values.affinity.nodePoolLabel }}: {{ .Values.affinity.nodePoolValue }}
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+      - key: sku
+        operator: Equal
+        value: gpu
+        effect: NoSchedule
+      containers:
+      - name: frontend
+        image: {{ .Values.image.runtime }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command:
+        - python3
+        - -m
+        - dynamo.frontend
+        args:
+        - --http-port=8000
+        env:
+        - name: ETCD_ENDPOINTS
+          value: "http://{{ $fullname }}-etcd:2379"
+        - name: NATS_SERVER
+          value: "nats://{{ $fullname }}-nats:4222"
+        - name: DYN_REQUEST_PLANE
+          value: "nats"
+        ports:
+        - containerPort: 8000
+          name: http
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        resources:
+          requests:
+            cpu: "8"
+            memory: 16Gi
+          limits:
+            cpu: "32"
+            memory: 64Gi
+      enableServiceLinks: false
+      automountServiceAccountToken: false

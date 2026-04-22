@@ -20,7 +20,9 @@ spec:
     image: doca-driver
     # Latest tag: https://catalog.ngc.nvidia.com/orgs/nvidia/teams/mellanox/containers/doca-driver/tags
     # When this is deployed a suffix is added in the format "-<os><os version>-<cpu arch>" for e.g.: "-ubuntu22.04-amd64".
-    version: 25.04-0.6.1.0-2
+    # H100 (amd64): 25.04-0.6.1.0-2 or doca3.3.0-26.01-1.0.0.0-0
+    # GB300 (arm64): requires doca3.3.0-26.01-1.0.0.0-0 (older OFED fails to build against arm64 kernel)
+    version: doca3.3.0-26.01-1.0.0.0-0
 
     env:
       # TODO: Temporary fix to avoid race condition where the kernel module fails to load.
@@ -46,6 +48,9 @@ spec:
     readinessProbe:
       initialDelaySeconds: 10
       periodSeconds: 30
+  # docaTelemetryService — works on H100/amd64, crashes on GB300/arm64.
+  # For GB300 deployments, remove this section after applying the NicClusterPolicy:
+  #   kubectl patch nicclusterpolicy nic-cluster-policy --type=json -p='[{"op":"remove","path":"/spec/docaTelemetryService"}]'
   docaTelemetryService:
     repository: nvcr.io/nvidia/doca
     image: doca_telemetry

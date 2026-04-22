@@ -1,0 +1,87 @@
+{{- $fullname := include "inferencex.fullname" . -}}
+{{- $role := "decode" -}}
+{{- range $i := until (int .Values.decode.workers) }}
+---
+apiVersion: kubeflow.org/v2beta1
+kind: MPIJob
+metadata:
+  name: {{ $fullname }}-decode-{{ $i }}
+  labels:
+    {{- include "inferencex.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: decode
+  {{- if $.Values.kueue.queueName }}
+    kueue.x-k8s.io/queue-name: {{ $.Values.kueue.queueName }}
+  {{- end }}
+spec:
+  slotsPerWorker: {{ $.Values.gpusPerNode }}
+  launcherCreationPolicy: WaitForWorkersReady
+  runPolicy:
+    cleanPodPolicy: Running
+  mpiReplicaSpecs:
+    Launcher:
+      replicas: 1
+      template:
+        metadata:
+          labels:
+            {{- include "inferencex.labels" $ | nindent 12 }}
+            app.kubernetes.io/component: decode-launcher
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: launcher
+            image: {{ $.Values.image.runtime }}
+            imagePullPolicy: {{ $.Values.image.pullPolicy }}
+            securityContext:
+              runAsUser: 0
+            env:
+            {{- include "inferencex.launcherEnv" (dict "role" $role "fullname" $fullname "root" $) | nindent 12 }}
+            command:
+            - /bin/bash
+            - -c
+            args:
+            - |
+              set -xe
+              # Fix SSH key permissions — MPI operator mounts as secret symlinks
+              cp /root/.ssh/id_rsa /tmp/mpi_ssh_key
+              chmod 0600 /tmp/mpi_ssh_key
+              NP={{ $.Values.decode.gpus }}
+              echo "=== Decode Worker {{ $i }} ==="
+              echo "  GPUs: $NP  TP: {{ $.Values.decode.tensorParallelSize }}  EP: {{ $.Values.decode.moeExpertParallelSize }}"
+              mpirun \
+                --allow-run-as-root \
+                -np $NP \
+                --bind-to none \
+                --report-bindings \
+                -hostfile /etc/mpi/hostfile \
+                -mca plm_rsh_no_tree_spawn 1 \
+                -mca plm_rsh_num_concurrent 800 \
+                -mca coll_hcoll_enable 0 \
+                -mca plm_rsh_args "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i /tmp/mpi_ssh_key" \
+                {{- include "inferencex.mpirunXFlags" (dict "root" $ "role" $role) | nindent 16 }}
+                /scripts/worker-entrypoint.sh
+            volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+            resources:
+              requests:
+                cpu: 100m
+                memory: 256Mi
+          volumes:
+          - name: scripts
+            configMap:
+              name: {{ $fullname }}-scripts
+              defaultMode: 0755
+          enableServiceLinks: false
+          automountServiceAccountToken: false
+    Worker:
+      replicas: {{ $.Values.decode.nodesPerWorker }}
+      template:
+        metadata:
+          labels:
+            {{- include "inferencex.labels" $ | nindent 12 }}
+            app.kubernetes.io/component: decode-worker
+            task: {{ $fullname }}-decode
+        spec:
+          {{- include "inferencex.workerPodSpec" (dict "role" $role "gpus" $.Values.gpusPerNode "fullname" $fullname "root" $ "workerIndex" $i) | nindent 10 }}
+{{- end }}

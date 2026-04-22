@@ -1,0 +1,22 @@
+{{- $fullname := include "inferencex.fullname" . -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $fullname }}-engine-config
+  labels:
+    {{- include "inferencex.labels" . | nindent 4 }}
+data:
+  prefill.yaml: |
+    tensor_parallel_size: {{ .Values.prefill.tensorParallelSize }}
+    moe_expert_parallel_size: {{ .Values.prefill.moeExpertParallelSize }}
+    max_batch_size: {{ .Values.prefill.maxBatchSize }}
+    max_num_tokens: {{ .Values.prefill.maxNumTokens }}
+    max_seq_len: {{ .Values.prefill.maxSeqLen }}
+    {{- .Values.prefill.engine | toYaml | nindent 4 }}
+  decode.yaml: |
+    tensor_parallel_size: {{ .Values.decode.tensorParallelSize }}
+    moe_expert_parallel_size: {{ .Values.decode.moeExpertParallelSize }}
+    max_batch_size: {{ .Values.decode.maxBatchSize }}
+    max_num_tokens: {{ .Values.decode.maxNumTokens }}
+    max_seq_len: {{ .Values.decode.maxSeqLen }}
+    {{- .Values.decode.engine | toYaml | nindent 4 }}

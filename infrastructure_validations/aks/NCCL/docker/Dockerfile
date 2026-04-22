@@ -1,4 +1,4 @@
-ARG PYTORCH_IMAGE=nvcr.io/nvidia/pytorch:25.01-py3
+ARG PYTORCH_IMAGE=nvcr.io/nvidia/pytorch:26.03-py3
 FROM ${PYTORCH_IMAGE}
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -12,8 +12,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN sed -i 's/[ #]\(.*StrictHostKeyChecking \).*/ \1no/g' /etc/ssh/ssh_config && \
     echo "    UserKnownHostsFile /dev/null" >> /etc/ssh/ssh_config && \
     sed -i 's/#\(StrictModes \).*/\1no/g' /etc/ssh/sshd_config && \
-    sed -i "s/[ #]\(.*Port \).*/ \12222/g" /etc/ssh/ssh_config && \
-    sed -i "s/#\(Port \).*/\12222/g" /etc/ssh/sshd_config && \
     mkdir -p /var/run/sshd
 
 # Get topology files

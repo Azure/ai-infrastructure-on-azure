@@ -1,0 +1,14 @@
+{{- if .Values.dra.enabled }}
+apiVersion: resource.nvidia.com/v1beta1
+kind: ComputeDomain
+metadata:
+  name: {{ include "inferencex.fullname" . }}
+  labels:
+    {{- include "inferencex.labels" . | nindent 4 }}
+spec:
+  numNodes: 0
+  channel:
+    allocationMode: Single
+    resourceClaimTemplate:
+      name: {{ .Values.dra.claimTemplateName }}
+{{- end }}

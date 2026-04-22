@@ -1,0 +1,21 @@
+InferenceX deployed: {{ include "inferencex.fullname" . }}
+
+Architecture: Separate MPIJobs per worker endpoint
+  Prefill workers : {{ .Values.prefill.workers }} ({{ .Values.prefill.gpus }} GPUs each, TP={{ .Values.prefill.tensorParallelSize }})
+  Decode workers  : {{ .Values.decode.workers }} ({{ .Values.decode.gpus }} GPUs each, TP={{ .Values.decode.tensorParallelSize }})
+  Total GPUs      : {{ add (mul (int .Values.prefill.workers) (int .Values.prefill.gpus)) (mul (int .Values.decode.workers) (int .Values.decode.gpus)) }}
+  Model           : {{ .Values.model.name }}
+  Image           : {{ .Values.image.runtime }}
+
+Infrastructure:
+  etcd     : {{ include "inferencex.fullname" . }}-etcd:2379
+  NATS     : {{ include "inferencex.fullname" . }}-nats:4222
+  Frontend : {{ include "inferencex.fullname" . }}-frontend:{{ .Values.service.frontend.port }}
+
+Monitor:
+  kubectl get pods -l app.kubernetes.io/instance={{ .Release.Name }}
+  kubectl logs -f -l app.kubernetes.io/component=prefill-launcher
+  kubectl logs -f -l app.kubernetes.io/component=decode-launcher
+
+Benchmark:
+  kubectl port-forward svc/{{ include "inferencex.fullname" . }}-frontend {{ .Values.service.frontend.port }}:{{ .Values.service.frontend.port }}
