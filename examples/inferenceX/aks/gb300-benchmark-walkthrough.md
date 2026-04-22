@@ -161,21 +161,21 @@ TRT-LLM runs a ~2 min kernel autotuner on every worker startup. The chart persis
 
 Measured on conc-5 (`values-gb300-ctx1-gen4.yaml`, 34 GPUs, DeepSeek-R1 FP4, 18-node `paul-gb300` cluster, two clean runs back-to-back):
 
-| Run | State | Autotune phase | Worker startup | Total wall-clock | Throughput |
-|---|---|---:|---:|---:|---:|
-| 1 (`conc-5_20260421T151222Z`) | Cold (cache wiped) | **2 min 19 s** | 8 min 57 s | 11 min 33 s | 109.8% of ref |
-| 2 (`conc-5_20260421T152610Z`) | Warm (seed + redeploy) | **1 s** | 5 min 12 s | 6 min 45 s | 109.8% of ref |
-| Δ | | **−138×** | −3 min 45 s | **−4 min 48 s** | identical |
+| Run                           | State                  | Autotune phase | Worker startup | Total wall-clock |    Throughput |
+| ----------------------------- | ---------------------- | -------------: | -------------: | ---------------: | ------------: |
+| 1 (`conc-5_20260421T151222Z`) | Cold (cache wiped)     | **2 min 19 s** |     8 min 57 s |      11 min 33 s | 109.8% of ref |
+| 2 (`conc-5_20260421T152610Z`) | Warm (seed + redeploy) |        **1 s** |     5 min 12 s |       6 min 45 s | 109.8% of ref |
+| Δ                             |                        |      **−138×** |    −3 min 45 s |  **−4 min 48 s** |     identical |
 
 Throughput identical between cold and warm runs → no kernel-quality regression from sibling-rank seeding (the key correctness check; the autotuner key is shape-based and rank-independent, so cloning a sibling-rank file is equivalent to running tuning ourselves).
 
 **Re-validation on a different recipe** (conc-33, `values-gb300-ctx1-gen3.yaml`, 26 GPUs, two clean back-to-back runs on the 18-node cluster, `2026-04-22T12:46Z` cold and `2026-04-22T12:58Z` warm):
 
-| Run | State | `WAIT_READY → MODELS_POPULATED` | `WAIT_READY → WORKERS_READY` | Throughput |
-|---|---|---:|---:|---:|
-| Cold (cache wiped fleet-wide) | first deploy | 6 min 11 s | 8 min 58 s | 1607.2 tok/s/GPU (99.7%) |
-| Warm (cache from cold run on `/mnt/nvme`) | second deploy | 5 min 22 s | 8 min 9 s | 1606.9 tok/s/GPU (99.7%) |
-| Δ | | **−49 s (−13%)** | **−49 s (−9%)** | identical |
+| Run                                       | State         | `WAIT_READY → MODELS_POPULATED` | `WAIT_READY → WORKERS_READY` |               Throughput |
+| ----------------------------------------- | ------------- | ------------------------------: | ---------------------------: | -----------------------: |
+| Cold (cache wiped fleet-wide)             | first deploy  |                      6 min 11 s |                   8 min 58 s | 1607.2 tok/s/GPU (99.7%) |
+| Warm (cache from cold run on `/mnt/nvme`) | second deploy |                      5 min 22 s |                    8 min 9 s | 1606.9 tok/s/GPU (99.7%) |
+| Δ                                         |               |                **−49 s (−13%)** |              **−49 s (−9%)** |                identical |
 
 Top-level wall-clock savings on a single warm run (49 s) are smaller than the autotune sub-phase delta (~2 min) because parallel costs — pod scheduling, model load from local NVMe, NCCL init, Dynamo router registration — overlap with the autotune work and dominate the critical path. The throughput-identical PASS in both runs is the important signal: the cache reload produces the same kernels and the same end-state performance.
 
@@ -183,14 +183,14 @@ Top-level wall-clock savings on a single warm run (49 s) are smaller than the au
 
 **Cache decisions across all 34 GPUs in Run 2** (rank-agnostic seed in action — Kubernetes shuffled rank→node assignments between runs, so most ranks needed seeding):
 
-| MPIJob | Cache hits | Seeded from sibling | Empty (must tune) |
-|---|---:|---:|---:|
-| decode-0 | 0 | 8 | 0 |
-| decode-1 | 0 | 4 | 4 |
-| decode-2 | 4 | 0 | 4 |
-| decode-3 | 8 | 0 | 0 |
-| prefill-0 | 2 | 0 | 0 |
-| **Total** | **14** | **12** | **8** |
+| MPIJob    | Cache hits | Seeded from sibling | Empty (must tune) |
+| --------- | ---------: | ------------------: | ----------------: |
+| decode-0  |          0 |                   8 |                 0 |
+| decode-1  |          0 |                   4 |                 4 |
+| decode-2  |          4 |                   0 |                 4 |
+| decode-3  |          8 |                   0 |                 0 |
+| prefill-0 |          2 |                   0 |                 0 |
+| **Total** |     **14** |              **12** |             **8** |
 
 Of 34 GPUs: 14 found their own cache file, 12 were seeded from a sibling rank on the same node (~1s `cp`), 8 landed on nodes that hadn't run any worker in Run 1 and so had to tune cold. Subsequent runs converge toward 100% hit/seed as the cache fills out across the fleet.
 
