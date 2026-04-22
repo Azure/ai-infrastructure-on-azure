@@ -9,10 +9,12 @@
 #   ctx10-gen1-dep16  : conc-666
 #   ctx10-gen1-dep8   : conc-2253
 #
-# Inside a group, recipes share the deployment via -s (skip-deploy). The last
-# recipe of each group passes -t to teardown the whole chart (workloads + infra)
-# so the next group starts with a fresh frontend/etcd/NATS — required to avoid
-# stale Dynamo router state that inflates prefill TTFT (see README §3.1).
+# Every recipe gets a fresh deploy + full teardown (-t). We deliberately do NOT
+# share deployments within a topology group via -s, because TRT-LLM's autotuner
+# warms only one input-shape bucket at deploy time and shape-bucketed cache
+# misses on subsequent recipes inflate prefill TTFT 2-4x (see README §3.1
+# "Reuse scope — same recipe only"). The autotuner cache on /mnt/nvme persists
+# across the teardown, so within-recipe pod restarts still benefit.
 set -u
 cd "$(dirname "$0")"
 LOG_DIR=suite-logs-$(date -u +%Y%m%dT%H%M%SZ)
@@ -20,13 +22,10 @@ mkdir -p "$LOG_DIR"
 SUMMARY="$LOG_DIR/summary.tsv"
 printf 'recipe\tstatus\texit\tstart_utc\tend_utc\tlog\n' > "$SUMMARY"
 
-# test-config :: run-test.sh-flags
-# - first recipe of each topology group has no -s (fresh deploy)
-# - last recipe of each topology group has -t (full teardown for next group)
 TESTS=(
-  "tests/trtllm/gb300-fp4/8k1k/mtp/conc-5.yaml|"
-  "tests/trtllm/gb300-fp4/8k1k/mtp/conc-12.yaml|-s"
-  "tests/trtllm/gb300-fp4/8k1k/mtp/conc-24.yaml|-s -t"
+  "tests/trtllm/gb300-fp4/8k1k/mtp/conc-5.yaml|-t"
+  "tests/trtllm/gb300-fp4/8k1k/mtp/conc-12.yaml|-t"
+  "tests/trtllm/gb300-fp4/8k1k/mtp/conc-24.yaml|-t"
   "tests/trtllm/gb300-fp4/8k1k/mtp/conc-33.yaml|-t"
   "tests/trtllm/gb300-fp4/8k1k/mtp/conc-180.yaml|-t"
   "tests/trtllm/gb300-fp4/8k1k/mtp/conc-308.yaml|-t"
