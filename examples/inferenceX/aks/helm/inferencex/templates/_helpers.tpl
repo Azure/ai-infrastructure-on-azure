@@ -160,6 +160,10 @@ containers:
     mountPath: /etc/ssh
   - name: sshd-run
     mountPath: /run/sshd
+  {{- if .root.Values.autotunerCache.enabled }}
+  - name: autotuner-cache
+    mountPath: {{ .root.Values.autotunerCache.mountPath }}
+  {{- end }}
 {{- if .root.Values.dra.enabled }}
 resourceClaims:
 - name: {{ .root.Values.dra.claimTemplateName }}
@@ -193,6 +197,12 @@ volumes:
   emptyDir: {}
 - name: sshd-run
   emptyDir: {}
+{{- if .root.Values.autotunerCache.enabled }}
+- name: autotuner-cache
+  hostPath:
+    path: {{ .root.Values.autotunerCache.hostPath }}
+    type: DirectoryOrCreate
+{{- end }}
 {{- if .root.Values.model.hfTokenSecret }}
 - name: hf-token
   secret:
@@ -244,6 +254,10 @@ Expects root (top-level context) and role.
 {{- end }}
 {{- end }}
 {{- end }}
+{{- if .root.Values.autotunerCache.enabled }}
+- name: TLLM_AUTOTUNER_CACHE_PATH
+  value: "{{ .root.Values.autotunerCache.mountPath }}/{{ .root.Values.autotunerCache.baseName }}"
+{{- end }}
 {{- end }}
 
 {{/*
@@ -273,5 +287,8 @@ mpirun -x flags for forwarding env vars to workers.
 -x {{ $key }} \
 {{- end }}
 {{- end }}
+{{- end }}
+{{- if .root.Values.autotunerCache.enabled }}
+-x TLLM_AUTOTUNER_CACHE_PATH \
 {{- end }}
 {{- end }}

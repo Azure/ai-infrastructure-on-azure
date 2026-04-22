@@ -32,6 +32,31 @@ data:
     LOCAL_RANK=${OMPI_COMM_WORLD_LOCAL_RANK:-0}
     WORLD_SIZE=${OMPI_COMM_WORLD_SIZE:-1}
 
+    # Autotuner cache: per-model scoping + rank-agnostic seeding. See README §3.1.
+    if [ -n "${TLLM_AUTOTUNER_CACHE_PATH:-}" ] && [ -n "${MODEL_NAME:-}" ]; then
+      _cache_root="$(dirname "$TLLM_AUTOTUNER_CACHE_PATH")"
+      _cache_base="$(basename "$TLLM_AUTOTUNER_CACHE_PATH")"
+      _model_slug="$(printf '%s' "$MODEL_NAME" | tr '/: ' '___')"
+      _cache_dir="${_cache_root}/${_model_slug}"
+      export TLLM_AUTOTUNER_CACHE_PATH="${_cache_dir}/${_cache_base}"
+      mkdir -p "$_cache_dir" 2>/dev/null || true
+      echo "[rank=$RANK] Autotuner cache path: $TLLM_AUTOTUNER_CACHE_PATH"
+      _my_file=$(ls "${_cache_dir}/${_cache_base}".rank${RANK}.json 2>/dev/null | head -n1 || true)
+      if [ -n "$_my_file" ]; then
+        echo "[rank=$RANK] Autotuner cache hit: $(basename "$_my_file")"
+      else
+        _donor=$(ls "${_cache_dir}/${_cache_base}".rank*.json 2>/dev/null | head -n1 || true)
+        if [ -n "$_donor" ]; then
+          _target="${_cache_dir}/${_cache_base}.rank${RANK}.json"
+          cp -n "$_donor" "$_target" 2>/dev/null \
+            && echo "[rank=$RANK] Autotuner cache seeded: $(basename "$_donor") -> $(basename "$_target")" \
+            || echo "[rank=$RANK] Autotuner cache seed failed (continuing)"
+        else
+          echo "[rank=$RANK] Autotuner cache empty; will tune from scratch"
+        fi
+      fi
+    fi
+
     echo "[rank=$RANK/$WORLD_SIZE local=$LOCAL_RANK] Starting ${WORKER_ROLE} worker"
     echo "  Model (HF ID): ${HF_MODEL_ID}"
     echo "  Model (local): ${LOCAL_MODEL_DIR}"
@@ -116,9 +141,21 @@ data:
           install_azcopy
           azcopy_configure_msi
           echo "[rank=0] Checking blob cache at ${BLOB_URL}..."
-          if azcopy list "${BLOB_URL}" --log-level ERROR 2>/dev/null | grep -q "INFO:"; then
-            echo "[rank=0] Found in blob cache, downloading with azcopy..."
+          # Count actual blob entries. azcopy emits one "INFO: Authenticating to
+          # source using Azure AD" banner on every call (even for empty/nonexistent
+          # prefixes) plus one "<path>; Content Length: ..." line per real entry.
+          # Entry lines do NOT start with "INFO:" — gate on the " Content Length:"
+          # substring only, which is absent from the auth banner.
+          BLOB_COUNT=$(azcopy list "${BLOB_URL}" --log-level ERROR 2>/dev/null \
+                        | grep -cE 'Content Length:')
+          echo "[rank=0] Blob cache entries found: ${BLOB_COUNT}"
+          if [ "${BLOB_COUNT}" -gt 0 ]; then
+            T0=$(date -u +%s)
+            echo "[rank=0] BLOB_DOWNLOAD_START $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "[rank=0] Downloading ${BLOB_COUNT} entries from blob cache..."
             azcopy copy "${BLOB_URL}/*" "$MODEL_DIR/" --recursive --log-level ERROR
+            T1=$(date -u +%s)
+            echo "[rank=0] BLOB_DOWNLOAD_END $(date -u +%Y-%m-%dT%H:%M:%SZ) elapsed=$((T1-T0))s"
             GOT_FROM_BLOB=true
           else
             echo "[rank=0] Not in blob cache"
@@ -132,6 +169,8 @@ data:
           if [ -n "$HF_TOKEN" ]; then
             export HF_TOKEN
           fi
+          HF_T0=$(date -u +%s)
+          echo "[rank=0] HF_DOWNLOAD_START $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           for attempt in 1 2 3 4 5; do
             echo "[rank=0] Download attempt $attempt/5"
             if python3 -c "from huggingface_hub import snapshot_download; snapshot_download('${MODEL_HF_ID}', local_dir='${MODEL_DIR}')"; then
@@ -140,13 +179,22 @@ data:
             [ "$attempt" -eq 5 ] && { echo "[rank=0] All download attempts failed"; exit 1; }
             sleep 10
           done
+          HF_T1=$(date -u +%s)
+          echo "[rank=0] HF_DOWNLOAD_END $(date -u +%Y-%m-%dT%H:%M:%SZ) elapsed=$((HF_T1-HF_T0))s"
 
           if [ "$BLOB_ENABLED" = "true" ] && [ -n "$BLOB_ACCOUNT" ]; then
             install_azcopy
             azcopy_configure_msi
+            BU_T0=$(date -u +%s)
+            echo "[rank=0] BLOB_UPLOAD_START $(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo "[rank=0] Caching to blob storage..."
-            azcopy copy "$MODEL_DIR/*" "${BLOB_URL}/" --recursive --log-level ERROR || \
-              echo "[rank=0] WARNING: blob cache upload failed (non-fatal)"
+            if azcopy copy "$MODEL_DIR/*" "${BLOB_URL}/" --recursive --log-level ERROR; then
+              BU_T1=$(date -u +%s)
+              echo "[rank=0] BLOB_UPLOAD_END $(date -u +%Y-%m-%dT%H:%M:%SZ) elapsed=$((BU_T1-BU_T0))s"
+            else
+              BU_T1=$(date -u +%s)
+              echo "[rank=0] BLOB_UPLOAD_FAILED elapsed=$((BU_T1-BU_T0))s (non-fatal)"
+            fi
           fi
         fi
 

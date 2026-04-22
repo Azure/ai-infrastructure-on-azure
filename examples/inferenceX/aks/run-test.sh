@@ -26,6 +26,7 @@ TEARDOWN=false
 SKIP_DEPLOY=false
 DRY_RUN=false
 SKIP_STATS=false
+NO_AUTOTUNER_CACHE=false
 POLL_INTERVAL=30
 TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
 
@@ -38,8 +39,15 @@ Usage: run-test.sh <test-config> [OPTIONS]
 
 Options:
   -n NAMESPACE   Kubernetes namespace (default: inferencex)
-  -t             Teardown helm release after benchmark
+  -t             Teardown chart (workloads + infra: frontend/etcd/NATS/configmaps)
+                 after benchmark. Required between recipes that change topology
+                 to avoid stale Dynamo router state inflating prefill latency.
   -s             Skip deploy (assume chart already running with correct config)
+  -A             Disable TRT-LLM autotuner cache for this deploy
+                 (--set autotunerCache.enabled=false). Forces a cold
+                 ~2.5 min autotune on every worker; use when the cache on
+                 disk may be stale (e.g. after a TRT-LLM image upgrade or
+                 between recipes if you don't trust shape-bucket reuse).
   -d             Dry run — print commands without executing
   -S             Skip Prometheus stats + plots collection at end
   -h             Show this help
@@ -78,11 +86,12 @@ shift
 	exit 1
 }
 
-while getopts "n:tsdSh" opt; do
+while getopts "n:tsAdSh" opt; do
 	case $opt in
 	n) NAMESPACE="$OPTARG" ;;
 	t) TEARDOWN=true ;;
 	s) SKIP_DEPLOY=true ;;
+	A) NO_AUTOTUNER_CACHE=true ;;
 	d) DRY_RUN=true ;;
 	S) SKIP_STATS=true ;;
 	h) usage ;;
@@ -280,10 +289,16 @@ deploy_chart() {
 	if $DRY_RUN; then
 		echo "[DRY RUN] helm template + kubectl apply with ${base_path} + ${values_path}"
 	else
+		local extra_set=()
+		if $NO_AUTOTUNER_CACHE; then
+			extra_set+=(--set autotunerCache.enabled=false)
+			echo ">>> Autotuner cache disabled for this deploy (-A)"
+		fi
 		helm template inferencex "$HELM_DIR" \
 			--namespace "$NAMESPACE" \
 			-f "$base_path" \
-			-f "$values_path" |
+			-f "$values_path" \
+			"${extra_set[@]}" |
 			kubectl apply -n "$NAMESPACE" -f -
 	fi
 }
@@ -727,10 +742,13 @@ EOF
 }
 
 teardown_chart() {
-	echo ">>> Tearing down..."
+	echo ">>> Tearing down (full: workloads + infra)..."
 	run_cmd kubectl delete mpijobs --all -n "$NAMESPACE" 2>/dev/null || true
 	run_cmd kubectl delete computedomain inferencex -n "$NAMESPACE" 2>/dev/null || true
 	run_cmd kubectl delete resourceclaims --all -n "$NAMESPACE" 2>/dev/null || true
+	run_cmd kubectl delete deployment,statefulset,daemonset,configmap,service,secret \
+		-l app.kubernetes.io/instance=inferencex \
+		-n "$NAMESPACE" 2>/dev/null || true
 }
 
 LOCAL_DIR="${RESULTS_DIR}/${NAME}_${TIMESTAMP}"

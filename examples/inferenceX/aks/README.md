@@ -132,6 +132,52 @@ sequenceDiagram
 
 Workers mount the same hostPath read-only once the distribute job completes; subsequent recipe swaps reuse the cached model with no re-download. The blob cache is optional (`modelDistribution.blobCache.enabled=false` skips it and always uses HuggingFace) but makes cold starts ~10× faster for large clusters.
 
+### 3.1 TRT-LLM autotuner cache
+
+Separate from the model cache, TRT-LLM runs an **autotuner** on every worker startup to pick optimal kernels for the current shapes. On GB300 with DeepSeek-R1 this takes **~2.5 min** per pod start — the same cost Slurm `srt-slurm` pays today (we checked; it does not cache either). TRT-LLM supports `TLLM_AUTOTUNER_CACHE_PATH`, which reads/writes per-rank JSON files (`{base}.rank{N}.json`) so a warm restart is ~1s instead of 2.5 min.
+
+Enabling that in a Kubernetes chart hits two design problems:
+
+1. **Model collision.** A single flat cache directory would mix entries from different models. Autotuner keys are shape-based (arch × dtype × parallelism), so a stale entry from a previous model could be silently selected.
+2. **Rank ↔ node shuffle.** Cache files are keyed by MPI rank, but Kubernetes re-shuffles which node gets which rank on every redeploy. A hostPath cache on node A might hold `rank3.json` from run 1, then rank 3 lands on node B for run 2 and the autotune re-runs from scratch.
+
+The chart solves both in ~15 lines of `worker-entrypoint.sh`:
+
+```mermaid
+flowchart TB
+    start["Worker pod starts<br/>TLLM_AUTOTUNER_CACHE_PATH=/autotuner-cache/inferencex.cache"] --> scope
+    scope["Rewrite path to include sanitized model name<br/>→ /autotuner-cache/deepseek-r1-0528-fp4-v2/inferencex.cache"] --> check
+    check{"rank{MY_RANK}.json<br/>exists in dir?"}
+    check -- yes --> hit["Use it — warm start<br/>~1s autotune"]
+    check -- no --> donor{"Any other<br/>rank*.json<br/>in dir?"}
+    donor -- yes --> seed["cp donor → rank{MY_RANK}.json<br/>warm start"]
+    donor -- no --> cold["Tune from scratch<br/>~2.5 min, then write cache"]
+    hit --> run["exec trtllm-llmapi-launch"]
+    seed --> run
+    cold --> run
+```
+
+**Why rank-agnostic seeding is safe.** The autotuner key is a shape tuple (model arch, dtype, tensor-parallel degree, batch/seq shapes); MPI rank is not part of the key. All ranks in a given MPI world tune identical kernels. Copying a sibling-rank file is therefore equivalent to using our own — no kernel-selection drift.
+
+**Why per-model scoping matters.** Without it, the above seed would happily copy a DeepSeek cache file over a Llama rank file, producing semantically wrong kernel choices. The sanitized-model-name subdirectory (`tr '/: ' '___'` on `model.name`) gives every model its own namespace; switching models gets a clean slate, and wiping `/mnt/nvme/autotuner-cache/<model>/` on every node forces a re-tune for that model only.
+
+**Alternatives considered and rejected.**
+
+- **Node pinning** (`nodePinning.enabled: true`) — would stabilize rank→node mapping and make the cache trivially correct, but sacrifices scheduler flexibility and breaks on cordoned nodes / multiple concurrent jobs.
+- **Shared cache on NFS/PVC** — globally consistent, but adds a ReadWriteMany volume dependency on every pod startup and is slower than hostPath on first read.
+- **Accept partial hits, run suite 3–4× until cache converges naturally** — works, but wastes compute on every fresh cluster.
+
+The rank-agnostic hostPath approach gives the full speedup (warm start ≈ 1s) with no scheduler impact and no new infra.
+
+**Disabling.** Set `autotunerCache.enabled: false` in values. The hostPath volume, env var, and `mpirun -x` forwarding all drop out; the bash block in `worker-entrypoint.sh` short-circuits because `TLLM_AUTOTUNER_CACHE_PATH` is unset. TRT-LLM then re-tunes on every pod start (~2.5 min penalty).
+
+**Reuse scope — same recipe only.** TRT-LLM's autotuner key is the _bucketed input shape_ (see `tensorrt_llm/_torch/autotuner.py:442-461`); concurrency is not literally in the key, but different concurrencies map to different shape buckets and therefore different cache entries. Two consequences:
+
+1. The cache is **safe to reuse across pod restarts of the same recipe** (rolling updates, evictions, suite re-runs against the same `values-gb300-*.yaml`). This is the supported path.
+2. The cache is **NOT safe to reuse across recipes** that change concurrency or topology. Mixing recipes against the same long-lived deployment via `-s` has been observed to inflate prefill TTFT 2–4× because runtime traffic hits shape buckets that warmup never primed (cache miss → in-line autotune on the first request of each new bucket, and TRT-LLM only persists warmup-tuned shapes to disk — runtime tunes are in-memory only). `run-suite.sh` calls `-t` between every recipe to ensure each starts with a deploy whose warmup matches the workload.
+
+Tunables live under `autotunerCache:` in `values-gb300-base.yaml`. Measured impact on GB300 is in [gb300-benchmark-walkthrough.md §Autotuner cache](gb300-benchmark-walkthrough.md#autotuner-cache).
+
 ---
 
 ## 4. Prerequisites
@@ -292,6 +338,9 @@ cd examples/inferenceX/aks
 # Re-run benchmark only (helm release already running the right values)
 ./run-test.sh tests/trtllm/gb300-fp4/8k1k/mtp/conc-666.yaml -s
 
+# Disable the TRT-LLM autotuner cache for this deploy (cold ~2.5 min autotune)
+./run-test.sh tests/trtllm/gb300-fp4/8k1k/mtp/conc-24.yaml -t -A
+
 # Dry run
 ./run-test.sh tests/trtllm/gb300-fp4/8k1k/mtp/conc-5.yaml -d
 ```
@@ -308,6 +357,14 @@ results/conc-24_20260417T143022Z/
 ```
 
 The `pod-placement.tsv` and `timings.txt` files are used for Grafana correlation when generating plots after the run.
+
+### Teardown between recipes (`-t`)
+
+`-t` does a **full chart teardown**: workloads (MPIJobs, ComputeDomain, ResourceClaims) **and** chart infra (frontend Deployment, etcd/NATS StatefulSets, ConfigMaps, Services, Secrets — selected via `app.kubernetes.io/instance=inferencex`). It is required between recipes that change topology, and recommended any time you've redeployed several recipes onto a long-lived frontend.
+
+The reason is **stale Dynamo router state**. Each `helm template | kubectl apply` adds new prefill/decode workers to the router's worker registry but never removes the previous ones. A frontend that has served many redeploys throttles prefill dispatch through a saturated worker list — TTFT inflates from ~1.8 s to ~7 s on conc-24 even though TPOT is unchanged. Combined with the autotuner shape-bucket issue described in [§3.1](#31-trt-llm-autotuner-cache), `run-suite.sh` uses `-t` between **every recipe** (not just between topology groups).
+
+`-t` deletes chart resources only; it leaves `/mnt/nvme/autotuner-cache/<model>/` intact on every node. A re-deploy of the same recipe after `-t` therefore still gets a warm autotune (~1 s) on the next start.
 
 ### Pass criteria
 
