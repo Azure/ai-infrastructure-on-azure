@@ -137,9 +137,12 @@ modelDistribution:
     container: ""                   # e.g. models
     # Kubelet user-assigned MI client ID; the MI must have role
     # "Storage Blob Data Contributor" on the storage account above.
-    # Look it up with:
+    # Look it up either from the AKS control plane:
     #   az aks show -g <RG> -n <CLUSTER> \
     #     --query identityProfile.kubeletidentity.clientId -o tsv
+    # or directly from any GPU node label (AKS sets this automatically):
+    #   kubectl get nodes -l agentpool=gb300 \
+    #     -o jsonpath='{.items[0].metadata.labels.kubernetes\.azure\.com/kubelet-identity-client-id}'
     clientId: ""
 
 # --------------------------------------------------------------------------

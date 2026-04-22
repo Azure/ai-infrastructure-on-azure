@@ -79,7 +79,9 @@ spec:
                 -x MODEL_HF_ID \
                 -x MODEL_LOCAL_DIR \
                 -x MODEL_LOCAL_DIR_NAME \
+                {{- if .Values.model.hfTokenSecret }}
                 -x HF_TOKEN \
+                {{- end }}
                 -x BLOB_CACHE_ENABLED \
                 -x BLOB_STORAGE_ACCOUNT \
                 -x BLOB_CONTAINER_NAME \
