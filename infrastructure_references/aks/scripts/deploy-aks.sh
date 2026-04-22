@@ -427,6 +427,7 @@ function install_gpu_operator() {
 # Requires K8s v1.34.2+ and GPU Operator v25.10.0+ with devicePlugin disabled.
 # Ref: https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/dra-intro-install.html
 function install_dra_driver() {
+	: "${NODE_POOL_NAME:=gpu}"
 	echo "⏳ Installing NVIDIA DRA Driver v${DRA_DRIVER_VERSION}..."
 
 	# Label GPU nodes for DRA kubelet plugin scheduling
