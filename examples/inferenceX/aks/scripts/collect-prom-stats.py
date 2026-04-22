@@ -14,6 +14,7 @@ Scrape intervals on this cluster (verified via /api/v1/targets):
   kubelet / cAdvisor   = 30s   -> rate windows are [1m] (>= 2 scrapes).
 """
 from __future__ import annotations
+
 import csv
 import json
 import re
@@ -27,12 +28,19 @@ from statistics import mean
 PROM = "http://localhost:9090"
 RESULTS_ROOT = Path(__file__).resolve().parent.parent / "results"
 
+
 def parse_ts(s: str) -> int:
-    return int(datetime.strptime(s, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc).timestamp())
+    return int(
+        datetime.strptime(s, "%Y-%m-%dT%H:%M:%SZ")
+        .replace(tzinfo=timezone.utc)
+        .timestamp()
+    )
 
 
 def prom_query_range(query: str, start: int, end: int, step: int = 15):
-    qs = urllib.parse.urlencode({"query": query, "start": start, "end": end, "step": step})
+    qs = urllib.parse.urlencode(
+        {"query": query, "start": start, "end": end, "step": step}
+    )
     url = f"{PROM}/api/v1/query_range?{qs}"
     with urllib.request.urlopen(url, timeout=30) as r:
         return json.load(r)["data"]["result"]
@@ -41,7 +49,11 @@ def prom_query_range(query: str, start: int, end: int, step: int = 15):
 def values_only(series_list):
     out = []
     for s in series_list:
-        vals = [float(v[1]) for v in s.get("values", []) if v[1] not in ("NaN", "+Inf", "-Inf")]
+        vals = [
+            float(v[1])
+            for v in s.get("values", [])
+            if v[1] not in ("NaN", "+Inf", "-Inf")
+        ]
         if vals:
             out.append((s["metric"], vals))
     return out
@@ -49,7 +61,14 @@ def values_only(series_list):
 
 def stat(values):
     if not values:
-        return {"n": 0, "mean": None, "p50": None, "p99": None, "min": None, "max": None}
+        return {
+            "n": 0,
+            "mean": None,
+            "p50": None,
+            "p99": None,
+            "min": None,
+            "max": None,
+        }
     vs = sorted(values)
     n = len(vs)
     return {
@@ -77,6 +96,7 @@ def aggregate(series_list, by_label=None):
 
 # --- per-run pipeline --------------------------------------------------------
 
+
 def parse_timings(p: Path):
     events = {}
     with p.open() as f:
@@ -93,7 +113,12 @@ def parse_placement(p: Path):
     with p.open() as f:
         rdr = csv.DictReader(f, delimiter="\t")
         for row in rdr:
-            pod, role, node, gpu = row["pod"], row["role"], row["node"], row.get("gpu_indices", "-")
+            pod, role, node, gpu = (
+                row["pod"],
+                row["role"],
+                row["node"],
+                row.get("gpu_indices", "-"),
+            )
             pod_role.append((pod, role, node, gpu))
             if "worker" in role:
                 short = "prefill" if role.startswith("prefill") else "decode"
@@ -102,7 +127,9 @@ def parse_placement(p: Path):
 
 
 def role_label_filter(node_roles, target_role):
-    nodes = sorted(n for n, roles in node_roles.items() if target_role in roles and len(roles) == 1)
+    nodes = sorted(
+        n for n, roles in node_roles.items() if target_role in roles and len(roles) == 1
+    )
     return "|".join(nodes), nodes
 
 
@@ -157,7 +184,11 @@ def collect_run(results_dir: Path):
     ]
     for short, m in gpu_metrics:
         out["gpu"][short] = {}
-        for role_name, role_re in [("prefill", prefill_re), ("decode", decode_re), ("mixed", mixed_re)]:
+        for role_name, role_re in [
+            ("prefill", prefill_re),
+            ("decode", decode_re),
+            ("mixed", mixed_re),
+        ]:
             if not role_re:
                 out["gpu"][short][role_name] = stat([])
                 continue
@@ -184,19 +215,27 @@ def collect_run(results_dir: Path):
         out["container"][label]["mem_mib"] = {"mean": None}
         s = aggregate(series)
         if s.get("mean") is not None:
-            out["container"][label]["mem_mib"] = {k: (round(v / 1024 / 1024, 1) if isinstance(v, (int, float)) else v) for k, v in s.items()}
+            out["container"][label]["mem_mib"] = {
+                k: (round(v / 1024 / 1024, 1) if isinstance(v, (int, float)) else v)
+                for k, v in s.items()
+            }
         # Network rx/tx in MB/s
         for direction in ("receive", "transmit"):
             q_net = f'sum(rate(container_network_{direction}_bytes_total{{namespace="inferencex",pod=~"{pod_re}"}}[1m]))'
             series = values_only(prom_query_range(q_net, start, end))
             s = aggregate(series)
             if s.get("mean") is not None:
-                s = {k: (round(v / 1024 / 1024, 2) if isinstance(v, (int, float)) else v) for k, v in s.items()}
+                s = {
+                    k: (round(v / 1024 / 1024, 2) if isinstance(v, (int, float)) else v)
+                    for k, v in s.items()
+                }
             out["container"][label][f"net_{direction}_mbps"] = s
 
     # Aggregate worker pod CPU/mem (prefill + decode separately)
-    for role_name, pod_re in [("prefill_workers", "inferencex-prefill-.*-worker-.*"),
-                              ("decode_workers", "inferencex-decode-.*-worker-.*")]:
+    for role_name, pod_re in [
+        ("prefill_workers", "inferencex-prefill-.*-worker-.*"),
+        ("decode_workers", "inferencex-decode-.*-worker-.*"),
+    ]:
         out["container"][role_name] = {}
         q_cpu = f'sum(rate(container_cpu_usage_seconds_total{{namespace="inferencex",pod=~"{pod_re}",container!="POD",container!=""}}[1m]))'
         series = values_only(prom_query_range(q_cpu, start, end))
@@ -205,13 +244,21 @@ def collect_run(results_dir: Path):
         series = values_only(prom_query_range(q_mem, start, end))
         s = aggregate(series)
         if s.get("mean") is not None:
-            s = {k: (round(v / 1024 / 1024 / 1024, 2) if isinstance(v, (int, float)) else v) for k, v in s.items()}
+            s = {
+                k: (
+                    round(v / 1024 / 1024 / 1024, 2)
+                    if isinstance(v, (int, float))
+                    else v
+                )
+                for k, v in s.items()
+            }
         out["container"][role_name]["mem_gib_total"] = s
 
     return out
 
 
 # --- markdown rendering ------------------------------------------------------
+
 
 def fmt(v):
     if v is None:
@@ -225,11 +272,19 @@ def render_md(stats: dict) -> str:
     lines = []
     lines.append(f"# Stats: {stats['run']}")
     lines.append("")
-    lines.append(f"- Bench window: `{stats['bench_start_utc']}` → `{stats['bench_end_utc']}` ({stats['duration_s']}s)")
-    lines.append(f"- Prefill nodes ({len(stats['prefill_nodes'])}): {', '.join(stats['prefill_nodes']) or '—'}")
-    lines.append(f"- Decode nodes ({len(stats['decode_nodes'])}): {', '.join(stats['decode_nodes']) or '—'}")
-    if stats['mixed_nodes']:
-        lines.append(f"- Mixed nodes ({len(stats['mixed_nodes'])}): {', '.join(stats['mixed_nodes'])}")
+    lines.append(
+        f"- Bench window: `{stats['bench_start_utc']}` → `{stats['bench_end_utc']}` ({stats['duration_s']}s)"
+    )
+    lines.append(
+        f"- Prefill nodes ({len(stats['prefill_nodes'])}): {', '.join(stats['prefill_nodes']) or '—'}"
+    )
+    lines.append(
+        f"- Decode nodes ({len(stats['decode_nodes'])}): {', '.join(stats['decode_nodes']) or '—'}"
+    )
+    if stats["mixed_nodes"]:
+        lines.append(
+            f"- Mixed nodes ({len(stats['mixed_nodes'])}): {', '.join(stats['mixed_nodes'])}"
+        )
     lines.append("")
     lines.append("## GPU metrics by role (mean / p50 / p99)")
     lines.append("")
@@ -250,7 +305,9 @@ def render_md(stats: dict) -> str:
         g = stats["gpu"].get(k, {})
         p = g.get("prefill", {})
         d = g.get("decode", {})
-        lines.append(f"| {label} | {fmt(p.get('mean'))} | {fmt(p.get('p99'))} | {fmt(d.get('mean'))} | {fmt(d.get('p99'))} |")
+        lines.append(
+            f"| {label} | {fmt(p.get('mean'))} | {fmt(p.get('p99'))} | {fmt(d.get('mean'))} | {fmt(d.get('p99'))} |"
+        )
     lines.append("")
     lines.append("## Support-pod load (mean over bench window)")
     lines.append("")

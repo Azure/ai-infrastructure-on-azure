@@ -57,10 +57,10 @@ decode:
       num_nextn_predict_layers: 3
     cuda_graph_config:
       batch_sizes:
-      - 1
-      - 2
-      - 4
-      - 8
+        - 1
+        - 2
+        - 4
+        - 8
       enable_padding: true
     enable_attention_dp: true
     enable_lm_head_tp_in_adp: false

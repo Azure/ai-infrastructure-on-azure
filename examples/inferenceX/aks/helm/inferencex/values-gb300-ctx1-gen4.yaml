@@ -6,8 +6,8 @@
 
 prefill:
   workers: 1
-  gpus: 2                    # GPUs per prefill endpoint (TP * PP * CP with ADP)
-  nodesPerWorker: 1          # Nodes per prefill MPI world
+  gpus: 2 # GPUs per prefill endpoint (TP * PP * CP with ADP)
+  nodesPerWorker: 1 # Nodes per prefill MPI world
   tensorParallelSize: 2
   moeExpertParallelSize: 2
   maxBatchSize: 2
@@ -27,10 +27,10 @@ prefill:
       backend: TRTLLM
     nvfp4_gemm_config:
       allowed_backends:
-      - cutlass
-      - cublaslt
-      - cutedsl
-      - cuda_core
+        - cutlass
+        - cublaslt
+        - cutedsl
+        - cuda_core
     speculative_config:
       decoding_type: MTP
       num_nextn_predict_layers: 3
@@ -40,8 +40,8 @@ prefill:
 
 decode:
   workers: 4
-  gpus: 8                    # GPUs per decode endpoint (TP * EP)
-  nodesPerWorker: 2          # Nodes per decode MPI world (gpus / gpusPerNode)
+  gpus: 8 # GPUs per decode endpoint (TP * EP)
+  nodesPerWorker: 2 # Nodes per decode MPI world (gpus / gpusPerNode)
   tensorParallelSize: 8
   moeExpertParallelSize: 8
   maxBatchSize: 4
@@ -63,19 +63,19 @@ decode:
       use_low_precision_moe_combine: true
     nvfp4_gemm_config:
       allowed_backends:
-      - cutlass
-      - cublaslt
-      - cutedsl
-      - cuda_core
+        - cutlass
+        - cublaslt
+        - cutedsl
+        - cuda_core
     speculative_config:
       decoding_type: MTP
       num_nextn_predict_layers: 3
     cuda_graph_config:
       batch_sizes:
-      - 1
-      - 2
-      - 3
-      - 4
+        - 1
+        - 2
+        - 3
+        - 4
       enable_padding: true
     enable_attention_dp: false
     enable_lm_head_tp_in_adp: false
