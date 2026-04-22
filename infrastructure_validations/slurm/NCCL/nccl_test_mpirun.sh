@@ -39,13 +39,34 @@ NODELIST=""
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
-		--sku)        SKU="$2";        shift 2 ;;
-		--begin-size) BEGIN_SIZE="$2";  shift 2 ;;
-		--end-size)   END_SIZE="$2";    shift 2 ;;
-		--iters)      ITERS="$2";       shift 2 ;;
-		--check)      CHECK=1;          shift   ;;
-		-*)           echo "Unknown option: $1"; exit 1 ;;
-		*)            NODELIST="$1";    shift   ;;
+	--sku)
+		SKU="$2"
+		shift 2
+		;;
+	--begin-size)
+		BEGIN_SIZE="$2"
+		shift 2
+		;;
+	--end-size)
+		END_SIZE="$2"
+		shift 2
+		;;
+	--iters)
+		ITERS="$2"
+		shift 2
+		;;
+	--check)
+		CHECK=1
+		shift
+		;;
+	-*)
+		echo "Unknown option: $1"
+		exit 1
+		;;
+	*)
+		NODELIST="$1"
+		shift
+		;;
 	esac
 done
 
@@ -60,8 +81,8 @@ fi
 # ---------------------------------------------------------------------------
 HOSTFILE=$(mktemp /tmp/nccl_hostfile.XXXXXX)
 trap 'rm -f "$HOSTFILE"' EXIT
-scontrol show hostnames "$NODELIST" > "$HOSTFILE"
-SCALE=$(wc -l < "$HOSTFILE")
+scontrol show hostnames "$NODELIST" >"$HOSTFILE"
+SCALE=$(wc -l <"$HOSTFILE")
 FIRST_HOST=$(head -1 "$HOSTFILE")
 
 # ---------------------------------------------------------------------------
@@ -70,8 +91,8 @@ FIRST_HOST=$(head -1 "$HOSTFILE")
 if [ -z "$SKU" ]; then
 	GPU_NAME=$(ssh "$FIRST_HOST" "nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1" 2>/dev/null || true)
 	case "$GPU_NAME" in
-		*H100*|*H200*)              SKU="hopper"         ;;
-		*GB200*|*GB300*)            SKU="graceblackwell" ;;
+	*H100* | *H200*) SKU="hopper" ;;
+	*GB200* | *GB300*) SKU="graceblackwell" ;;
 	esac
 
 	if [ -z "$SKU" ]; then
@@ -88,7 +109,7 @@ fi
 # Load system profile and MPI before sourcing config so that
 # LD_LIBRARY_PATH etc. are available for any config-time checks.
 # ---------------------------------------------------------------------------
-set +u  # system profile scripts may use unbound variables
+set +u # system profile scripts may use unbound variables
 source /etc/profile
 module load mpi/hpcx
 set -u
@@ -131,25 +152,25 @@ echo "  Data check  : ${CHECK}"
 # ---------------------------------------------------------------------------
 ENV_FLAGS=()
 for var in $(compgen -e | grep -E '^(NCCL_|SHARP_|UCX_|MELLANOX_|CUDA_|OMPI_)' | sort); do
-	ENV_FLAGS+=( -x "${var}=${!var}" )
+	ENV_FLAGS+=(-x "${var}=${!var}")
 done
 
 # ---------------------------------------------------------------------------
 # Map CPU_BIND to mpirun --bind-to syntax
 # ---------------------------------------------------------------------------
 if [ "$CPU_BIND" = "none" ]; then
-	BIND_ARGS=( --bind-to none )
+	BIND_ARGS=(--bind-to none)
 else
 	# mask_cpu: binding — pass through as cpu-list / slot-list
-	BIND_ARGS=( --bind-to none )
+	BIND_ARGS=(--bind-to none)
 fi
 
 # ---------------------------------------------------------------------------
 # Build all_reduce_perf arguments
 # ---------------------------------------------------------------------------
-PERF_ARGS=( -b "$BEGIN_SIZE" -e "$END_SIZE" -f 2 -g 1 -c "$CHECK" )
+PERF_ARGS=(-b "$BEGIN_SIZE" -e "$END_SIZE" -f 2 -g 1 -c "$CHECK")
 if [ -n "$ITERS" ]; then
-	PERF_ARGS+=( -n "$ITERS" )
+	PERF_ARGS+=(-n "$ITERS")
 fi
 
 mpirun -np $((SCALE * GPUS_PER_NODE)) \

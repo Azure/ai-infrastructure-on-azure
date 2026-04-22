@@ -1,0 +1,147 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "inferencex.fullname" . }}-etcd
+  labels:
+    {{- include "inferencex.labels" . | nindent 4 }}
+    app.kubernetes.io/component: etcd
+spec:
+  serviceName: {{ include "inferencex.fullname" . }}-etcd
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: etcd
+  template:
+    metadata:
+      labels:
+        {{- include "inferencex.labels" . | nindent 8 }}
+        app.kubernetes.io/component: etcd
+    spec:
+      nodeSelector:
+        {{ .Values.affinity.nodePoolLabel }}: {{ .Values.affinity.nodePoolValue }}
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+      - key: sku
+        operator: Equal
+        value: gpu
+        effect: NoSchedule
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/component: frontend
+                app.kubernetes.io/instance: {{ .Release.Name }}
+            topologyKey: kubernetes.io/hostname
+      containers:
+      - name: etcd
+        image: registry.k8s.io/etcd:3.5.21-0
+        command:
+        - etcd
+        - --listen-client-urls=http://0.0.0.0:2379
+        - --advertise-client-urls=http://{{ include "inferencex.fullname" . }}-etcd:2379
+        - --listen-peer-urls=http://0.0.0.0:2380
+        - --initial-advertise-peer-urls=http://{{ include "inferencex.fullname" . }}-etcd:2380
+        - --initial-cluster=default=http://{{ include "inferencex.fullname" . }}-etcd:2380
+        - --data-dir=/var/lib/etcd
+        env:
+        - name: ALLOW_NONE_AUTHENTICATION
+          value: "yes"
+        ports:
+        - containerPort: 2379
+          name: client
+        - containerPort: 2380
+          name: peer
+        readinessProbe:
+          exec:
+            command:
+            - etcdctl
+            - endpoint
+            - health
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: "4"
+            memory: 4Gi
+          limits:
+            cpu: "16"
+            memory: 16Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "inferencex.fullname" . }}-nats
+  labels:
+    {{- include "inferencex.labels" . | nindent 4 }}
+    app.kubernetes.io/component: nats
+spec:
+  serviceName: {{ include "inferencex.fullname" . }}-nats
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: nats
+  template:
+    metadata:
+      labels:
+        {{- include "inferencex.labels" . | nindent 8 }}
+        app.kubernetes.io/component: nats
+    spec:
+      nodeSelector:
+        {{ .Values.affinity.nodePoolLabel }}: {{ .Values.affinity.nodePoolValue }}
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+      - key: sku
+        operator: Equal
+        value: gpu
+        effect: NoSchedule
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/component: frontend
+                app.kubernetes.io/instance: {{ .Release.Name }}
+            topologyKey: kubernetes.io/hostname
+      containers:
+      - name: nats
+        image: nats:2.10-alpine
+        args:
+        - "-js"
+        - "-sd"
+        - "/data/nats"
+        - "-m"
+        - "8222"
+        ports:
+        - containerPort: 4222
+          name: client
+        - containerPort: 6222
+          name: cluster
+        - containerPort: 8222
+          name: monitor
+        volumeMounts:
+        - name: nats-data
+          mountPath: /data/nats
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8222
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            cpu: "4"
+            memory: 4Gi
+          limits:
+            cpu: "16"
+            memory: 16Gi
+      volumes:
+      - name: nats-data
+        emptyDir:
+          sizeLimit: 10Gi

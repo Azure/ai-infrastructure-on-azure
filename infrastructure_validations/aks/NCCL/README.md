@@ -46,6 +46,8 @@ helm install nccl-test infrastructure_validations/aks/NCCL/helm/nccl-test \
 | `ncclTest.env.*`     | NCCL environment variables           | See values.yaml                                      |
 | `affinity.required`  | Required pod affinity topology keys  | `[{topologyKey: agentpool}]`                         |
 | `affinity.preferred` | Preferred pod affinity topology keys | `[]`                                                 |
+| `dra.enabled`        | Enable DRA for GPU scheduling        | `false`                                              |
+| `dra.claimTemplateName` | DRA resource claim template name  | `nccl-test-channel`                                  |
 
 #### NCCL Test Parameters
 
@@ -130,6 +132,29 @@ Then install with:
 ```bash
 helm install nccl-test infrastructure_validations/aks/NCCL/helm/nccl-test -f custom-values.yaml
 ```
+
+#### GB300 (MNNVL / DRA)
+
+GB300 nodes use Dynamic Resource Allocation (DRA) for GPU scheduling and MNNVL for cross-node NVLink. A `values-gb300.yaml` override file is provided:
+
+```bash
+# GB300 full rack test (14 nodes, 56 GPUs)
+helm install nccl-test infrastructure_validations/aks/NCCL/helm/nccl-test \
+  -f infrastructure_validations/aks/NCCL/helm/nccl-test/values-gb300.yaml \
+  --set nodes=14
+
+# GB300 with 10 repeated runs at 16G
+helm install nccl-test infrastructure_validations/aks/NCCL/helm/nccl-test \
+  -f infrastructure_validations/aks/NCCL/helm/nccl-test/values-gb300.yaml \
+  --set nodes=14 \
+  --set ncclTest.testArgs="-b 16G -e 16G -N 10 -f 2 -g 1"
+```
+
+Key differences from H100/H200:
+- `gpusPerNode: 4` (vs 8)
+- `dra.enabled: true` — creates a `ComputeDomain` resource and uses `resourceClaims` instead of the device plugin
+- `affinity.required` uses `nvidia.com/gpu.clique` topology key for MNNVL co-location
+- Uses the NGC PyTorch image directly (includes `all_reduce_perf_mpi`)
 
 ### Monitoring the Test
 

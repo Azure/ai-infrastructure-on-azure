@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "inferencex.fullname" . }}-etcd
+  labels:
+    {{- include "inferencex.labels" . | nindent 4 }}
+    app.kubernetes.io/component: etcd
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: etcd
+  ports:
+  - name: client
+    port: 2379
+    targetPort: 2379
+  - name: peer
+    port: 2380
+    targetPort: 2380
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "inferencex.fullname" . }}-nats
+  labels:
+    {{- include "inferencex.labels" . | nindent 4 }}
+    app.kubernetes.io/component: nats
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: nats
+  ports:
+  - name: client
+    port: 4222
+    targetPort: 4222
+  - name: cluster
+    port: 6222
+    targetPort: 6222
+  - name: monitor
+    port: 8222
+    targetPort: 8222
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "inferencex.fullname" . }}-frontend
+  labels:
+    {{- include "inferencex.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  type: {{ .Values.service.frontend.type }}
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: frontend
+  ports:
+  - name: http
+    port: {{ .Values.service.frontend.port }}
+    targetPort: 8000

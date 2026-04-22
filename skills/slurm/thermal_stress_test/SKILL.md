@@ -32,11 +32,11 @@ sbatch --gpus-per-node=4 -N 1 -w ccw-gpu-1 thermal_test.slurm
 
 ### Test parameters (hardcoded in thermal_test.sh)
 
-| Parameter | Value | Description |
-|-----------|-------|-------------|
-| `DURATION` | 900 (15 min) | Stress test duration in seconds |
-| Target activity | 1004 | dcgmproftester stress workload ID |
-| Binary | auto-detected | `dcgmproftester13` (preferred) or `dcgmproftester12` |
+| Parameter       | Value         | Description                                          |
+| --------------- | ------------- | ---------------------------------------------------- |
+| `DURATION`      | 900 (15 min)  | Stress test duration in seconds                      |
+| Target activity | 1004          | dcgmproftester stress workload ID                    |
+| Binary          | auto-detected | `dcgmproftester13` (preferred) or `dcgmproftester12` |
 
 ### dcgmproftester binary location
 
@@ -79,10 +79,13 @@ THERMAL TEST FAILED on ccw-gpu-1: 1 of 4 GPUs failed
 ## Interpreting Results
 
 ### Pass
+
 All GPUs sustain the workload for the full duration. The GPU maintained safe temperatures under load.
 
 ### Fail
+
 One or more GPUs could not sustain the workload. Common reasons:
+
 - **Thermal throttling**: GPU junction temperature exceeded safe limits, causing clock reduction that dropped below target.
 - **ECC errors under load**: Heat-induced memory errors.
 - **GPU hang / XID error**: The GPU stopped responding during the stress test.
@@ -106,6 +109,7 @@ nvidia-smi -q | grep -A2 "Temperature"
 ```
 
 Look for:
+
 - `GPU Current Temp`: Current temperature
 - `GPU T.Limit Temp`: Temperature headroom before throttling (negative = throttling)
 - `GPU Shutdown Temp`: Hard shutdown limit
@@ -117,6 +121,7 @@ nvidia-smi --query-gpu=index,clocks_event_reasons.active --format=csv,noheader
 ```
 
 Key throttle reasons:
+
 - `HW Thermal Slowdown` — GPU is too hot
 - `SW Thermal Slowdown` — Driver-imposed thermal protection
 - `HW Power Brake Slowdown` — External power brake signal
@@ -138,8 +143,8 @@ Level 3 includes stress tests, memory bandwidth, PCIe bandwidth, and NVLink band
 
 If a GPU fails thermal testing and the issue persists after reboot:
 
-| Issue | GHR Category |
-|-------|-------------|
-| Thermal throttling / thermal failure | `gpu_throttling` |
-| DCGM diagnostic failure | `dcgm_failure` |
+| Issue                                 | GHR Category                                        |
+| ------------------------------------- | --------------------------------------------------- |
+| Thermal throttling / thermal failure  | `gpu_throttling`                                    |
+| DCGM diagnostic failure               | `dcgm_failure`                                      |
 | GPU crashes during stress (XID error) | `xid_79` or `xid_94`/`xid_95` depending on XID code |

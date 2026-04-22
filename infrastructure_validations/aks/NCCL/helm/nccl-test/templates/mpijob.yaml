@@ -8,6 +8,7 @@ metadata:
   {{- end }}
 spec:
   slotsPerWorker: {{ .Values.gpusPerNode }}
+  launcherCreationPolicy: WaitForWorkersReady
   runPolicy:
     cleanPodPolicy: Running
   mpiReplicaSpecs:
@@ -25,8 +26,10 @@ spec:
             imagePullPolicy: {{ .Values.image.pullPolicy }}
             env:
             {{- range $key, $value := .Values.ncclTest.env }}
+            {{- if $value }}
             - name: {{ $key }}
               value: "{{ $value }}"
+            {{- end }}
             {{- end }}
             command:
             - /bin/bash
@@ -37,12 +40,15 @@ spec:
               NUM_NODES={{ .Values.nodes }}
               DEVICES_PER_NODE={{ .Values.gpusPerNode }}
               NP=$(($NUM_NODES * $DEVICES_PER_NODE))
-              until mpirun -np ${NP} -hostfile /etc/mpi/hostfile -x LD_LIBRARY_PATH -bind-to none hostname 2>/dev/null; do sleep 5; done
               mpirun \
                 --allow-run-as-root \
                 -np $NP \
+                {{- if .Values.mpi.bindToCore }}
                 --map-by ppr:$DEVICES_PER_NODE:node:pe=12 \
                 --bind-to core \
+                {{- else }}
+                --bind-to none \
+                {{- end }}
                 --report-bindings \
                 -hostfile /etc/mpi/hostfile \
                 -mca plm_rsh_no_tree_spawn 1 \
@@ -50,7 +56,9 @@ spec:
                 -mca coll_hcoll_enable 0 \
                 -x LD_LIBRARY_PATH \
                 {{- range $key, $value := .Values.ncclTest.env }}
+                {{- if $value }}
                 -x {{ $key }} \
+                {{- end }}
                 {{- end }}
                 all_reduce_perf_mpi {{ .Values.ncclTest.testArgs }}
             resources:
@@ -102,12 +110,21 @@ spec:
               limits:
                 {{ .Values.gpuResource }}: {{ .Values.gpusPerNode }}
                 {{ .Values.rdmaResource }}: {{ .Values.gpusPerNode }}
+              {{- if .Values.dra.enabled }}
+              claims:
+              - name: {{ .Values.dra.claimTemplateName }}
+              {{- end }}
             securityContext:
               capabilities:
                 add: ["IPC_LOCK"]
             volumeMounts:
             - name: shm
               mountPath: /dev/shm
+          {{- if .Values.dra.enabled }}
+          resourceClaims:
+          - name: {{ .Values.dra.claimTemplateName }}
+            resourceClaimTemplateName: {{ .Values.dra.claimTemplateName }}
+          {{- end }}
           volumes:
           - name: shm
             emptyDir:

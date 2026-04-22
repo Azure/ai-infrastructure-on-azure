@@ -20,12 +20,12 @@ NCCL/
 
 Each config sets these variables plus generation-specific NCCL exports:
 
-| Variable | Description |
-|----------|-------------|
-| `GPUS_PER_NODE` | Number of GPUs per node |
-| `TASKS_PER_NODE` | MPI ranks per node (typically = GPUs) |
-| `CPUS_PER_TASK` | CPU cores allocated per rank |
-| `CPU_BIND` | `srun --cpu-bind` value (`none` or `mask_cpu:...`) |
+| Variable         | Description                                        |
+| ---------------- | -------------------------------------------------- |
+| `GPUS_PER_NODE`  | Number of GPUs per node                            |
+| `TASKS_PER_NODE` | MPI ranks per node (typically = GPUs)              |
+| `CPUS_PER_TASK`  | CPU cores allocated per rank                       |
+| `CPU_BIND`       | `srun --cpu-bind` value (`none` or `mask_cpu:...`) |
 
 To add a new GPU generation, create a new `.conf` file in `configs/`.
 To override settings for a specific SKU within a generation, create a
@@ -56,13 +56,13 @@ Use the launcher script — it reads the config and submits with correct
 
 ### Launcher options
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--sku NAME` | auto-detect | GPU generation config name |
-| `--begin-size SIZE` | `1K` | Start message size |
-| `--end-size SIZE` | `16G` | End message size |
-| `--iters N` | all_reduce_perf default | Iterations per message size |
-| `--check` | off | Enable data validation |
+| Option              | Default                 | Description                 |
+| ------------------- | ----------------------- | --------------------------- |
+| `--sku NAME`        | auto-detect             | GPU generation config name  |
+| `--begin-size SIZE` | `1K`                    | Start message size          |
+| `--end-size SIZE`   | `16G`                   | End message size            |
+| `--iters N`         | all_reduce_perf default | Iterations per message size |
+| `--check`           | off                     | Enable data validation      |
 
 All other arguments (e.g. `-N`, `-w`, `--time`) are passed through to `sbatch`.
 

@@ -1,0 +1,80 @@
+{{- if eq .Values.storage.type "pvc" }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "inferencex.fullname" . }}-download-model
+  labels:
+    {{- include "inferencex.labels" . | nindent 4 }}
+    app.kubernetes.io/component: model-download
+  annotations:
+    helm.sh/hook: post-install
+    helm.sh/hook-weight: "-5"
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        {{- include "inferencex.labels" . | nindent 8 }}
+        app.kubernetes.io/component: model-download
+    spec:
+      restartPolicy: OnFailure
+      nodeSelector:
+        {{ .Values.affinity.nodePoolLabel }}: {{ .Values.affinity.nodePoolValue }}
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+      - key: sku
+        operator: Equal
+        value: gpu
+        effect: NoSchedule
+      containers:
+      - name: download
+        image: python:3.11-slim
+        imagePullPolicy: IfNotPresent
+        command:
+        - bash
+        - -c
+        - |
+          set -e
+          MODEL_DIR="/models/{{ .Values.model.localDir }}"
+          if [ -f "${MODEL_DIR}/download-complete" ]; then
+            echo "Model already exists, skipping download"
+            exit 0
+          fi
+          pip install -q huggingface_hub hf_transfer
+          export HF_HUB_ENABLE_HF_TRANSFER=1
+          {{- if .Values.model.hfTokenSecret }}
+          export HF_TOKEN=$(cat /hf-token/token)
+          {{- end }}
+          echo "Downloading {{ .Values.model.id }} to ${MODEL_DIR}..."
+          hf download {{ .Values.model.id }} \
+            --local-dir "${MODEL_DIR}"
+          touch "${MODEL_DIR}/download-complete"
+          echo "Download complete"
+        volumeMounts:
+        - name: model-storage
+          mountPath: /models
+        {{- if .Values.model.hfTokenSecret }}
+        - name: hf-token
+          mountPath: /hf-token
+          readOnly: true
+        {{- end }}
+        resources:
+          requests:
+            cpu: "8"
+            memory: 16Gi
+          limits:
+            cpu: "16"
+            memory: 32Gi
+      volumes:
+      - name: model-storage
+        persistentVolumeClaim:
+          claimName: {{ include "inferencex.fullname" . }}-model
+      {{- if .Values.model.hfTokenSecret }}
+      - name: hf-token
+        secret:
+          secretName: {{ .Values.model.hfTokenSecret }}
+      {{- end }}
+{{- end }}

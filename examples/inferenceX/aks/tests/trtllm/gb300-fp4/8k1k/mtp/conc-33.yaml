@@ -1,0 +1,39 @@
+# Benchmark: concurrency 33
+
+name: conc-33
+recipe: ctx1_gen3_tep8_batch8_eplb0_mtp3
+values_file: values-gb300-ctx1-gen3.yaml
+
+# Topology
+sku: gb300
+precision: fp4
+spec_method: mtp
+prefill_workers: 1
+prefill_gpus_each: 2
+decode_workers: 3
+decode_gpus_each: 8
+total_gpus: 26
+
+# Benchmark parameters
+concurrency: 33
+isl: 8192
+osl: 1024
+request_count: 330
+warmup_count: 66
+num_dataset_entries: 264
+
+# Official InferenceX reference (dynamo-trt, MTP, fp4, 8k1k, conc=33, gpus=26)
+# Source: https://inferencex.semianalysis.com/api/v1/benchmarks?model=DeepSeek-R1-0528&date=2026-02-03&exact=true
+# Run:    https://github.com/SemiAnalysisAI/InferenceX/actions/runs/21640109636/attempts/1
+# Image:  nvcr.io/nvidia/ai-dynamo/tensorrtllm-runtime:0.8.1.post2
+inferencex_date: 2026-02-03
+inferencex_fetched: 2026-04-20
+inferencex_tput_per_gpu: 1612.47
+inferencex_output_tput_per_gpu: 195.33
+inferencex_median_tpot_ms: 5.08
+inferencex_median_ttft_ms: 1677.9
+
+# AKS run (this repo, sa-bench + dynamo backend)
+aks_total_tok_per_s: 41638
+aks_tok_per_s_per_gpu: 1601
+aks_pct_of_inferencex: 99.3

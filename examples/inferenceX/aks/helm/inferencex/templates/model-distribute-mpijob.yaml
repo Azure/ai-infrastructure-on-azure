@@ -1,0 +1,203 @@
+{{- $fullname := include "inferencex.fullname" . -}}
+{{- $totalNodes := add (mul (int .Values.prefill.workers) (int .Values.prefill.nodesPerWorker)) (mul (int .Values.decode.workers) (int .Values.decode.nodesPerWorker)) -}}
+apiVersion: kubeflow.org/v2beta1
+kind: MPIJob
+metadata:
+  name: {{ $fullname }}-distribute-model
+  labels:
+    {{- include "inferencex.labels" . | nindent 4 }}
+    app.kubernetes.io/component: model-distribution
+spec:
+  slotsPerWorker: 1
+  launcherCreationPolicy: WaitForWorkersReady
+  runPolicy:
+    cleanPodPolicy: Running
+  mpiReplicaSpecs:
+    Launcher:
+      replicas: 1
+      template:
+        metadata:
+          labels:
+            {{- include "inferencex.labels" . | nindent 12 }}
+            app.kubernetes.io/component: model-distribution-launcher
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: launcher
+            image: {{ .Values.image.runtime }}
+            imagePullPolicy: {{ .Values.image.pullPolicy }}
+            securityContext:
+              runAsUser: 0
+            env:
+            - name: MODEL_HF_ID
+              value: {{ .Values.model.id | quote }}
+            - name: MODEL_LOCAL_DIR
+              value: "{{ .Values.model.mountPath }}/{{ .Values.model.localDir }}"
+            - name: MODEL_LOCAL_DIR_NAME
+              value: {{ .Values.model.localDir | quote }}
+            {{- if .Values.model.hfTokenSecret }}
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.model.hfTokenSecret }}
+                  key: token
+            {{- end }}
+            - name: BLOB_CACHE_ENABLED
+              value: {{ .Values.modelDistribution.blobCache.enabled | quote }}
+            - name: BLOB_STORAGE_ACCOUNT
+              value: {{ .Values.modelDistribution.blobCache.storageAccount | quote }}
+            - name: BLOB_CONTAINER_NAME
+              value: {{ .Values.modelDistribution.blobCache.container | quote }}
+            {{- if .Values.modelDistribution.blobCache.clientId }}
+            - name: AZURE_CLIENT_ID
+              value: {{ .Values.modelDistribution.blobCache.clientId | quote }}
+            {{- end }}
+            command:
+            - /bin/bash
+            - -c
+            args:
+            - |
+              set -xe
+              cp /root/.ssh/id_rsa /tmp/mpi_ssh_key
+              chmod 0600 /tmp/mpi_ssh_key
+              NP={{ $totalNodes }}
+              echo "=== Model Distribution ==="
+              echo "  Nodes: $NP"
+              echo "  Model: ${MODEL_HF_ID}"
+              echo "  Target: ${MODEL_LOCAL_DIR}"
+              mpirun \
+                --allow-run-as-root \
+                -np $NP \
+                --bind-to none \
+                -hostfile /etc/mpi/hostfile \
+                -mca plm_rsh_no_tree_spawn 1 \
+                -mca plm_rsh_num_concurrent 800 \
+                -mca coll_hcoll_enable 0 \
+                -mca plm_rsh_args "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i /tmp/mpi_ssh_key" \
+                -x PATH \
+                -x LD_LIBRARY_PATH \
+                -x MODEL_HF_ID \
+                -x MODEL_LOCAL_DIR \
+                -x MODEL_LOCAL_DIR_NAME \
+                {{- if .Values.model.hfTokenSecret }}
+                -x HF_TOKEN \
+                {{- end }}
+                -x BLOB_CACHE_ENABLED \
+                -x BLOB_STORAGE_ACCOUNT \
+                -x BLOB_CONTAINER_NAME \
+                -x AZURE_CLIENT_ID \
+                /scripts/distribute-model.sh
+            volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+            resources:
+              requests:
+                cpu: 100m
+                memory: 256Mi
+          volumes:
+          - name: scripts
+            configMap:
+              name: {{ $fullname }}-scripts
+              defaultMode: 0755
+          enableServiceLinks: false
+          automountServiceAccountToken: false
+    Worker:
+      replicas: {{ $totalNodes }}
+      template:
+        metadata:
+          labels:
+            {{- include "inferencex.labels" . | nindent 12 }}
+            app.kubernetes.io/component: model-distribution-worker
+            task: {{ $fullname }}-distribute
+        spec:
+          hostIPC: true
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: {{ .Values.affinity.nodePoolLabel }}
+                    operator: In
+                    values:
+                    - {{ .Values.affinity.nodePoolValue }}
+          tolerations:
+          - key: nvidia.com/gpu
+            operator: Exists
+            effect: NoSchedule
+          - key: sku
+            operator: Equal
+            value: gpu
+            effect: NoSchedule
+          initContainers:
+          - name: gen-ssh-keys
+            image: {{ .Values.image.runtime }}
+            imagePullPolicy: {{ .Values.image.pullPolicy }}
+            securityContext:
+              runAsUser: 0
+            command:
+            - bash
+            - -c
+            - |
+              cp -a /etc/ssh/* /ssh-overlay/
+              yes | ssh-keygen -q -N "" -t rsa -f /ssh-overlay/ssh_host_rsa_key
+              yes | ssh-keygen -q -N "" -t ecdsa -f /ssh-overlay/ssh_host_ecdsa_key
+              yes | ssh-keygen -q -N "" -t ed25519 -f /ssh-overlay/ssh_host_ed25519_key
+              echo "PermitRootLogin yes" >> /ssh-overlay/sshd_config
+              echo "StrictModes no" >> /ssh-overlay/sshd_config
+              chmod 0755 /sshd-run
+              chown root:root /sshd-run
+            volumeMounts:
+            - name: ssh-keys
+              mountPath: /ssh-overlay
+            - name: sshd-run
+              mountPath: /sshd-run
+          containers:
+          - name: worker
+            image: {{ .Values.image.runtime }}
+            imagePullPolicy: {{ .Values.image.pullPolicy }}
+            securityContext:
+              privileged: true
+              runAsUser: 0
+              capabilities:
+                add: ["IPC_LOCK"]
+            volumeMounts:
+            - name: shm
+              mountPath: /dev/shm
+            - name: model-storage
+              mountPath: {{ .Values.model.mountPath }}
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+            - name: ssh-keys
+              mountPath: /etc/ssh
+            - name: sshd-run
+              mountPath: /run/sshd
+          volumes:
+          - name: shm
+            emptyDir:
+              medium: Memory
+          - name: model-storage
+          {{- if eq .Values.storage.type "hostPath" }}
+            hostPath:
+              path: {{ .Values.storage.hostPath }}
+              type: DirectoryOrCreate
+          {{- else }}
+            emptyDir:
+              sizeLimit: {{ .Values.storage.size }}
+          {{- end }}
+          - name: scripts
+            configMap:
+              name: {{ $fullname }}-scripts
+              defaultMode: 0755
+          - name: ssh-keys
+            emptyDir: {}
+          - name: sshd-run
+            emptyDir: {}
+          {{- if .Values.model.hfTokenSecret }}
+          - name: hf-token
+            secret:
+              secretName: {{ .Values.model.hfTokenSecret }}
+          {{- end }}
+          enableServiceLinks: false
+          automountServiceAccountToken: false

@@ -1,0 +1,73 @@
+# Recipe: ctx8_gen1_dep32_batch8_eplb0_mtp3
+# Topology: 8 prefill (TP=2, EP=2, 2 GPUs on 1 node) + 1 decode (TP=32, EP=32, 32 GPUs on 8 nodes)
+# Total: 48 GPUs across 9 worker nodes (8 decode + 1 prefill node minimum, scales with prefill workers)
+# Target concurrency: 308
+
+prefill:
+  workers: 8
+  gpus: 2
+  nodesPerWorker: 1
+  tensorParallelSize: 2
+  moeExpertParallelSize: 2
+  maxBatchSize: 2
+  maxNumTokens: 16640
+  maxSeqLen: 8296
+  engine:
+    pipeline_parallel_size: 1
+    print_iter_log: true
+    kv_cache_config:
+      enable_block_reuse: false
+      dtype: fp8
+      free_gpu_memory_fraction: 0.1
+    cache_transceiver_config:
+      backend: UCX
+      max_tokens_in_buffer: 16640
+    moe_config:
+      backend: TRTLLM
+    speculative_config:
+      decoding_type: MTP
+      num_nextn_predict_layers: 3
+    cuda_graph_config: null
+    enable_attention_dp: true
+    disable_overlap_scheduler: true
+
+decode:
+  workers: 1
+  gpus: 32
+  nodesPerWorker: 8
+  tensorParallelSize: 32
+  moeExpertParallelSize: 32
+  maxBatchSize: 8
+  maxNumTokens: 32
+  maxSeqLen: 9256
+  engine:
+    pipeline_parallel_size: 1
+    print_iter_log: true
+    kv_cache_config:
+      enable_block_reuse: false
+      dtype: fp8
+      free_gpu_memory_fraction: 0.8
+    cache_transceiver_config:
+      backend: UCX
+      max_tokens_in_buffer: 16640
+    moe_config:
+      backend: CUTEDSL
+    speculative_config:
+      decoding_type: MTP
+      num_nextn_predict_layers: 3
+    cuda_graph_config:
+      batch_sizes:
+      - 1
+      - 2
+      - 4
+      - 8
+      enable_padding: true
+    enable_attention_dp: true
+    enable_lm_head_tp_in_adp: false
+    stream_interval: 100
+    num_postprocess_workers: 4
+
+benchmark:
+  concurrency: 308
+  isl: 8192
+  osl: 1024
