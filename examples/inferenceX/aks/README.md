@@ -32,18 +32,18 @@ InferenceX is published with a [`srt-slurm`](https://github.com/ishandhanani/srt
 
 Mapping from Slurm primitives to Kubernetes resources:
 
-| Slurm primitive | K8s resource in this chart |
-|---|---|
-| `sbatch` + `srun` | MPIJob (prefill + decode) via [kubeflow/mpi-operator](https://github.com/kubeflow/mpi-operator) |
-| Enroot container | OCI container (same image: `nvcr.io/nvidia/ai-dynamo/tensorrtllm-runtime:0.8.1.post2`) |
-| Slurm GRES | `nvidia.com/gpu` device plugin + DRA `ComputeDomain` for MNNVL-aware placement |
-| `--mpi pmix` | `mpirun` launched by MPIJob Launcher pod; workers discovered via OpenMPI hostfile |
-| Slurm nodelist + topology | `nodeSelector: agentpool=gb300` + `topologyKey: nvidia.com/gpu.clique` |
-| Head-node etcd + NATS | `StatefulSet` each, `podAffinity` co-located with the frontend |
-| HTTP frontend / nginx LB | `Deployment` (Dynamo router) + ClusterIP `Service` |
+| Slurm primitive                             | K8s resource in this chart                                                                         |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `sbatch` + `srun`                           | MPIJob (prefill + decode) via [kubeflow/mpi-operator](https://github.com/kubeflow/mpi-operator)    |
+| Enroot container                            | OCI container (same image: `nvcr.io/nvidia/ai-dynamo/tensorrtllm-runtime:0.8.1.post2`)             |
+| Slurm GRES                                  | `nvidia.com/gpu` device plugin + DRA `ComputeDomain` for MNNVL-aware placement                     |
+| `--mpi pmix`                                | `mpirun` launched by MPIJob Launcher pod; workers discovered via OpenMPI hostfile                  |
+| Slurm nodelist + topology                   | `nodeSelector: agentpool=gb300` + `topologyKey: nvidia.com/gpu.clique`                             |
+| Head-node etcd + NATS                       | `StatefulSet` each, `podAffinity` co-located with the frontend                                     |
+| HTTP frontend / nginx LB                    | `Deployment` (Dynamo router) + ClusterIP `Service`                                                 |
 | Model staged on `/nvme/models/` by `dbcast` | Model downloaded by rank-0 pod, broadcast via MPI to hostPath `/mnt/nvme/models` on every GPU node |
-| `sa-bench` on head node | `kubectl cp` sa-bench into the frontend pod, run against `http://localhost:8000` |
-| srtctl YAML recipes | Helm values files (`values-gb300-*.yaml`) |
+| `sa-bench` on head node                     | `kubectl cp` sa-bench into the frontend pod, run against `http://localhost:8000`                   |
+| srtctl YAML recipes                         | Helm values files (`values-gb300-*.yaml`)                                                          |
 
 The important non-difference: **each GPU node has its own local NVMe in both setups.** Slurm `dbcast` and the MPI `model-distribute-mpijob` in this chart solve the same problem — getting one copy of the model onto every node's local disk — just via different mechanisms. Neither uses a shared filesystem.
 
@@ -233,14 +233,14 @@ helm install inferencex helm/inferencex \
 
 Available recipes (each is a `values-gb300-*.yaml` overlay under `helm/inferencex/`):
 
-| Values file | Recipe | Prefill × TP | Decode × TP | GPUs | Concurrencies tested |
-|---|---|---|---|---:|---|
-| `values-gb300-ctx1-gen4.yaml` | ctx1_gen4 | 1 × 2 | 4 × 8 | 34 | 5, 12, 24 |
-| `values-gb300-ctx1-gen3.yaml` | ctx1_gen3 | 1 × 2 | 3 × 8 | 26 | 33 |
-| `values-gb300-ctx4-gen1-dep32.yaml` | ctx4_gen1_dep32 | 4 × 2 | 1 × 32 | 40 | 180 |
-| `values-gb300-ctx8-gen1-dep32.yaml` | ctx8_gen1_dep32 | 8 × 2 | 1 × 32 | 48 | 308 |
-| `values-gb300-ctx10-gen1-dep16.yaml` | ctx10_gen1_dep16 | 10 × 2 | 1 × 16 | 36 | 666 |
-| `values-gb300-ctx10-gen1-dep8.yaml` | ctx10_gen1_dep8 | 10 × 2 | 1 × 8 | 28 | 2253 |
+| Values file                          | Recipe           | Prefill × TP | Decode × TP | GPUs | Concurrencies tested |
+| ------------------------------------ | ---------------- | ------------ | ----------- | ---: | -------------------- |
+| `values-gb300-ctx1-gen4.yaml`        | ctx1_gen4        | 1 × 2        | 4 × 8       |   34 | 5, 12, 24            |
+| `values-gb300-ctx1-gen3.yaml`        | ctx1_gen3        | 1 × 2        | 3 × 8       |   26 | 33                   |
+| `values-gb300-ctx4-gen1-dep32.yaml`  | ctx4_gen1_dep32  | 4 × 2        | 1 × 32      |   40 | 180                  |
+| `values-gb300-ctx8-gen1-dep32.yaml`  | ctx8_gen1_dep32  | 8 × 2        | 1 × 32      |   48 | 308                  |
+| `values-gb300-ctx10-gen1-dep16.yaml` | ctx10_gen1_dep16 | 10 × 2       | 1 × 16      |   36 | 666                  |
+| `values-gb300-ctx10-gen1-dep8.yaml`  | ctx10_gen1_dep8  | 10 × 2       | 1 × 8       |   28 | 2253                 |
 
 The `values-gb300-ctx8-gen1-dep32.yaml` recipe spans the most nodes (8 nodes for the decode worker plus one node per prefill worker) and therefore sets the practical lower bound on cluster size for the full recipe set.
 
@@ -346,16 +346,16 @@ The templates (`prefill-mpijob.yaml`, `decode-mpijob.yaml`, `model-distribute-mp
 
 AKS FP4 results vs the official InferenceX dashboard (`date=2026-02-03`). Image: `nvcr.io/nvidia/ai-dynamo/tensorrtllm-runtime:0.8.1.post2`. See [gb300-benchmark-walkthrough.md](gb300-benchmark-walkthrough.md) for the per-run detail, pod placement, distribute timings, and UTC timestamps for Grafana correlation.
 
-| Recipe | Values file | Conc | GPUs | AKS tok/s/GPU | InferenceX ref | % of InferenceX | Status |
-|---|---|---:|---:|---:|---:|---:|---|
-| ctx1_gen4 | `values-gb300-ctx1-gen4.yaml` | 5 | 34 | 344.4 | 315.25 | 109.2% | GAP (+9.2%, favourable, low-conc variance) |
-| ctx1_gen4 | `values-gb300-ctx1-gen4.yaml` | 12 | 34 | 731.3 | 726.72 | 100.6% | PASS |
-| ctx1_gen4 | `values-gb300-ctx1-gen4.yaml` | 24 | 34 | 1,009.3 | 998.68 | 101.1% | PASS |
-| ctx1_gen3 | `values-gb300-ctx1-gen3.yaml` | 33 | 26 | 1,599.6 | 1,612.47 | 99.2% | PASS |
-| ctx4_gen1_dep32 | `values-gb300-ctx4-gen1-dep32.yaml` | 180 | 40 | 4,766.3 | 4,730.81 | 100.8% | PASS |
-| ctx8_gen1_dep32 | `values-gb300-ctx8-gen1-dep32.yaml` | 308 | 48 | 6,676.8 | 6,977.57 | 95.7% | PASS |
-| ctx10_gen1_dep16 | `values-gb300-ctx10-gen1-dep16.yaml` | 666 | 36 | 12,323.2 | 12,179.96 | 101.2% | PASS |
-| ctx10_gen1_dep8 | `values-gb300-ctx10-gen1-dep8.yaml` | 2253 | 28 | 17,941.7 | 18,131.56 | 99.0% | PASS |
+| Recipe           | Values file                          | Conc | GPUs | AKS tok/s/GPU | InferenceX ref | % of InferenceX | Status                                     |
+| ---------------- | ------------------------------------ | ---: | ---: | ------------: | -------------: | --------------: | ------------------------------------------ |
+| ctx1_gen4        | `values-gb300-ctx1-gen4.yaml`        |    5 |   34 |         344.4 |         315.25 |          109.2% | GAP (+9.2%, favourable, low-conc variance) |
+| ctx1_gen4        | `values-gb300-ctx1-gen4.yaml`        |   12 |   34 |         731.3 |         726.72 |          100.6% | PASS                                       |
+| ctx1_gen4        | `values-gb300-ctx1-gen4.yaml`        |   24 |   34 |       1,009.3 |         998.68 |          101.1% | PASS                                       |
+| ctx1_gen3        | `values-gb300-ctx1-gen3.yaml`        |   33 |   26 |       1,599.6 |       1,612.47 |           99.2% | PASS                                       |
+| ctx4_gen1_dep32  | `values-gb300-ctx4-gen1-dep32.yaml`  |  180 |   40 |       4,766.3 |       4,730.81 |          100.8% | PASS                                       |
+| ctx8_gen1_dep32  | `values-gb300-ctx8-gen1-dep32.yaml`  |  308 |   48 |       6,676.8 |       6,977.57 |           95.7% | PASS                                       |
+| ctx10_gen1_dep16 | `values-gb300-ctx10-gen1-dep16.yaml` |  666 |   36 |      12,323.2 |      12,179.96 |          101.2% | PASS                                       |
+| ctx10_gen1_dep8  | `values-gb300-ctx10-gen1-dep8.yaml`  | 2253 |   28 |      17,941.7 |      18,131.56 |           99.0% | PASS                                       |
 
 7 of 8 PASS within ±5%; the conc=5 outlier is high-variance because the main phase only runs 50 prompts and the system is not saturated (expected).
 
@@ -390,6 +390,7 @@ ACStor is the right answer when mutable per-pod state needs durability (training
 We use `sa-bench` from the `srt-slurm` repo (pinned at commit `adb62456f7aaf3fbd7c82f7223b06221e9bd89e0`), committed into `tests/sa-bench/` — exact same client the InferenceX reference runs used. Its `benchmark_serving.py --backend dynamo` handles Dynamo's SSE streaming format correctly (it skips `event:` and `:` comment lines before parsing `data:` lines), something both the TRT-LLM bundled `benchmark_serving.py` and `aiperf` get wrong, producing ~7–10% lower throughput on the same deployment.
 
 Flow per concurrency level:
+
 1. **Warmup**: `concurrency × 2` prompts at 250 RPS (results discarded).
 2. **Main**: `concurrency × 10` prompts at `--request-rate inf` (results saved).
 
@@ -453,7 +454,7 @@ examples/inferenceX/aks/
 
 1. **MLA models are blocked from P2P transfer.** DeepSeek-V2/V3/R1 and Kimi K2/K2.5 are explicitly excluded (produces corrupted output); falls back to disk loading — same performance as our current hostPath. Documented in the ModelExpress README "Known Issues".
 2. **TRT-LLM integration is beta.** `tensorrtllm-runtime:0.8.1.post2` (our image) does not include the ModelExpress client. The TRT-LLM hook ships as a `trtllm_patches/` set marked "coming soon". Full support only exists for the Dynamo vLLM runtime.
-3. **No Azure Blob source.** ModelExpress pulls from HuggingFace Hub or NGC only. Our azcopy-from-Blob flow would sit *in front of* ModelExpress, adding a layer rather than removing one. Multi-cloud source support is on the roadmap with no timeline.
+3. **No Azure Blob source.** ModelExpress pulls from HuggingFace Hub or NGC only. Our azcopy-from-Blob flow would sit _in front of_ ModelExpress, adding a layer rather than removing one. Multi-cloud source support is on the roadmap with no timeline.
 
 Combined with the fact that our current workflow doesn't exhibit the pain points ModelExpress solves (model is already on every node's `/mnt/nvme/models`, recipe swaps reuse it with no re-download, and model load is not on the benchmark critical path), net-present-value of integration today is negative.
 

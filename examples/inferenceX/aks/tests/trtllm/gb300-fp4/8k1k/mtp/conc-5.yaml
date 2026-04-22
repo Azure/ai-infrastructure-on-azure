@@ -18,8 +18,8 @@ total_gpus: 34
 concurrency: 5
 isl: 8192
 osl: 1024
-request_count: 50      # concurrency * 10
-warmup_count: 10       # concurrency * 2
+request_count: 50 # concurrency * 10
+warmup_count: 10 # concurrency * 2
 num_dataset_entries: 40 # concurrency * 8
 
 # Official InferenceX reference (dynamo-trt, MTP, fp4, 8k1k, conc=5, gpus=34)

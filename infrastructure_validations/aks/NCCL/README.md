@@ -33,21 +33,21 @@ helm install nccl-test infrastructure_validations/aks/NCCL/helm/nccl-test \
 
 ### Configuration Options
 
-| Parameter            | Description                          | Default                                              |
-| -------------------- | ------------------------------------ | ---------------------------------------------------- |
-| `nodes`              | Number of worker nodes               | `2`                                                  |
-| `gpusPerNode`        | Number of GPUs per worker node       | `8`                                                  |
-| `gpuResource`        | GPU resource name                    | `nvidia.com/gpu`                                     |
-| `rdmaResource`       | RDMA resource name                   | `rdma/ib`                                            |
-| `image.repository`   | Container image repository           | `ghcr.io/azure/ai-infrastructure-on-azure/nccl-test` |
-| `image.tag`          | Container image tag                  | `latest`                                             |
-| `image.pullPolicy`   | Image pull policy                    | `IfNotPresent`                                       |
-| `ncclTest.testArgs`  | Arguments for NCCL test              | `"-b 1K -e 16G -f 2 -g 1 -c 0"`                      |
-| `ncclTest.env.*`     | NCCL environment variables           | See values.yaml                                      |
-| `affinity.required`  | Required pod affinity topology keys  | `[{topologyKey: agentpool}]`                         |
-| `affinity.preferred` | Preferred pod affinity topology keys | `[]`                                                 |
-| `dra.enabled`        | Enable DRA for GPU scheduling        | `false`                                              |
-| `dra.claimTemplateName` | DRA resource claim template name  | `nccl-test-channel`                                  |
+| Parameter               | Description                          | Default                                              |
+| ----------------------- | ------------------------------------ | ---------------------------------------------------- |
+| `nodes`                 | Number of worker nodes               | `2`                                                  |
+| `gpusPerNode`           | Number of GPUs per worker node       | `8`                                                  |
+| `gpuResource`           | GPU resource name                    | `nvidia.com/gpu`                                     |
+| `rdmaResource`          | RDMA resource name                   | `rdma/ib`                                            |
+| `image.repository`      | Container image repository           | `ghcr.io/azure/ai-infrastructure-on-azure/nccl-test` |
+| `image.tag`             | Container image tag                  | `latest`                                             |
+| `image.pullPolicy`      | Image pull policy                    | `IfNotPresent`                                       |
+| `ncclTest.testArgs`     | Arguments for NCCL test              | `"-b 1K -e 16G -f 2 -g 1 -c 0"`                      |
+| `ncclTest.env.*`        | NCCL environment variables           | See values.yaml                                      |
+| `affinity.required`     | Required pod affinity topology keys  | `[{topologyKey: agentpool}]`                         |
+| `affinity.preferred`    | Preferred pod affinity topology keys | `[]`                                                 |
+| `dra.enabled`           | Enable DRA for GPU scheduling        | `false`                                              |
+| `dra.claimTemplateName` | DRA resource claim template name     | `nccl-test-channel`                                  |
 
 #### NCCL Test Parameters
 
@@ -151,6 +151,7 @@ helm install nccl-test infrastructure_validations/aks/NCCL/helm/nccl-test \
 ```
 
 Key differences from H100/H200:
+
 - `gpusPerNode: 4` (vs 8)
 - `dra.enabled: true` — creates a `ComputeDomain` resource and uses `resourceClaims` instead of the device plugin
 - `affinity.required` uses `nvidia.com/gpu.clique` topology key for MNNVL co-location

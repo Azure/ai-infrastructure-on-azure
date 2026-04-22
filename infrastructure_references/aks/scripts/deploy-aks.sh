@@ -17,7 +17,7 @@ fi
 : "${CLUSTER_NAME:=ai-infra}"
 : "${USER_NAME:=azureuser}"
 : "${SYSTEM_POOL_VM_SIZE:=}"
-: "${K8S_VERSION:=}"               # Kubernetes version (e.g. 1.33). If empty, AKS picks the default.
+: "${K8S_VERSION:=}" # Kubernetes version (e.g. 1.33). If empty, AKS picks the default.
 : "${GRAFANA_PASSWORD:=$(LC_ALL=C tr </dev/urandom -dc 'A-Za-z0-9!@#$%&*_-' | head -c 30)}"
 
 # Virtual Network configuration (optional dedicated VNet for AKS)
@@ -59,9 +59,9 @@ fi
 : "${REGISTER_AKS_INFINIBAND:=true}" # Set to false to skip AKSInfinibandSupport registration (e.g. for GB300)
 
 # Operator Installation Configuration
-: "${INSTALL_NETWORK_OPERATOR:=true}" # Set to false to skip Network Operator installation
-: "${INSTALL_GPU_OPERATOR:=true}"     # Set to false to skip GPU Operator installation
-: "${INSTALL_DRA_DRIVER:=false}"      # Set to true to install NVIDIA DRA driver (requires DRA-capable K8s)
+: "${INSTALL_NETWORK_OPERATOR:=true}"   # Set to false to skip Network Operator installation
+: "${INSTALL_GPU_OPERATOR:=true}"       # Set to false to skip GPU Operator installation
+: "${INSTALL_DRA_DRIVER:=false}"        # Set to true to install NVIDIA DRA driver (requires DRA-capable K8s)
 : "${GPU_OPERATOR_VALUES:=values.yaml}" # GPU Operator values file (relative to configs/gpu-operator/)
 
 : "${NETWORK_OPERATOR_NS:=network-operator}"

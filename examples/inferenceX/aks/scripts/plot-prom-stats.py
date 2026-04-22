@@ -30,6 +30,7 @@ Usage:
   python3 examples/inferenceX/aks/scripts/plot-prom-stats.py
 """
 from __future__ import annotations
+
 import csv
 import json
 import re
@@ -38,33 +39,34 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
-import numpy as np
 import matplotlib
+import numpy as np
+
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
 
 PROM = "http://localhost:9090"
 RESULTS_ROOT = Path(__file__).resolve().parent.parent / "results"
 STEP_S = 15  # matches DCGM scrape interval
 
 METRICS = [
-    ("gpu_util",       "DCGM_FI_DEV_GPU_UTIL",                "GPU util (%)"),
-    ("tensor_active",  "DCGM_FI_PROF_PIPE_TENSOR_ACTIVE",     "Tensor pipe active"),
-    ("dram_active",    "DCGM_FI_PROF_DRAM_ACTIVE",            "DRAM active"),
-    ("power_w",        "DCGM_FI_DEV_POWER_USAGE",             "Power (W)"),
-    ("sm_clock_mhz",   "DCGM_FI_DEV_SM_CLOCK",                "SM clock (MHz)"),
-    ("fb_used_mib",    "DCGM_FI_DEV_FB_USED",                 "Frame-buffer used (MiB)"),
-    ("nvlink_kbps",    "DCGM_FI_DEV_NVLINK_BANDWIDTH_TOTAL",  "NVLink total (kB/s)"),
-    ("gpu_temp_c",     "DCGM_FI_DEV_GPU_TEMP",                "GPU temp (\u00b0C)"),
-    ("hbm_temp_c",     "DCGM_FI_DEV_MEMORY_TEMP",             "HBM temp (\u00b0C)"),
+    ("gpu_util", "DCGM_FI_DEV_GPU_UTIL", "GPU util (%)"),
+    ("tensor_active", "DCGM_FI_PROF_PIPE_TENSOR_ACTIVE", "Tensor pipe active"),
+    ("dram_active", "DCGM_FI_PROF_DRAM_ACTIVE", "DRAM active"),
+    ("power_w", "DCGM_FI_DEV_POWER_USAGE", "Power (W)"),
+    ("sm_clock_mhz", "DCGM_FI_DEV_SM_CLOCK", "SM clock (MHz)"),
+    ("fb_used_mib", "DCGM_FI_DEV_FB_USED", "Frame-buffer used (MiB)"),
+    ("nvlink_kbps", "DCGM_FI_DEV_NVLINK_BANDWIDTH_TOTAL", "NVLink total (kB/s)"),
+    ("gpu_temp_c", "DCGM_FI_DEV_GPU_TEMP", "GPU temp (\u00b0C)"),
+    ("hbm_temp_c", "DCGM_FI_DEV_MEMORY_TEMP", "HBM temp (\u00b0C)"),
 ]
 
 ROLE_COLOR = {
     "prefill": "#1f77b4",  # blue
-    "decode":  "#d62728",  # red
-    "mixed":   "#9467bd",  # purple
-    "idle":    "#7f7f7f",  # grey
+    "decode": "#d62728",  # red
+    "mixed": "#9467bd",  # purple
+    "idle": "#7f7f7f",  # grey
 }
 ROLE_ORDER = ["prefill", "decode", "mixed", "idle"]
 
@@ -73,12 +75,19 @@ ROLE_ORDER = ["prefill", "decode", "mixed", "idle"]
 # Prometheus + parsing helpers
 # ---------------------------------------------------------------------------
 
+
 def parse_ts(s: str) -> int:
-    return int(datetime.strptime(s, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc).timestamp())
+    return int(
+        datetime.strptime(s, "%Y-%m-%dT%H:%M:%SZ")
+        .replace(tzinfo=timezone.utc)
+        .timestamp()
+    )
 
 
 def prom_query_range(query: str, start: int, end: int, step: int = STEP_S):
-    qs = urllib.parse.urlencode({"query": query, "start": start, "end": end, "step": step})
+    qs = urllib.parse.urlencode(
+        {"query": query, "start": start, "end": end, "step": step}
+    )
     with urllib.request.urlopen(f"{PROM}/api/v1/query_range?{qs}", timeout=60) as r:
         return json.load(r)["data"]["result"]
 
@@ -122,8 +131,14 @@ def short_label(hostname: str, gpu_idx: str) -> str:
 # Series shaping: turn raw Prometheus result into (timestamps, matrix-by-role)
 # ---------------------------------------------------------------------------
 
-def shape_series(series: list, node_roles: dict[str, set[str]],
-                 start: int, end: int, step: int = STEP_S):
+
+def shape_series(
+    series: list,
+    node_roles: dict[str, set[str]],
+    start: int,
+    end: int,
+    step: int = STEP_S,
+):
     """
     Returns (ts, by_role) where:
       ts      = numpy array of UTC datetimes, one per scrape sample
@@ -164,6 +179,7 @@ def shape_series(series: list, node_roles: dict[str, set[str]],
 # Plotting
 # ---------------------------------------------------------------------------
 
+
 def _format_time_axis(ax):
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M:%S"))
     locator = mdates.AutoDateLocator(maxticks=6)
@@ -172,9 +188,14 @@ def _format_time_axis(ax):
     ax.xaxis.set_major_locator(locator)
 
 
-def plot_overview(ts: np.ndarray, all_metrics: dict[str, dict],
-                  recipe_name: str, bench_start: str, bench_end: str,
-                  out_path: Path) -> None:
+def plot_overview(
+    ts: np.ndarray,
+    all_metrics: dict[str, dict],
+    recipe_name: str,
+    bench_start: str,
+    bench_end: str,
+    out_path: Path,
+) -> None:
     """3x3 grid; each cell shows mean-per-role line plot for one metric."""
     fig, axes = plt.subplots(3, 3, figsize=(18, 12), dpi=120, sharex=True)
     for ax_idx, (short, promql, title) in enumerate(METRICS):
@@ -186,9 +207,14 @@ def plot_overview(ts: np.ndarray, all_metrics: dict[str, dict],
             mat, _labels = by_role[role]
             mean = np.nanmean(mat, axis=0)
             n = mat.shape[0]
-            ax.plot(ts, mean, color=ROLE_COLOR[role],
-                    linewidth=1.6, alpha=0.95,
-                    label=f"{role} (n={n})")
+            ax.plot(
+                ts,
+                mean,
+                color=ROLE_COLOR[role],
+                linewidth=1.6,
+                alpha=0.95,
+                label=f"{role} (n={n})",
+            )
         ax.set_title(title, fontsize=11)
         ax.grid(True, alpha=0.25)
         _format_time_axis(ax)
@@ -209,9 +235,17 @@ def plot_overview(ts: np.ndarray, all_metrics: dict[str, dict],
     plt.close(fig)
 
 
-def plot_detail(ts: np.ndarray, mat: np.ndarray, labels: list[str],
-                metric_title: str, role: str, recipe_name: str,
-                bench_start: str, bench_end: str, out_path: Path) -> None:
+def plot_detail(
+    ts: np.ndarray,
+    mat: np.ndarray,
+    labels: list[str],
+    metric_title: str,
+    role: str,
+    recipe_name: str,
+    bench_start: str,
+    bench_end: str,
+    out_path: Path,
+) -> None:
     """
     Spread plot for one (metric, role).
     - thick line   = median
@@ -230,14 +264,17 @@ def plot_detail(ts: np.ndarray, mat: np.ndarray, labels: list[str],
     fig, ax = plt.subplots(figsize=(13, 6.0), dpi=120)
 
     # Min/max envelope (faintest)
-    ax.fill_between(ts, mn, mx, color=color, alpha=0.10,
-                    linewidth=0, label="min-max envelope")
+    ax.fill_between(
+        ts, mn, mx, color=color, alpha=0.10, linewidth=0, label="min-max envelope"
+    )
     # IQR band
-    ax.fill_between(ts, q25, q75, color=color, alpha=0.30,
-                    linewidth=0, label="IQR (p25-p75)")
+    ax.fill_between(
+        ts, q25, q75, color=color, alpha=0.30, linewidth=0, label="IQR (p25-p75)"
+    )
     # Median line
-    ax.plot(ts, median, color=color, linewidth=2.2, alpha=0.95,
-            label=f"median (n={n} GPUs)")
+    ax.plot(
+        ts, median, color=color, linewidth=2.2, alpha=0.95, label=f"median (n={n} GPUs)"
+    )
 
     ax.set_title(
         f"{recipe_name} \u2014 {metric_title}  [{role}]\n"
@@ -259,6 +296,7 @@ def plot_detail(ts: np.ndarray, mat: np.ndarray, labels: list[str],
 # ---------------------------------------------------------------------------
 # Driver
 # ---------------------------------------------------------------------------
+
 
 def collect_recipe(results_dir: Path) -> dict | None:
     timings = parse_timings(results_dir / "timings.txt")
@@ -292,8 +330,9 @@ def collect_recipe(results_dir: Path) -> dict | None:
 
     # 2. Overview (3x3 grid)
     overview_path = plots_dir / "overview.png"
-    plot_overview(ts, plottable_metrics, results_dir.name,
-                  bench_start, bench_end, overview_path)
+    plot_overview(
+        ts, plottable_metrics, results_dir.name, bench_start, bench_end, overview_path
+    )
     print(f"  wrote {overview_path.relative_to(RESULTS_ROOT.parent.parent.parent)}")
 
     # 3. Per-(metric, role) detail PNGs
@@ -311,10 +350,21 @@ def collect_recipe(results_dir: Path) -> dict | None:
                 continue
             mat, labels = by_role[role]
             out = plots_dir / f"{short}__{role}.png"
-            plot_detail(ts, mat, labels, title, role,
-                        results_dir.name, bench_start, bench_end, out)
+            plot_detail(
+                ts,
+                mat,
+                labels,
+                title,
+                role,
+                results_dir.name,
+                bench_start,
+                bench_end,
+                out,
+            )
             written.append(out.name)
-    print(f"  wrote {len(written) - 1} detail PNGs across roles: {sorted(active_roles)}")
+    print(
+        f"  wrote {len(written) - 1} detail PNGs across roles: {sorted(active_roles)}"
+    )
 
     return {
         "run": results_dir.name,
@@ -332,10 +382,12 @@ def render_index(entries: list[dict]) -> str:
     L: list[str] = []
     L.append("# Per-recipe GPU utilization")
     L.append("")
-    L.append("Per-role detail charts show **GPU utilization (%)** - the headline metric for "
-             "spotting whether a role was actually busy. Per-recipe `plots/` directories also "
-             "contain the full 9-metric breakdown (DCGM SM/DRAM/HBM/temp/power/fb) for "
-             "deeper inspection.")
+    L.append(
+        "Per-role detail charts show **GPU utilization (%)** - the headline metric for "
+        "spotting whether a role was actually busy. Per-recipe `plots/` directories also "
+        "contain the full 9-metric breakdown (DCGM SM/DRAM/HBM/temp/power/fb) for "
+        "deeper inspection."
+    )
     L.append("")
     L.append("Plot encoding (detail charts):")
     L.append("")
@@ -345,29 +397,39 @@ def render_index(entries: list[dict]) -> str:
     L.append("")
     L.append("## Data granularity")
     L.append("")
-    L.append("Verified against `/api/v1/targets?state=active` on this cluster's "
-             "Prometheus (kube-prometheus-stack):")
+    L.append(
+        "Verified against `/api/v1/targets?state=active` on this cluster's "
+        "Prometheus (kube-prometheus-stack):"
+    )
     L.append("")
     L.append("| Source | Scrape interval | Used in |")
     L.append("|---|---|---|")
     L.append("| `nvidia-dcgm-exporter` | **15 s** | All 9 GPU plots (DCGM_FI_*) |")
-    L.append("| `kubelet` / cAdvisor   | 30 s     | Container CPU / RSS / network tables |")
+    L.append(
+        "| `kubelet` / cAdvisor   | 30 s     | Container CPU / RSS / network tables |"
+    )
     L.append("| `node-exporter`        | 30 s     | (not plotted) |")
     L.append("| `kube-state-metrics`   | 30 s     | (not plotted) |")
     L.append("")
-    L.append("The plotter samples at `STEP_S=15` to match DCGM's native cadence - every "
-             "point corresponds to one real scrape (no aliasing, no resampling).")
+    L.append(
+        "The plotter samples at `STEP_S=15` to match DCGM's native cadence - every "
+        "point corresponds to one real scrape (no aliasing, no resampling)."
+    )
     L.append("")
     L.append("## Re-generate")
     L.append("")
     L.append("```bash")
-    L.append("kubectl -n monitoring port-forward svc/kube-prometheus-kube-prome-prometheus 9090:9090 &")
+    L.append(
+        "kubectl -n monitoring port-forward svc/kube-prometheus-kube-prome-prometheus 9090:9090 &"
+    )
     L.append("python3 examples/inferenceX/aks/scripts/collect-prom-stats.py")
     L.append("python3 examples/inferenceX/aks/scripts/plot-prom-stats.py")
     L.append("```")
     L.append("")
 
-    for e in sorted(entries, key=lambda x: int(re.match(r"conc-(\d+)_", x["run"]).group(1))):
+    for e in sorted(
+        entries, key=lambda x: int(re.match(r"conc-(\d+)_", x["run"]).group(1))
+    ):
         m = re.match(r"(conc-\d+)_", e["run"])
         title = m.group(1) if m else e["run"]
         L.append(f"## {title}")

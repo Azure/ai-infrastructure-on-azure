@@ -26,10 +26,10 @@ prefill:
       backend: TRTLLM
     nvfp4_gemm_config:
       allowed_backends:
-      - cutlass
-      - cublaslt
-      - cutedsl
-      - cuda_core
+        - cutlass
+        - cublaslt
+        - cutedsl
+        - cuda_core
     speculative_config:
       decoding_type: MTP
       num_nextn_predict_layers: 3
@@ -61,22 +61,22 @@ decode:
       use_low_precision_moe_combine: true
     nvfp4_gemm_config:
       allowed_backends:
-      - cutlass
-      - cublaslt
-      - cutedsl
-      - cuda_core
+        - cutlass
+        - cublaslt
+        - cutedsl
+        - cuda_core
     speculative_config:
       decoding_type: MTP
       num_nextn_predict_layers: 3
     cuda_graph_config:
       batch_sizes:
-      - 1
-      - 2
-      - 4
-      - 8
-      - 16
-      - 24
-      - 32
+        - 1
+        - 2
+        - 4
+        - 8
+        - 16
+        - 24
+        - 32
       enable_padding: true
     enable_attention_dp: true
     enable_lm_head_tp_in_adp: true
