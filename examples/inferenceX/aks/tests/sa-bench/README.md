@@ -36,17 +36,18 @@ Using sa-bench brought AKS results from ~70% of the InferenceX reference
 
 ## Files
 
-| File | Purpose |
-|---|---|
-| `bench.sh` | Shell wrapper: warmup run at 250 RPS + main run at `inf`. Drives `benchmark_serving.py`. |
-| `benchmark_serving.py` | Async benchmark client. 1301 lines. Supports `--backend dynamo`. |
-| `backend_request_func.py` | Per-backend request handlers. Contains `async_request_dynamo_completions` (SSE-aware). |
-| `benchmark_utils.py` | Shared helpers (dataset generation, percentile math). |
-| `soak-loop.sh` | Long-duration soak wrapper: loops `benchmark_serving.py` iterations until `DURATION_SECS` elapses. Used for the 1-hour stability test. |
+| File                      | Purpose                                                                                                                                |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `bench.sh`                | Shell wrapper: warmup run at 250 RPS + main run at `inf`. Drives `benchmark_serving.py`.                                               |
+| `benchmark_serving.py`    | Async benchmark client. 1301 lines. Supports `--backend dynamo`.                                                                       |
+| `backend_request_func.py` | Per-backend request handlers. Contains `async_request_dynamo_completions` (SSE-aware).                                                 |
+| `benchmark_utils.py`      | Shared helpers (dataset generation, percentile math).                                                                                  |
+| `soak-loop.sh`            | Long-duration soak wrapper: loops `benchmark_serving.py` iterations until `DURATION_SECS` elapses. Used for the 1-hour stability test. |
 
 ## Usage on AKS
 
 The repo wrapper `../run-test.sh` takes care of:
+
 1. kubectl-cp'ing these files onto the frontend pod at `/tmp/sa-bench/`
 2. Running `bench.sh` with the correct args derived from a `conc-*.yaml` config
 3. Pulling results back and comparing to the InferenceX reference
@@ -65,6 +66,7 @@ bash /tmp/sa-bench/bench.sh \
 ```
 
 Arguments (positional):
+
 1. `ENDPOINT` — Dynamo frontend URL
 2. `ISL` — input sequence length
 3. `OSL` — output sequence length

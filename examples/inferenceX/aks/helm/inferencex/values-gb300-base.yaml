@@ -133,8 +133,8 @@ modelDistribution:
     # download/upload, MI auth). When false, every cold node downloads
     # straight from HuggingFace (slower; HF rate limits apply).
     enabled: false
-    storageAccount: ""              # e.g. mygb300models
-    container: ""                   # e.g. models
+    storageAccount: "" # e.g. mygb300models
+    container: "" # e.g. models
     # Kubelet user-assigned MI client ID; the MI must have role
     # "Storage Blob Data Contributor" on the storage account above.
     # Look it up either from the AKS control plane:

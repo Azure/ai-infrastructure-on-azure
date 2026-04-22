@@ -111,7 +111,10 @@ def sample_sharegpt_requests(
     # Filter out the conversations with less than 2 turns.
     dataset = [data for data in dataset if len(data["conversations"]) >= 2]
     # Only keep the first two turns of each conversation.
-    dataset = [(data["conversations"][0]["value"], data["conversations"][1]["value"]) for data in dataset]
+    dataset = [
+        (data["conversations"][0]["value"], data["conversations"][1]["value"])
+        for data in dataset
+    ]
 
     # Shuffle the dataset.
     random.shuffle(dataset)
@@ -128,7 +131,9 @@ def sample_sharegpt_requests(
         completion = dataset[i][1]
         completion_token_ids = tokenizer(completion).input_ids
         prompt_len = len(prompt_token_ids)
-        output_len = len(completion_token_ids) if fixed_output_len is None else fixed_output_len
+        output_len = (
+            len(completion_token_ids) if fixed_output_len is None else fixed_output_len
+        )
         if prompt_len < 4 or (fixed_output_len is None and output_len < 4):
             # Prune too short sequences.
             continue
@@ -161,7 +166,9 @@ def sample_burstgpt_requests(
     for i in range(num_requests):
         input_len = int(dataset[i][2])
         output_len = int(dataset[i][3])
-        prompt = tokenizer.decode([(i + j) % tokenizer.vocab_size for j in range(input_len)])
+        prompt = tokenizer.decode(
+            [(i + j) % tokenizer.vocab_size for j in range(input_len)]
+        )
         input_requests.append((prompt, input_len, output_len, None))
     return input_requests
 
@@ -174,7 +181,9 @@ def sample_sonnet_requests(
     prefix_len: int,
     tokenizer: PreTrainedTokenizerBase,
 ) -> list[tuple[str, str, int, int, None]]:
-    assert input_len > prefix_len, "'args.sonnet-input-len' must be greater than 'args.prefix-input-len'."
+    assert (
+        input_len > prefix_len
+    ), "'args.sonnet-input-len' must be greater than 'args.prefix-input-len'."
 
     # Load the dataset.
     with open(dataset_path, encoding="utf-8") as f:
@@ -182,7 +191,9 @@ def sample_sonnet_requests(
 
     # Tokenize the poem lines.
     poem_token_ids = tokenizer(poem_lines).input_ids
-    average_poem_len = sum(len(token_ids) for token_ids in poem_token_ids) / len(poem_token_ids)
+    average_poem_len = sum(len(token_ids) for token_ids in poem_token_ids) / len(
+        poem_token_ids
+    )
 
     # Base prefix for all requests.
     base_prompt = "Pick as many lines as you can from these poem lines:\n"
@@ -192,15 +203,21 @@ def sample_sonnet_requests(
             "content": base_prompt,
         }
     ]
-    base_prompt_formatted = tokenizer.apply_chat_template(base_message, add_generation_prompt=True, tokenize=False)
+    base_prompt_formatted = tokenizer.apply_chat_template(
+        base_message, add_generation_prompt=True, tokenize=False
+    )
     base_prompt_offset = len(tokenizer(base_prompt_formatted).input_ids)
 
-    assert input_len > base_prompt_offset, f"Please set 'args.sonnet-input-len' higher than {base_prompt_offset}."
+    assert (
+        input_len > base_prompt_offset
+    ), f"Please set 'args.sonnet-input-len' higher than {base_prompt_offset}."
     num_input_lines = round((input_len - base_prompt_offset) / average_poem_len)
 
     # First approximately `prefix_len` number of tokens in the
     # prompt are fixed poem lines.
-    assert prefix_len > base_prompt_offset, f"Please set 'args.sonnet-prefix-len' higher than {base_prompt_offset}."
+    assert (
+        prefix_len > base_prompt_offset
+    ), f"Please set 'args.sonnet-prefix-len' higher than {base_prompt_offset}."
 
     num_prefix_lines = round((prefix_len - base_prompt_offset) / average_poem_len)
     prefix_lines = poem_lines[:num_prefix_lines]
@@ -209,7 +226,9 @@ def sample_sonnet_requests(
     sampled_requests: list[tuple[str, int, int]] = []
     for _ in range(num_requests):
         num_lines_needed = num_input_lines - num_prefix_lines
-        sampled_lines = "".join(prefix_lines + random.choices(poem_lines, k=num_lines_needed))
+        sampled_lines = "".join(
+            prefix_lines + random.choices(poem_lines, k=num_lines_needed)
+        )
 
         prompt = f"{base_prompt}{sampled_lines}"
         message = [
@@ -218,9 +237,13 @@ def sample_sonnet_requests(
                 "content": prompt,
             },
         ]
-        prompt_formatted = tokenizer.apply_chat_template(message, add_generation_prompt=True, tokenize=False)
+        prompt_formatted = tokenizer.apply_chat_template(
+            message, add_generation_prompt=True, tokenize=False
+        )
         prompt_len = len(tokenizer(prompt_formatted).input_ids)
-        sampled_requests.append((prompt, prompt_formatted, prompt_len, output_len, None))
+        sampled_requests.append(
+            (prompt, prompt_formatted, prompt_len, output_len, None)
+        )
 
     return sampled_requests
 
@@ -248,7 +271,8 @@ def sample_vision_arena_requests(
         output_len = fixed_output_len
 
         assert isinstance(data["images"][0], Image), (
-            "Input image format must be `PIL.Image.Image`, " f"given {type(data['image'])}."
+            "Input image format must be `PIL.Image.Image`, "
+            f"given {type(data['image'])}."
         )
         image: Image = data["images"][0]
         image = image.convert("RGB")
@@ -277,12 +301,20 @@ def sample_hf_requests(
     # Special case for vision_arena dataset
     if dataset_path == "lmarena-ai/vision-arena-bench-v0.1" and dataset_subset is None:
         assert dataset_split == "train"
-        dataset = load_dataset(dataset_path, name=dataset_subset, split=dataset_split, streaming=True)
+        dataset = load_dataset(
+            dataset_path, name=dataset_subset, split=dataset_split, streaming=True
+        )
         dataset = dataset.shuffle(seed=random_seed)
-        return sample_vision_arena_requests(dataset, num_requests, tokenizer, fixed_output_len)
+        return sample_vision_arena_requests(
+            dataset, num_requests, tokenizer, fixed_output_len
+        )
 
-    dataset = load_dataset(dataset_path, name=dataset_subset, split=dataset_split, streaming=True)
-    assert "conversations" in dataset.features, "HF Dataset must have 'conversations' column."
+    dataset = load_dataset(
+        dataset_path, name=dataset_subset, split=dataset_split, streaming=True
+    )
+    assert (
+        "conversations" in dataset.features
+    ), "HF Dataset must have 'conversations' column."
     filter_func = lambda x: len(x["conversations"]) >= 2  # noqa: E731
     filtered_dataset = dataset.shuffle(seed=random_seed).filter(filter_func)
     sampled_requests: list[tuple[str, int, int, dict[str, Collection[str]]]] = []
@@ -296,11 +328,15 @@ def sample_hf_requests(
         completion = data["conversations"][1]["value"]
         completion_token_ids = tokenizer(completion).input_ids
         prompt_len = len(prompt_token_ids)
-        output_len = len(completion_token_ids) if fixed_output_len is None else fixed_output_len
+        output_len = (
+            len(completion_token_ids) if fixed_output_len is None else fixed_output_len
+        )
         if fixed_output_len is None and (prompt_len < 4 or output_len < 4):
             # Prune too short sequences.
             continue
-        if fixed_output_len is None and (prompt_len > 1024 or prompt_len + output_len > 2048):
+        if fixed_output_len is None and (
+            prompt_len > 1024 or prompt_len + output_len > 2048
+        ):
             # Prune too long sequences.
             continue
 
@@ -315,7 +351,9 @@ def sample_hf_requests(
                 "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"},
             }
         elif "image" in data and isinstance(data["image"], str):
-            if data["image"].startswith("http://") or data["image"].startswith("file://"):
+            if data["image"].startswith("http://") or data["image"].startswith(
+                "file://"
+            ):
                 image_url = data["image"]
             else:
                 image_url = f"file://{data['image']}"
@@ -341,14 +379,18 @@ def sample_random_requests(
     tokenizer: PreTrainedTokenizerBase,
     use_chat_template: bool = False,
 ) -> list[tuple[str, int, int]]:
-    prefix_token_ids = np.random.randint(0, tokenizer.vocab_size, size=prefix_len).tolist()
+    prefix_token_ids = np.random.randint(
+        0, tokenizer.vocab_size, size=prefix_len
+    ).tolist()
     if use_chat_template:
         chat_template_dummy = tokenizer.apply_chat_template(
             [{"role": "user", "content": "a"}],
             add_generation_prompt=True,
             tokenize=False,
         )
-        tokenized_chat_template_dummy = tokenizer.encode(chat_template_dummy, add_special_tokens=False)
+        tokenized_chat_template_dummy = tokenizer.encode(
+            chat_template_dummy, add_special_tokens=False
+        )
         chat_template_len = len(tokenized_chat_template_dummy) - 1
         input_len = input_len - chat_template_len
 
@@ -366,9 +408,15 @@ def sample_random_requests(
     input_requests = []
     for i in range(num_prompts):
         prompt = tokenizer.decode(
-            prefix_token_ids + [(offsets[i] + i + j) % tokenizer.vocab_size for j in range(input_lens[i])]
+            prefix_token_ids
+            + [
+                (offsets[i] + i + j) % tokenizer.vocab_size
+                for j in range(input_lens[i])
+            ]
         )
-        re_encoded_sequence = tokenizer.encode(prompt, add_special_tokens=False)[: (prefix_len + input_lens[i])]
+        re_encoded_sequence = tokenizer.encode(prompt, add_special_tokens=False)[
+            : (prefix_len + input_lens[i])
+        ]
         prompt = tokenizer.decode(re_encoded_sequence)
         if use_chat_template:
             prompt = tokenizer.apply_chat_template(
@@ -378,7 +426,9 @@ def sample_random_requests(
             )
             input_lens[i] += chat_template_len
 
-        input_requests.append((prompt, int(prefix_len + input_lens[i]), int(output_lens[i]), None))
+        input_requests.append(
+            (prompt, int(prefix_len + input_lens[i]), int(output_lens[i]), None)
+        )
 
     return input_requests
 
@@ -409,7 +459,9 @@ async def get_request(
     input_requests = iter(input_requests)
 
     # Calculate scale parameter theta to maintain the desired request_rate.
-    assert burstiness > 0, f"A positive burstiness factor is expected, but given {burstiness}."
+    assert (
+        burstiness > 0
+    ), f"A positive burstiness factor is expected, but given {burstiness}."
     theta = 1.0 / (request_rate * burstiness)
 
     for request in input_requests:
@@ -454,7 +506,11 @@ def calculate_metrics(
                 # len(outputs[i].itl) since multiple output tokens may be
                 # bundled together
                 # Note : this may inflate the output token count slightly
-                output_len = len(tokenizer(outputs[i].generated_text, add_special_tokens=False).input_ids)
+                output_len = len(
+                    tokenizer(
+                        outputs[i].generated_text, add_special_tokens=False
+                    ).input_ids
+                )
             actual_output_lens.append(output_len)
             total_input += input_requests[i][1]
             tpot = 0
@@ -477,13 +533,19 @@ def calculate_metrics(
 
         if "ttft" in goodput_config_dict:
             valid_metrics.append(ttfts)
-            slo_values.append(goodput_config_dict["ttft"] / MILLISECONDS_TO_SECONDS_CONVERSION)
+            slo_values.append(
+                goodput_config_dict["ttft"] / MILLISECONDS_TO_SECONDS_CONVERSION
+            )
         if "tpot" in goodput_config_dict:
             valid_metrics.append(all_tpots)
-            slo_values.append(goodput_config_dict["tpot"] / MILLISECONDS_TO_SECONDS_CONVERSION)
+            slo_values.append(
+                goodput_config_dict["tpot"] / MILLISECONDS_TO_SECONDS_CONVERSION
+            )
         if "e2el" in goodput_config_dict:
             valid_metrics.append(e2els)
-            slo_values.append(goodput_config_dict["e2el"] / MILLISECONDS_TO_SECONDS_CONVERSION)
+            slo_values.append(
+                goodput_config_dict["e2el"] / MILLISECONDS_TO_SECONDS_CONVERSION
+            )
 
         for req_metric in zip(*valid_metrics):
             is_good_req = all([s >= r for s, r in zip(slo_values, req_metric)])
@@ -492,7 +554,8 @@ def calculate_metrics(
 
     if completed == 0:
         warnings.warn(
-            "All requests failed. This is likely due to a misconfiguration " "on the benchmark arguments.",
+            "All requests failed. This is likely due to a misconfiguration "
+            "on the benchmark arguments.",
             stacklevel=2,
         )
     metrics = BenchmarkMetrics(
@@ -503,22 +566,31 @@ def calculate_metrics(
         request_goodput=good_completed / dur_s,
         output_throughput=sum(actual_output_lens) / dur_s,
         total_token_throughput=(total_input + sum(actual_output_lens)) / dur_s,
-        mean_ttft_ms=np.mean(ttfts or 0) * 1000,  # ttfts is empty if streaming is not supported by backend
+        mean_ttft_ms=np.mean(ttfts or 0)
+        * 1000,  # ttfts is empty if streaming is not supported by backend
         std_ttft_ms=np.std(ttfts or 0) * 1000,
         median_ttft_ms=np.median(ttfts or 0) * 1000,
-        percentiles_ttft_ms=[(p, np.percentile(ttfts or 0, p) * 1000) for p in selected_percentiles],
+        percentiles_ttft_ms=[
+            (p, np.percentile(ttfts or 0, p) * 1000) for p in selected_percentiles
+        ],
         mean_tpot_ms=np.mean(tpots or 0) * 1000,
         std_tpot_ms=np.std(tpots or 0) * 1000,
         median_tpot_ms=np.median(tpots or 0) * 1000,
-        percentiles_tpot_ms=[(p, np.percentile(tpots or 0, p) * 1000) for p in selected_percentiles],
+        percentiles_tpot_ms=[
+            (p, np.percentile(tpots or 0, p) * 1000) for p in selected_percentiles
+        ],
         mean_itl_ms=np.mean(itls or 0) * 1000,
         std_itl_ms=np.std(itls or 0) * 1000,
         median_itl_ms=np.median(itls or 0) * 1000,
-        percentiles_itl_ms=[(p, np.percentile(itls or 0, p) * 1000) for p in selected_percentiles],
+        percentiles_itl_ms=[
+            (p, np.percentile(itls or 0, p) * 1000) for p in selected_percentiles
+        ],
         mean_e2el_ms=np.mean(e2els or 0) * 1000,
         std_e2el_ms=np.std(e2els or 0) * 1000,
         median_e2el_ms=np.median(e2els or 0) * 1000,
-        percentiles_e2el_ms=[(p, np.percentile(e2els or 0, p) * 1000) for p in selected_percentiles],
+        percentiles_e2el_ms=[
+            (p, np.percentile(e2els or 0, p) * 1000) for p in selected_percentiles
+        ],
     )
 
     return metrics, actual_output_lens
@@ -554,7 +626,9 @@ async def benchmark(
     test_prompt, test_prompt_len, test_output_len, test_mm_content = input_requests[0]
     if backend != "openai-chat" and test_mm_content is not None:
         # multi-modal benchmark is only available on OpenAI Chat backend.
-        raise ValueError("Multi-modal content is only supported on 'openai-chat' backend.")
+        raise ValueError(
+            "Multi-modal content is only supported on 'openai-chat' backend."
+        )
     test_input = RequestFuncInput(
         model=model_id,
         model_name=model_name,
@@ -579,7 +653,9 @@ async def benchmark(
 
     if lora_modules:
         # For each input request, choose a LoRA module at random.
-        lora_modules = iter([random.choice(lora_modules) for _ in range(len(input_requests))])
+        lora_modules = iter(
+            [random.choice(lora_modules) for _ in range(len(input_requests))]
+        )
 
     if profile:
         print("Starting profiler...")
@@ -643,7 +719,11 @@ async def benchmark(
             multi_modal_content=mm_content,
             ignore_eos=ignore_eos,
         )
-        tasks.append(asyncio.create_task(limited_request_func(request_func_input=request_func_input, pbar=pbar)))
+        tasks.append(
+            asyncio.create_task(
+                limited_request_func(request_func_input=request_func_input, pbar=pbar)
+            )
+        )
     outputs: list[RequestFuncOutput] = await asyncio.gather(*tasks)
 
     if profile:
@@ -681,11 +761,27 @@ async def benchmark(
     print("{:<40} {:<10.2f}".format("Benchmark duration (s):", benchmark_duration))
     print("{:<40} {:<10}".format("Total input tokens:", metrics.total_input))
     print("{:<40} {:<10}".format("Total generated tokens:", metrics.total_output))
-    print("{:<40} {:<10.2f}".format("Request throughput (req/s):", metrics.request_throughput))
+    print(
+        "{:<40} {:<10.2f}".format(
+            "Request throughput (req/s):", metrics.request_throughput
+        )
+    )
     if goodput_config_dict:
-        print("{:<40} {:<10.2f}".format("Request goodput (req/s):", metrics.request_goodput))
-    print("{:<40} {:<10.2f}".format("Output token throughput (tok/s):", metrics.output_throughput))
-    print("{:<40} {:<10.2f}".format("Total Token throughput (tok/s):", metrics.total_token_throughput))
+        print(
+            "{:<40} {:<10.2f}".format(
+                "Request goodput (req/s):", metrics.request_goodput
+            )
+        )
+    print(
+        "{:<40} {:<10.2f}".format(
+            "Output token throughput (tok/s):", metrics.output_throughput
+        )
+    )
+    print(
+        "{:<40} {:<10.2f}".format(
+            "Total Token throughput (tok/s):", metrics.total_token_throughput
+        )
+    )
 
     result = {
         "duration": benchmark_duration,
@@ -729,9 +825,15 @@ async def benchmark(
                 getattr(metrics, f"median_{metric_attribute_name}_ms"),
             )
         )
-        result[f"mean_{metric_attribute_name}_ms"] = getattr(metrics, f"mean_{metric_attribute_name}_ms")
-        result[f"median_{metric_attribute_name}_ms"] = getattr(metrics, f"median_{metric_attribute_name}_ms")
-        result[f"std_{metric_attribute_name}_ms"] = getattr(metrics, f"std_{metric_attribute_name}_ms")
+        result[f"mean_{metric_attribute_name}_ms"] = getattr(
+            metrics, f"mean_{metric_attribute_name}_ms"
+        )
+        result[f"median_{metric_attribute_name}_ms"] = getattr(
+            metrics, f"median_{metric_attribute_name}_ms"
+        )
+        result[f"std_{metric_attribute_name}_ms"] = getattr(
+            metrics, f"std_{metric_attribute_name}_ms"
+        )
         for p, value in getattr(metrics, f"percentiles_{metric_attribute_name}_ms"):
             p_word = str(int(p)) if int(p) == p else str(p)
             print("{:<40} {:<10.2f}".format(f"P{p_word} {metric_name} (ms):", value))
@@ -785,7 +887,9 @@ def parse_goodput(slo_pairs):
     return goodput_config_dict
 
 
-def save_to_pytorch_benchmark_format(args: argparse.Namespace, results: dict[str, Any], file_name: str) -> None:
+def save_to_pytorch_benchmark_format(
+    args: argparse.Namespace, results: dict[str, Any], file_name: str
+) -> None:
     metrics = [
         "median_ttft_ms",
         "mean_ttft_ms",
@@ -806,7 +910,11 @@ def save_to_pytorch_benchmark_format(args: argparse.Namespace, results: dict[str
     pt_records = convert_to_pytorch_benchmark_format(
         args=args,
         metrics={k: [results[k]] for k in metrics},
-        extra_info={k: results[k] for k in results if k not in metrics and k not in ignored_metrics},
+        extra_info={
+            k: results[k]
+            for k in results
+            if k not in metrics and k not in ignored_metrics
+        },
     )
     if pt_records:
         # Don't use json suffix here as we don't want CI to pick it up
@@ -976,10 +1084,14 @@ def main(args: argparse.Namespace):
                     kvstring = item.split("=")
                     result_json[kvstring[0].strip()] = kvstring[1].strip()
                 else:
-                    raise ValueError("Invalid metadata format. Please use KEY=VALUE format.")
+                    raise ValueError(
+                        "Invalid metadata format. Please use KEY=VALUE format."
+                    )
 
         # Traffic
-        result_json["request_rate"] = args.request_rate if args.request_rate < float("inf") else "inf"
+        result_json["request_rate"] = (
+            args.request_rate if args.request_rate < float("inf") else "inf"
+        )
         result_json["burstiness"] = args.burstiness
         result_json["max_concurrency"] = args.max_concurrency
 
@@ -988,7 +1100,11 @@ def main(args: argparse.Namespace):
 
         # Save to file
         base_model_id = model_id.split("/")[-1]
-        max_concurrency_str = f"-concurrency{args.max_concurrency}" if args.max_concurrency is not None else ""
+        max_concurrency_str = (
+            f"-concurrency{args.max_concurrency}"
+            if args.max_concurrency is not None
+            else ""
+        )
         file_name = f"{backend}-{args.request_rate}qps{max_concurrency_str}-{base_model_id}-{current_dt}.json"  # noqa
         if args.result_filename:
             file_name = args.result_filename
@@ -1000,7 +1116,9 @@ def main(args: argparse.Namespace):
 
 
 if __name__ == "__main__":
-    parser = FlexibleArgumentParser(description="Benchmark the online serving throughput.")
+    parser = FlexibleArgumentParser(
+        description="Benchmark the online serving throughput."
+    )
     parser.add_argument(
         "--backend",
         type=str,
@@ -1039,7 +1157,8 @@ if __name__ == "__main__":
         "--dataset-path",
         type=str,
         default=None,
-        help="Path to the sharegpt/sonnet dataset. " "Or the huggingface dataset ID if using HF dataset.",
+        help="Path to the sharegpt/sonnet dataset. "
+        "Or the huggingface dataset ID if using HF dataset.",
     )
     parser.add_argument(
         "--max-concurrency",
@@ -1126,7 +1245,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--profile",
         action="store_true",
-        help="Use Torch Profiler. The endpoint must be launched with " "VLLM_TORCH_PROFILER_DIR to enable profiler.",
+        help="Use Torch Profiler. The endpoint must be launched with "
+        "VLLM_TORCH_PROFILER_DIR to enable profiler.",
     )
     parser.add_argument(
         "--save-result",
@@ -1220,7 +1340,8 @@ if __name__ == "__main__":
         "--sharegpt-output-len",
         type=int,
         default=None,
-        help="Output length for each request. Overrides the output length " "from the ShareGPT dataset.",
+        help="Output length for each request. Overrides the output length "
+        "from the ShareGPT dataset.",
     )
 
     random_group = parser.add_argument_group("random dataset options")
@@ -1240,7 +1361,8 @@ if __name__ == "__main__":
         "--random-range-ratio",
         type=float,
         default=1.0,
-        help="Range of sampled ratio of input/output length, " "used only for random sampling.",
+        help="Range of sampled ratio of input/output length, "
+        "used only for random sampling.",
     )
     random_group.add_argument(
         "--random-prefix-len",
@@ -1258,13 +1380,18 @@ if __name__ == "__main__":
     )
 
     hf_group = parser.add_argument_group("hf dataset options")
-    hf_group.add_argument("--hf-subset", type=str, default=None, help="Subset of the HF dataset.")
-    hf_group.add_argument("--hf-split", type=str, default=None, help="Split of the HF dataset.")
+    hf_group.add_argument(
+        "--hf-subset", type=str, default=None, help="Subset of the HF dataset."
+    )
+    hf_group.add_argument(
+        "--hf-split", type=str, default=None, help="Split of the HF dataset."
+    )
     hf_group.add_argument(
         "--hf-output-len",
         type=int,
         default=None,
-        help="Output length for each request. Overrides the output lengths " "from the sampled HF dataset.",
+        help="Output length for each request. Overrides the output lengths "
+        "from the sampled HF dataset.",
     )
 
     parser.add_argument(

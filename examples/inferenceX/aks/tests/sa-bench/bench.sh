@@ -29,13 +29,13 @@ WORK_DIR="$(dirname "$0")"
 echo "SA-Bench Config: endpoint=${ENDPOINT}; isl=${ISL}; osl=${OSL}; concurrencies=${CONCURRENCIES}; req_rate=${REQ_RATE}; model=${MODEL_NAME}"
 
 # Parse concurrency list
-IFS='x' read -r -a CONCURRENCY_LIST <<< "$CONCURRENCIES"
+IFS='x' read -r -a CONCURRENCY_LIST <<<"$CONCURRENCIES"
 
 # Quick curl to verify endpoint is working
 echo "Verifying endpoint..."
 curl -s "${ENDPOINT}/v1/chat/completions" \
-    -H "Content-Type: application/json" \
-    -d "{
+	-H "Content-Type: application/json" \
+	-d "{
         \"model\": \"${MODEL_NAME}\",
         \"messages\": [{\"role\": \"user\", \"content\": \"Hello\"}],
         \"stream\": false,
@@ -51,55 +51,54 @@ mkdir -p "$result_dir"
 
 for concurrency in "${CONCURRENCY_LIST[@]}"; do
 
-    num_warmup_prompts=$((concurrency * 2))
-    python3 -u "${WORK_DIR}/benchmark_serving.py" \
-        --model "${MODEL_NAME}" --tokenizer "${MODEL_PATH}" \
-        --host "$HOST" --port "$PORT" \
-        --backend "dynamo" --endpoint /v1/completions \
-        --disable-tqdm \
-        --dataset-name random \
-        --num-prompts "$num_warmup_prompts" \
-        --random-input-len "$ISL" \
-        --random-output-len "$OSL" \
-        --random-range-ratio 0.8 \
-        --ignore-eos \
-        --request-rate 250 \
-        --percentile-metrics ttft,tpot,itl,e2el \
-        --max-concurrency "$concurrency"
+	num_warmup_prompts=$((concurrency * 2))
+	python3 -u "${WORK_DIR}/benchmark_serving.py" \
+		--model "${MODEL_NAME}" --tokenizer "${MODEL_PATH}" \
+		--host "$HOST" --port "$PORT" \
+		--backend "dynamo" --endpoint /v1/completions \
+		--disable-tqdm \
+		--dataset-name random \
+		--num-prompts "$num_warmup_prompts" \
+		--random-input-len "$ISL" \
+		--random-output-len "$OSL" \
+		--random-range-ratio 0.8 \
+		--ignore-eos \
+		--request-rate 250 \
+		--percentile-metrics ttft,tpot,itl,e2el \
+		--max-concurrency "$concurrency"
 
-    num_prompts=$((concurrency * 10))
-    
-    # Generate result filename based on mode
-    if [ "$IS_DISAGGREGATED" = "true" ]; then
-        result_filename="results_concurrency_${concurrency}_gpus_${TOTAL_GPUS}_ctx_${PREFILL_GPUS}_gen_${DECODE_GPUS}.json"
-    else
-        result_filename="results_concurrency_${concurrency}_gpus_${TOTAL_GPUS}.json"
-    fi
-    
-    echo "Running benchmark with concurrency: $concurrency"
-    echo "$(date '+%Y-%m-%d %H:%M:%S')"
-    
-    python3 -u "${WORK_DIR}/benchmark_serving.py" \
-        --model "${MODEL_NAME}" --tokenizer "${MODEL_PATH}" \
-        --host "$HOST" --port "$PORT" \
-        --backend "dynamo" --endpoint /v1/completions \
-        --disable-tqdm \
-        --dataset-name random \
-        --num-prompts "$num_prompts" \
-        --random-input-len "$ISL" \
-        --random-output-len "$OSL" \
-        --random-range-ratio 0.8 \
-        --ignore-eos \
-        --request-rate "${REQ_RATE}" \
-        --percentile-metrics ttft,tpot,itl,e2el \
-        --max-concurrency "$concurrency" \
-        --use-chat-template \
-        --save-result --result-dir "$result_dir" --result-filename "$result_filename"
-    
-    echo "$(date '+%Y-%m-%d %H:%M:%S')"
-    echo "Completed benchmark with concurrency: $concurrency"
-    echo "-----------------------------------------"
+	num_prompts=$((concurrency * 10))
+
+	# Generate result filename based on mode
+	if [ "$IS_DISAGGREGATED" = "true" ]; then
+		result_filename="results_concurrency_${concurrency}_gpus_${TOTAL_GPUS}_ctx_${PREFILL_GPUS}_gen_${DECODE_GPUS}.json"
+	else
+		result_filename="results_concurrency_${concurrency}_gpus_${TOTAL_GPUS}.json"
+	fi
+
+	echo "Running benchmark with concurrency: $concurrency"
+	echo "$(date '+%Y-%m-%d %H:%M:%S')"
+
+	python3 -u "${WORK_DIR}/benchmark_serving.py" \
+		--model "${MODEL_NAME}" --tokenizer "${MODEL_PATH}" \
+		--host "$HOST" --port "$PORT" \
+		--backend "dynamo" --endpoint /v1/completions \
+		--disable-tqdm \
+		--dataset-name random \
+		--num-prompts "$num_prompts" \
+		--random-input-len "$ISL" \
+		--random-output-len "$OSL" \
+		--random-range-ratio 0.8 \
+		--ignore-eos \
+		--request-rate "${REQ_RATE}" \
+		--percentile-metrics ttft,tpot,itl,e2el \
+		--max-concurrency "$concurrency" \
+		--use-chat-template \
+		--save-result --result-dir "$result_dir" --result-filename "$result_filename"
+
+	echo "$(date '+%Y-%m-%d %H:%M:%S')"
+	echo "Completed benchmark with concurrency: $concurrency"
+	echo "-----------------------------------------"
 done
 
 echo "SA-Bench complete. Results in $result_dir"
-

@@ -25,13 +25,18 @@ DEFAULT_DATE="2026-02-03"
 DATE="$DEFAULT_DATE"
 DRY_RUN=false
 for arg in "$@"; do
-  case "$arg" in
-    --dry-run) DRY_RUN=true ;;
-    -h|--help)
-      sed -n '2,15p' "$0"; exit 0 ;;
-    [0-9]*-[0-9]*-[0-9]*) DATE="$arg" ;;
-    *) echo "Unknown arg: $arg" >&2; exit 2 ;;
-  esac
+	case "$arg" in
+	--dry-run) DRY_RUN=true ;;
+	-h | --help)
+		sed -n '2,15p' "$0"
+		exit 0
+		;;
+	[0-9]*-[0-9]*-[0-9]*) DATE="$arg" ;;
+	*)
+		echo "Unknown arg: $arg" >&2
+		exit 2
+		;;
+	esac
 done
 
 URL="https://inferencex.semianalysis.com/api/v1/benchmarks?model=${MODEL}&date=${DATE}&exact=true"
@@ -51,16 +56,17 @@ skipped=0
 failed=0
 
 for cfg in $CONFIGS; do
-  conc=$(awk -F': *' '/^concurrency:/ {print $2; exit}' "$cfg")
-  total_gpus=$(awk -F': *' '/^total_gpus:/ {print $2; exit}' "$cfg")
-  isl=$(awk -F': *' '/^isl:/ {print $2; exit}' "$cfg")
-  osl=$(awk -F': *' '/^osl:/ {print $2; exit}' "$cfg")
-  sku=$(awk -F': *' '/^sku:/ {print $2; exit}' "$cfg")
-  prec=$(awk -F': *' '/^precision:/ {print $2; exit}' "$cfg")
-  spec=$(awk -F': *' '/^spec_method:/ {print $2; exit}' "$cfg")
-  decode_gpus=$(awk -F': *' '/^decode_gpus_each:/ {print $2; exit}' "$cfg")
+	conc=$(awk -F': *' '/^concurrency:/ {print $2; exit}' "$cfg")
+	total_gpus=$(awk -F': *' '/^total_gpus:/ {print $2; exit}' "$cfg")
+	isl=$(awk -F': *' '/^isl:/ {print $2; exit}' "$cfg")
+	osl=$(awk -F': *' '/^osl:/ {print $2; exit}' "$cfg")
+	sku=$(awk -F': *' '/^sku:/ {print $2; exit}' "$cfg")
+	prec=$(awk -F': *' '/^precision:/ {print $2; exit}' "$cfg")
+	spec=$(awk -F': *' '/^spec_method:/ {print $2; exit}' "$cfg")
+	decode_gpus=$(awk -F': *' '/^decode_gpus_each:/ {print $2; exit}' "$cfg")
 
-  result=$(python3 <<PY
+	result=$(
+		python3 <<PY
 import json, sys
 rows = json.load(open("$TMP/api.json"))
 match = [r for r in rows
@@ -78,22 +84,22 @@ if len(match) != 1:
 m = match[0]["metrics"]
 print(f'{match[0]["date"]}|{m["tput_per_gpu"]:.2f}|{m["output_tput_per_gpu"]:.2f}|{m["median_tpot"]*1000:.2f}|{m["median_ttft"]*1000:.1f}')
 PY
-  )
+	)
 
-  if [[ "$result" == NOMATCH* ]]; then
-    echo "  SKIP  $cfg  (conc=$conc gpus=$total_gpus: $result)"
-    skipped=$((skipped+1))
-    continue
-  fi
+	if [[ "$result" == NOMATCH* ]]; then
+		echo "  SKIP  $cfg  (conc=$conc gpus=$total_gpus: $result)"
+		skipped=$((skipped + 1))
+		continue
+	fi
 
-  IFS='|' read -r ix_date tput otput tpot ttft <<< "$result"
+	IFS='|' read -r ix_date tput otput tpot ttft <<<"$result"
 
-  if $DRY_RUN; then
-    echo "  DRY   $cfg  tput=${tput} tpot=${tpot}ms ttft=${ttft}ms (ix_date=${ix_date})"
-    continue
-  fi
+	if $DRY_RUN; then
+		echo "  DRY   $cfg  tput=${tput} tpot=${tpot}ms ttft=${ttft}ms (ix_date=${ix_date})"
+		continue
+	fi
 
-  if python3 - "$cfg" "$ix_date" "$FETCHED" "$tput" "$otput" "$tpot" "$ttft" <<'PY'
+	if python3 - "$cfg" "$ix_date" "$FETCHED" "$tput" "$otput" "$tpot" "$ttft" <<'PY'; then
 import sys, re, pathlib
 path, ix_date, fetched, tput, otput, tpot, ttft = sys.argv[1:]
 p = pathlib.Path(path)
@@ -114,13 +120,12 @@ for key, val in updates.items():
     text = pattern.sub(f"{key}: {val}", text)
 p.write_text(text)
 PY
-  then
-    echo "  OK    $cfg  tput=${tput} tpot=${tpot}ms ttft=${ttft}ms"
-    updated=$((updated+1))
-  else
-    echo "  FAIL  $cfg"
-    failed=$((failed+1))
-  fi
+		echo "  OK    $cfg  tput=${tput} tpot=${tpot}ms ttft=${ttft}ms"
+		updated=$((updated + 1))
+	else
+		echo "  FAIL  $cfg"
+		failed=$((failed + 1))
+	fi
 done
 
 echo
