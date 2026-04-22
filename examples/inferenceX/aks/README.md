@@ -337,6 +337,9 @@ cd examples/inferenceX/aks
 # Re-run benchmark only (helm release already running the right values)
 ./run-test.sh tests/trtllm/gb300-fp4/8k1k/mtp/conc-666.yaml -s
 
+# Disable the TRT-LLM autotuner cache for this deploy (cold ~2.5 min autotune)
+./run-test.sh tests/trtllm/gb300-fp4/8k1k/mtp/conc-24.yaml -t -A
+
 # Dry run
 ./run-test.sh tests/trtllm/gb300-fp4/8k1k/mtp/conc-5.yaml -d
 ```
@@ -358,7 +361,9 @@ The `pod-placement.tsv` and `timings.txt` files are used for Grafana correlation
 
 `-t` does a **full chart teardown**: workloads (MPIJobs, ComputeDomain, ResourceClaims) **and** chart infra (frontend Deployment, etcd/NATS StatefulSets, ConfigMaps, Services, Secrets — selected via `app.kubernetes.io/instance=inferencex`). It is required between recipes that change topology, and recommended any time you've redeployed several recipes onto a long-lived frontend.
 
-The reason is **stale Dynamo router state**. Each `helm template | kubectl apply` adds new prefill/decode workers to the router's worker registry but never removes the previous ones. A frontend that has served many redeploys throttles prefill dispatch through a saturated worker list — TTFT inflates from ~1.8 s to ~7 s on conc-24 even though TPOT is unchanged. `run-suite.sh` uses `-t` between every topology group for this reason.
+The reason is **stale Dynamo router state**. Each `helm template | kubectl apply` adds new prefill/decode workers to the router's worker registry but never removes the previous ones. A frontend that has served many redeploys throttles prefill dispatch through a saturated worker list — TTFT inflates from ~1.8 s to ~7 s on conc-24 even though TPOT is unchanged. Combined with the autotuner shape-bucket issue described in [§3.1](#31-trt-llm-autotuner-cache), `run-suite.sh` uses `-t` between **every recipe** (not just between topology groups).
+
+`-t` deletes chart resources only; it leaves `/mnt/nvme/autotuner-cache/<model>/` intact on every node. A re-deploy of the same recipe after `-t` therefore still gets a warm autotune (~1 s) on the next start.
 
 ### Pass criteria
 
