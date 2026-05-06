@@ -25,28 +25,28 @@ All reference files live in `skills/ai-infra/references/`.
 
 ### Concepts and baselines (orchestrator-agnostic)
 
-| File                       | Covers                                                                                                              |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `sku_baselines.md`         | Expected NCCL busbw, GPU GFlops, thermal limits, IB ports, rack sizes for GB300 and H100. Warn and GHR thresholds.  |
-| `rack_topology.md`         | MNNVL domain discovery via `nvidia-smi`, ClusterUUID, expected rack sizes per SKU, FabricManager troubleshooting.   |
-| `ib_validation.md`         | InfiniBand port state (`operstate`, `ibstat`), partition keys, error counters, link flap detection, soft fixes.    |
-| `nccl_diagnosis.md`        | Bisection algorithm, intra-rack vs inter-rack scoping, GPU vs network root cause, bandwidth pattern interpretation. |
-| `outlier_detection.md`     | Statistical methods (absolute threshold, z-score, MAD) for fleet-wide GPU and NCCL analysis.                        |
-| `ghr.md`                   | **Azure Guest Health Reporting (GHR)** — used for reporting a node failure to Azure. Covers full impact category reference, IMDS/KVP data collection, REST API format, insight polling. |
+| File                   | Covers                                                                                                                                                                                  |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sku_baselines.md`     | Expected NCCL busbw, GPU GFlops, thermal limits, IB ports, rack sizes for GB300 and H100. Warn and GHR thresholds.                                                                      |
+| `rack_topology.md`     | MNNVL domain discovery via `nvidia-smi`, ClusterUUID, expected rack sizes per SKU, FabricManager troubleshooting.                                                                       |
+| `ib_validation.md`     | InfiniBand port state (`operstate`, `ibstat`), partition keys, error counters, link flap detection, soft fixes.                                                                         |
+| `nccl_diagnosis.md`    | Bisection algorithm, intra-rack vs inter-rack scoping, GPU vs network root cause, bandwidth pattern interpretation.                                                                     |
+| `outlier_detection.md` | Statistical methods (absolute threshold, z-score, MAD) for fleet-wide GPU and NCCL analysis.                                                                                            |
+| `ghr.md`               | **Azure Guest Health Reporting (GHR)** — used for reporting a node failure to Azure. Covers full impact category reference, IMDS/KVP data collection, REST API format, insight polling. |
 
 ### Test execution (currently Slurm; AKS counterparts to be added)
 
-| File                       | Covers                                                                                                              |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `nccl_test.md`             | Run `all_reduce_perf` via the Slurm launcher. Per-SKU env vars (MNNVL/SHARP/GDR), output columns, quick vs full sweep. AKS path: see `infrastructure_validations/aks/NCCL/`. |
-| `gpu_validation.md`        | Run ubergemm GEMM benchmark via Slurm. Parse CSV output, identify underperforming GPUs.                              |
-| `thermal_test.md`          | Run dcgmproftester thermal stress via Slurm. Interpret pass/fail, throttle reasons, DCGMI levels. AKS path: see `infrastructure_validations/aks/`. |
+| File                | Covers                                                                                                                                                                       |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `nccl_test.md`      | Run `all_reduce_perf` via the Slurm launcher. Per-SKU env vars (MNNVL/SHARP/GDR), output columns, quick vs full sweep. AKS path: see `infrastructure_validations/aks/NCCL/`. |
+| `gpu_validation.md` | Run ubergemm GEMM benchmark via Slurm. Parse CSV output, identify underperforming GPUs.                                                                                      |
+| `thermal_test.md`   | Run dcgmproftester thermal stress via Slurm. Interpret pass/fail, throttle reasons, DCGMI levels. AKS path: see `infrastructure_validations/aks/`.                           |
 
 ### Remediation
 
-| File                       | Covers                                                                                                              |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `node_drain_and_replace.md`| Slurm `drain`/`undrain`/reboot, decision tree for drain vs reboot vs GHR, post-replacement validation.              |
+| File                        | Covers                                                                                                 |
+| --------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `node_drain_and_replace.md` | Slurm `drain`/`undrain`/reboot, decision tree for drain vs reboot vs GHR, post-replacement validation. |
 
 ## Intent Map
 

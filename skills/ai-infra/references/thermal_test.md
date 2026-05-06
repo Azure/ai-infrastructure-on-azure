@@ -136,10 +136,10 @@ Level 3 includes stress tests, memory bandwidth, PCIe bandwidth, and NVLink band
 
 If a GPU fails thermal testing and the issue persists after reboot:
 
-| Issue                                 | GHR Category                                        |
-| ------------------------------------- | --------------------------------------------------- |
-| Thermal throttling / thermal failure  | `HpcDcgmiThermalReport`                             |
-| DCGM diagnostic failure               | `HpcGpuDcgmDiagFailure`                             |
+| Issue                                 | GHR Category                                                                                       |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Thermal throttling / thermal failure  | `HpcDcgmiThermalReport`                                                                            |
+| DCGM diagnostic failure               | `HpcGpuDcgmDiagFailure`                                                                            |
 | GPU crashes during stress (XID error) | `XID79FallenOffBus`, `XID94ContainedECCError`, or `XID95UncontainedECCError` depending on XID code |
 
 See `ghr.md` for the full impact category list and submission format.

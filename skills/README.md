@@ -62,28 +62,28 @@ If you're building an AI agent, load `skills/ai-infra/SKILL.md` into the system 
 
 ### Concepts and baselines (orchestrator-agnostic)
 
-| Reference                                                     | What It Covers                                                                                                              |
-| ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Reference                                                     | What It Covers                                                                                                               |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | [sku_baselines](ai-infra/references/sku_baselines.md)         | Expected NCCL busbw, GPU GFlops, thermal limits, IB ports, and rack sizes for GB300 and H100. Warn and GHR thresholds.       |
 | [rack_topology](ai-infra/references/rack_topology.md)         | MNNVL domains, ClusterUUID discovery, expected rack sizes, FabricManager troubleshooting.                                    |
 | [ib_validation](ai-infra/references/ib_validation.md)         | IB port state, partition keys, error counters, link flap detection, soft fixes.                                              |
-| [nccl_diagnosis](ai-infra/references/nccl_diagnosis.md)       | Scoping intra-rack vs inter-rack failures, bisection algorithm for isolating bad nodes, GPU vs network root cause analysis. |
-| [outlier_detection](ai-infra/references/outlier_detection.md) | Statistical methods (absolute threshold, z-score, MAD) for finding degraded nodes in fleet-wide test results.               |
+| [nccl_diagnosis](ai-infra/references/nccl_diagnosis.md)       | Scoping intra-rack vs inter-rack failures, bisection algorithm for isolating bad nodes, GPU vs network root cause analysis.  |
+| [outlier_detection](ai-infra/references/outlier_detection.md) | Statistical methods (absolute threshold, z-score, MAD) for finding degraded nodes in fleet-wide test results.                |
 | [ghr](ai-infra/references/ghr.md)                             | Azure Guest Health Reporting (GHR) — complete impact category reference, IMDS/KVP data collection, REST API format, polling. |
 
 ### Test execution (Slurm; AKS counterparts referenced)
 
-| Reference                                               | What It Covers                                                                                                                          |
-| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Reference                                               | What It Covers                                                                                                                           |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | [nccl_test](ai-infra/references/nccl_test.md)           | Run NCCL all_reduce_perf via the Slurm launcher. Per-SKU env vars (MNNVL, SHARP, GDR), output columns, quick vs full sweep. AKS pointer. |
 | [gpu_validation](ai-infra/references/gpu_validation.md) | Run ubergemm GEMM benchmark, parse CSV output, identify underperforming GPUs.                                                            |
-| [thermal_test](ai-infra/references/thermal_test.md)     | Run dcgmproftester thermal stress, interpret pass/fail, throttle reasons, DCGMI diagnostic levels.                                      |
+| [thermal_test](ai-infra/references/thermal_test.md)     | Run dcgmproftester thermal stress, interpret pass/fail, throttle reasons, DCGMI diagnostic levels.                                       |
 
 ### Remediation
 
-| Reference                                                                | What It Covers                                                                                                                       |
-| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
-| [node_drain_and_replace](ai-infra/references/node_drain_and_replace.md)  | Slurm drain/undrain commands, reboot procedure, decision tree for when to drain vs reboot vs GHR, post-replacement validation.       |
+| Reference                                                               | What It Covers                                                                                                                 |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| [node_drain_and_replace](ai-infra/references/node_drain_and_replace.md) | Slurm drain/undrain commands, reboot procedure, decision tree for when to drain vs reboot vs GHR, post-replacement validation. |
 
 ## Example Workflows
 
