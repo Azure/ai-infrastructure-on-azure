@@ -1,8 +1,3 @@
----
-name: cluster-outlier-detection
-description: "Statistical methods for identifying underperforming nodes from batch test results. Absolute thresholds, z-score, and MAD methods for fleet-wide GPU and NCCL analysis."
----
-
 # Cluster Outlier Detection
 
 Statistical methods for identifying underperforming nodes from batch test results.
@@ -23,7 +18,7 @@ if metric < threshold:
 Pros: Simple, deterministic, directly actionable.
 Cons: Misses nodes that are degrading but not yet below the threshold. Does not adapt to fleet conditions.
 
-Use the thresholds from `sku_performance_baseline` for pass/fail decisions.
+Use the thresholds from `sku_baselines.md` for pass/fail decisions.
 
 ## Method 2: Z-Score (Standard Deviation)
 
@@ -77,14 +72,14 @@ if deviation_pct > ghr_pct:
     flag for GHR (e.g., > 7%)
 ```
 
-This is what the GPU GEMM analysis uses (see `node_gpu_validation` skill).
+This is what the GPU GEMM analysis uses (see `gpu_validation.md`).
 
 ## Applying to Different Test Types
 
 ### GPU GEMM results
 
 - **Metric**: Minimum GFlops across GPUs on each node (one bad GPU = bad node).
-- **Expected**: Per-SKU from `sku_performance_baseline`.
+- **Expected**: Per-SKU from `sku_baselines.md`.
 - **Method**: Absolute threshold (deviation from expected) **plus** z-score across fleet.
 - **Granularity**: Per-GPU if you want to identify which GPU is degraded.
 
@@ -93,7 +88,7 @@ This is what the GPU GEMM analysis uses (see `node_gpu_validation` skill).
 - **Metric**: Peak busbw at 16 G message size for each rack's NCCL test.
 - **Expected**: Per-SKU MNNVL or IB baseline.
 - **Method**: Absolute threshold first. For racks near the threshold, compare against other racks' results.
-- **Note**: A single bad node in a rack drags down the entire rack's result. If one rack fails, bisect it (see `nccl_performance_diagnosis`).
+- **Note**: A single bad node in a rack drags down the entire rack's result. If one rack fails, bisect it (see `nccl_diagnosis.md`).
 
 ### NCCL pairwise results
 

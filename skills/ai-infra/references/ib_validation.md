@@ -1,8 +1,3 @@
----
-name: ib-link-validation
-description: "Check InfiniBand connectivity, port state, partition keys, and error counters on Azure HPC nodes. Covers operstate, ibstat, pkey verification, link flap detection, and soft fixes."
----
-
 # InfiniBand Link Validation
 
 How to check InfiniBand connectivity, port state, partition keys, and error counters on Azure HPC nodes.
@@ -147,7 +142,7 @@ sudo systemctl restart healthagent && sleep 5
 sudo /usr/bin/health
 ```
 
-If the interface stays down after `ip link set up`, the problem is at the physical layer (cable, switch, HCA). A reboot may help; if not, file GHR with category `ib_down`.
+If the interface stays down after `ip link set up`, the problem is at the physical layer (cable, switch, HCA). A reboot may help; if not, file GHR with category `IBPortDown`.
 
 ## dmesg Diagnostics
 
@@ -161,7 +156,11 @@ sudo dmesg | grep -i "link_state\|link down\|port_inactive"
 
 ## GHR Categories for IB Issues
 
-| Issue                                                    | GHR Category  |
-| -------------------------------------------------------- | ------------- |
-| Port down (carrier=-1, not recoverable by reboot)        | `ib_down`     |
-| Port flapping (high carrier_changes / LinkErrorRecovery) | `ib_flapping` |
+| Issue                                                    | GHR Category       |
+| -------------------------------------------------------- | ------------------ |
+| Port down (carrier=-1, not recoverable by reboot)        | `IBPortDown`       |
+| Port flapping (high carrier_changes / LinkErrorRecovery) | `IBPortFlapping`   |
+| Bandwidth degraded                                       | `IBPerformance`    |
+| Interface missing                                        | `MissingIB`        |
+
+See `ghr.md` for full impact category list and submission format.
