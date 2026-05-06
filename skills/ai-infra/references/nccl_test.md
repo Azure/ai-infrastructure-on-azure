@@ -1,13 +1,8 @@
----
-name: nccl-allreduce-test
-description: "Run NCCL all_reduce_perf bandwidth tests via Slurm, configure per-SKU environment variables (MNNVL, SHARP, GDR), and interpret busbw results."
----
-
 # NCCL AllReduce Test
 
-How to run NCCL all_reduce_perf bandwidth tests, configure environment variables per SKU, and interpret results.
+How to run NCCL `all_reduce_perf` bandwidth tests, configure environment variables per SKU, and interpret results.
 
-> **Scripts**: This skill references test scripts from the [Azure/ai-infrastructure-on-azure](https://github.com/Azure/ai-infrastructure-on-azure) repo. Clone it and run from the repo root.
+> **Scripts**: This reference describes test scripts in this repo. Clone it and run from the repo root.
 
 ## Test Binary
 
@@ -17,7 +12,7 @@ How to run NCCL all_reduce_perf bandwidth tests, configure environment variables
 
 This is the standard NCCL test binary from [nccl-tests](https://github.com/NVIDIA/nccl-tests). It measures collective bandwidth across GPUs and nodes.
 
-## Running via the Launcher
+## Slurm Execution
 
 The launcher script is at `infrastructure_validations/slurm/NCCL/nccl_test.sh`. It loads per-SKU configs and handles sbatch submission.
 
@@ -49,11 +44,17 @@ cd infrastructure_validations/slurm/NCCL
 
 All other arguments pass through to sbatch (e.g., `-N 4`, `-w nodelist`).
 
+## AKS Execution
+
+The AKS counterpart lives at `infrastructure_validations/aks/NCCL/`. It uses MPI Operator (MPIJob CRD) to launch NCCL tests across pods. See that directory's README for Helm chart usage and per-SKU values files. The per-SKU environment variables documented below apply identically to AKS — only the launch mechanism differs.
+
 ## Per-SKU Environment Variables
+
+These environment variables are required for correct NCCL behavior on Azure NDR fabric, regardless of orchestrator.
 
 ### Grace Blackwell (GB300 / NDv6)
 
-Config file: `configs/graceblackwell.conf`
+Slurm config file: `configs/graceblackwell.conf`
 
 Key settings:
 
@@ -63,11 +64,11 @@ Key settings:
 - SHM disabled (`NCCL_SHM_DISABLE=1`) — NVLink is faster
 - IB SL=1 (`NCCL_IB_SL=1`) — required for Azure NDR fabric
 - GDR C2C enabled (`NCCL_NET_GDR_C2C=1`)
-- RDMA-SHARP plugin library on LD_LIBRARY_PATH
+- RDMA-SHARP plugin library on `LD_LIBRARY_PATH`
 
 ### Hopper (H100 / NDv5)
 
-Config file: `configs/hopper.conf`
+Slurm config file: `configs/hopper.conf`
 
 Key settings:
 
@@ -115,7 +116,7 @@ Key settings:
 
 ## Expected Results
 
-See `sku_performance_baseline` skill for per-SKU busbw targets.
+See `sku_baselines.md` for per-SKU busbw targets.
 
 ### GB300 intra-rack (MNNVL, 18 nodes)
 
