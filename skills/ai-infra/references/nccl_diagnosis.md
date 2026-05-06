@@ -1,13 +1,6 @@
----
-name: nccl-performance-diagnosis
-description: "Analyze NCCL bandwidth results, scope intra-rack vs inter-rack failures, and use bisection algorithm to isolate bad nodes. GPU vs network root cause analysis."
----
-
 # NCCL Performance Diagnosis
 
 How to analyze NCCL bandwidth results, identify what type of failure is occurring, and isolate the bad node(s).
-
-> **Scripts**: This skill references test scripts from the [Azure/ai-infrastructure-on-azure](https://github.com/Azure/ai-infrastructure-on-azure) repo. Clone it and run from the repo root.
 
 ## Diagnosis Framework
 
@@ -33,7 +26,7 @@ If cross-rack NCCL tests show low bandwidth:
 
 - The problem is in the InfiniBand fabric.
 - Could be a bad IB link, switch port, or pkey issue on one or more nodes.
-- Check IB links on all participating nodes (see `ib_link_validation` skill).
+- Check IB links on all participating nodes (see `ib_validation.md`).
 - Also compare per-rack results — if one rack is consistently the slow side, the problem is nodes in that rack.
 
 ### Single-node test (intra-node only)
@@ -97,7 +90,7 @@ Once the bad node is identified, determine whether the issue is GPU or network:
 
 - GPU GEMM test passes (compute is fine) but NCCL fails → network path issue.
 - `ibstat` shows a port down or in `Polling` state.
-- IB error counters are elevated (see `ib_link_validation` skill).
+- IB error counters are elevated (see `ib_validation.md`).
 - pkey is missing or wrong on one port.
 
 ### NVSwitch / MNNVL issue indicators (GB300)
@@ -130,8 +123,9 @@ Once the bad node is identified, determine whether the issue is GPU or network:
 
 ## Tools Reference
 
-- NCCL test launcher: `infrastructure_validations/slurm/NCCL/nccl_test.sh`
+- NCCL test launcher (Slurm): `infrastructure_validations/slurm/NCCL/nccl_test.sh`
 - Per-SKU configs: `infrastructure_validations/slurm/NCCL/configs/`
+- NCCL on AKS: `infrastructure_validations/aks/NCCL/`
 - GPU GEMM test: `infrastructure_validations/slurm/gpu_test/gpu_test.slurm`
-- IB validation commands: see `ib_link_validation` skill
-- Baselines: see `sku_performance_baseline` skill
+- IB validation commands: see `ib_validation.md`
+- Baselines: see `sku_baselines.md`
