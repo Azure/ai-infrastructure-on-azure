@@ -1,21 +1,14 @@
----
-name: thermal-stress-test
-description: "Run GPU thermal stress tests using dcgmproftester. Interpret pass/fail results, check temperatures, throttle reasons, and DCGMI diagnostic levels."
----
-
 # Thermal Stress Test
 
 How to run GPU thermal stress tests using dcgmproftester and interpret the results.
 
-> **Scripts**: This skill references test scripts from the [Azure/ai-infrastructure-on-azure](https://github.com/Azure/ai-infrastructure-on-azure) repo. Clone it and run from the repo root.
+> **Scripts**: This reference describes test scripts in this repo. Clone it and run from the repo root.
 
 ## What It Tests
 
 dcgmproftester drives sustained GPU compute load to stress thermal limits. The test verifies that GPUs can maintain target performance under full thermal load without throttling or errors. A healthy GPU sustains the target workload for the full duration; a failing GPU throttles, produces errors, or crashes.
 
-## Running the Test
-
-### Slurm batch script
+## Slurm Execution
 
 The script is at `infrastructure_validations/slurm/thermal_test/thermal_test.slurm`.
 
@@ -48,7 +41,7 @@ command -v dcgmproftester13 || command -v dcgmproftester12
 
 On current Azure HPC images, `dcgmproftester13` is the available version.
 
-### Manual single-GPU test
+### Manual single-GPU test (works on Slurm or AKS pod)
 
 ```bash
 CUDA_VISIBLE_DEVICES=0 dcgmproftester13 --no-dcgm-validation -t 1004 -d 900
@@ -145,6 +138,8 @@ If a GPU fails thermal testing and the issue persists after reboot:
 
 | Issue                                 | GHR Category                                        |
 | ------------------------------------- | --------------------------------------------------- |
-| Thermal throttling / thermal failure  | `gpu_throttling`                                    |
-| DCGM diagnostic failure               | `dcgm_failure`                                      |
-| GPU crashes during stress (XID error) | `xid_79` or `xid_94`/`xid_95` depending on XID code |
+| Thermal throttling / thermal failure  | `HpcDcgmiThermalReport`                             |
+| DCGM diagnostic failure               | `HpcGpuDcgmDiagFailure`                             |
+| GPU crashes during stress (XID error) | `XID79FallenOffBus`, `XID94ContainedECCError`, or `XID95UncontainedECCError` depending on XID code |
+
+See `ghr.md` for the full impact category list and submission format.

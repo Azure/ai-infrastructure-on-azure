@@ -1,21 +1,14 @@
----
-name: node-gpu-validation
-description: "Test GPU compute performance using ubergemm GEMM benchmarks. Parse CSV output, identify underperforming GPUs, run fleet-wide analysis."
----
-
 # Node GPU Validation
 
 How to test GPU compute performance on individual nodes using NVIDIA's ubergemm GEMM benchmark.
 
-> **Scripts**: This skill references test scripts from the [Azure/ai-infrastructure-on-azure](https://github.com/Azure/ai-infrastructure-on-azure) repo. Clone it and run from the repo root.
+> **Scripts**: This reference describes test scripts in this repo. Clone it and run from the repo root.
 
 ## What It Tests
 
 ubergemm runs a sustained General Matrix Multiply workload on each GPU independently. The output is GFlops per GPU. A healthy GPU produces consistent results near the SKU baseline; a degraded GPU will show significantly lower throughput.
 
-## Running the Test
-
-### Slurm batch script
+## Slurm Execution
 
 The self-contained script is at `infrastructure_validations/slurm/gpu_test/gpu_test.slurm`.
 
@@ -40,7 +33,7 @@ The script runs ubergemm for 60 seconds per GPU, in parallel across all GPUs on 
 
 This path is consistent across both GB300 and H100 Azure HPC images.
 
-### Manual single-node test
+### Manual single-node test (works on Slurm or AKS pod)
 
 ```bash
 # Run on GPU 0 for 60 seconds
@@ -71,7 +64,7 @@ The batch script parses this with `grep -oP 'GFlops:[0-9.e+]+'` and converts via
 
 1. Parse each row into `hostname` and per-GPU GFlops values.
 2. Take the **minimum** GFlops across GPUs on that node — one bad GPU flags the node.
-3. Compare against the SKU baseline (see `sku_performance_baseline` skill).
+3. Compare against the SKU baseline (see `sku_baselines.md`).
 
 ### Fleet analysis
 
@@ -83,7 +76,7 @@ The batch script parses this with `grep -oP 'GFlops:[0-9.e+]+'` and converts via
 
 ### Statistical outlier detection
 
-When the fleet is large (> 10 nodes), also flag nodes more than 2 standard deviations below the mean. This catches nodes that are degraded relative to peers even if still above the absolute threshold.
+When the fleet is large (> 10 nodes), also flag nodes more than 2 standard deviations below the mean. This catches nodes that are degraded relative to peers even if still above the absolute threshold. See `outlier_detection.md`.
 
 ## Common Failure Patterns
 
@@ -98,5 +91,5 @@ When the fleet is large (> 10 nodes), also flag nodes more than 2 standard devia
 
 - **All nodes pass**: Record baseline for future comparison.
 - **Warn-level nodes**: Re-test to confirm. Check `nvidia-smi -q` for thermal throttling or ECC errors. Consider running DCGMI diagnostics (`dcgmi diag -r 3`).
-- **GHR-level nodes**: Drain the node, file GHR with category `generic` (include per-GPU GFlops in description).
+- **GHR-level nodes**: Drain the node, file GHR with category `HpcGenericFailure` (include per-GPU GFlops in description) or a more specific category if the symptom matches (see `ghr.md`).
 - **Zero / missing output**: Check if GPUs are visible (`nvidia-smi -L`), check dmesg for XID errors (`sudo dmesg | grep -i xid`).

@@ -1,13 +1,6 @@
----
-name: rack-topology
-description: "MNNVL domain discovery on Azure GB300 clusters. ClusterUUID lookup via nvidia-smi, expected rack sizes per SKU, FabricManager troubleshooting."
----
-
 # Rack Topology
 
 How MNNVL domains work on Azure GB300 clusters, how to discover rack membership, and expected rack structure per SKU.
-
-> **Scripts**: This skill references test scripts from the [Azure/ai-infrastructure-on-azure](https://github.com/Azure/ai-infrastructure-on-azure) repo. Clone it and run from the repo root.
 
 ## What Is a Rack / MNNVL Domain?
 
@@ -68,7 +61,7 @@ b2c3d4e5-f6a7-8901-bcde-f12345678901
 
 Group nodes by UUID to get rack membership.
 
-### Programmatic discovery
+### Programmatic discovery (Slurm)
 
 Using Slurm hostlist expansion and parallel SSH:
 
@@ -81,10 +74,14 @@ parallel-ssh -H "$NODES" -t 15 -i \
   "nvidia-smi -q 2>/dev/null | grep 'ClusterUUID' | head -1 | awk -F': ' '{print \$2}'"
 ```
 
+### Programmatic discovery (AKS)
+
+The `torset_labeler` utility in `utilities/aks/torset_labeler/` runs as a Helm-deployed job that discovers MNNVL/SHARP topology and labels nodes accordingly. See its README for details.
+
 ### Handling edge cases
 
 - **Drained/down nodes**: Skip them — they can't be queried. Clear any cached rack_id.
-- **ClusterUUID = N/A or all zeros**: NVLink fabric not initialized. This is a hardware issue — file GHR with category `nvlink_down`.
+- **ClusterUUID = N/A or all zeros**: NVLink fabric not initialized. This is a hardware issue — file GHR with category `NvLink`.
 - **Node missing from output**: SSH failed — node may be unresponsive.
 
 ## Validating Rack Size
@@ -107,7 +104,7 @@ If a rack has fewer than expected nodes:
 Test each rack independently to validate intra-rack NVLink bandwidth:
 
 ```bash
-# For each rack, run NCCL test on its nodes
+# For each rack, run NCCL test on its nodes (Slurm)
 ./nccl_test.sh --sku graceblackwell -N 18 -w ccw-gpu-[1-18]
 ```
 
@@ -140,6 +137,6 @@ Healthy output includes `Active: active (running)`.
 
 Common FabricManager issues:
 
-- **"training in progress"** with ClusterUUID all zeros → NVLink fabric failed to initialize. GHR category: `nvlink_down`.
+- **"training in progress"** with ClusterUUID all zeros → NVLink fabric failed to initialize. GHR category: `NvLink`.
 - **"FabricManager not running"** → Service crashed or failed to start. Try `sudo systemctl restart nvidia-fabricmanager`. If it won't start, GHR.
 - **DCGM NVSwitch errors** → `dcgmi discovery -l | grep -i nvswitch` to check NVSwitch visibility.
