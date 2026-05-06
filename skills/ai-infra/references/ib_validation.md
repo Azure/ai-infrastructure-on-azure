@@ -156,11 +156,11 @@ sudo dmesg | grep -i "link_state\|link down\|port_inactive"
 
 ## GHR Categories for IB Issues
 
-| Issue                                                    | GHR Category       |
-| -------------------------------------------------------- | ------------------ |
-| Port down (carrier=-1, not recoverable by reboot)        | `IBPortDown`       |
-| Port flapping (high carrier_changes / LinkErrorRecovery) | `IBPortFlapping`   |
-| Bandwidth degraded                                       | `IBPerformance`    |
-| Interface missing                                        | `MissingIB`        |
+| Issue                                                    | GHR Category     |
+| -------------------------------------------------------- | ---------------- |
+| Port down (carrier=-1, not recoverable by reboot)        | `IBPortDown`     |
+| Port flapping (high carrier_changes / LinkErrorRecovery) | `IBPortFlapping` |
+| Bandwidth degraded                                       | `IBPerformance`  |
+| Interface missing                                        | `MissingIB`      |
 
 See `ghr.md` for full impact category list and submission format.
