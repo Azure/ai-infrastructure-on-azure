@@ -1204,7 +1204,13 @@ if [[ "$SCHED_FILESYSTEM_TYPE" == "nfs" ]]; then
 		echo "[ERROR] --sched-nfs-size must be between 10 and 10240 GiB. Provided: $SCHED_FILESYSTEM_SIZE_GB" >&2
 		exit 1
 	fi
+	if [[ "$SCHED_ANF_SKU" != "Premium" || "$SCHED_ANF_SIZE" != "4" || -n "$SCHED_ANF_AZ" || -n "$SCHED_ANF_THROUGHPUT_MIBPS" ]]; then
+		echo "[WARN] Scheduler ANF-specific options were provided but --sched-filesystem-type is nfs; ignoring scheduler ANF settings." >&2
+	fi
+	SCHED_ANF_SKU="Premium"
+	SCHED_ANF_SIZE="4"
 	SCHED_ANF_AZ=""
+	SCHED_ANF_THROUGHPUT_MIBPS=""
 else
 	if ! [[ "$SCHED_ANF_SIZE" =~ ^[0-9]+$ ]]; then
 		echo "[ERROR] --sched-anf-size must be an integer (TiB). Provided: $SCHED_ANF_SIZE" >&2
