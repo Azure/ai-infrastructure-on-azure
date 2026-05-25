@@ -1,95 +1,95 @@
 # Skills
 
-Operational knowledge for managing Azure HPC GPU clusters. Each skill is a self-contained markdown document covering one aspect of cluster validation, diagnosis, or remediation.
+Operational knowledge for managing Azure HPC GPU clusters on CycleCloud Workspace for Slurm and AKS. Packaged as a single `ai-infra` skill: a `SKILL.md` index that routes to detailed reference files in `references/`.
 
 ## Who Is This For?
 
-You're on an Azure CycleCloud Workspace for Slurm cluster, you've cloned this repo, and you've opened VS Code. You need to validate hardware, troubleshoot a slow training job, or file an Azure health report — and you want an AI assistant (Copilot, Claude, etc.) to help.
+You're on an Azure CycleCloud Workspace for Slurm cluster (or AKS), you've cloned this repo, and you've opened VS Code. You need to validate hardware, troubleshoot a slow training job, or file an Azure Guest Health Report — and you want an AI assistant (Copilot, Claude, etc.) to help.
 
-These skills give the assistant the domain knowledge it needs to actually help — correct commands, expected values, environment variables, and decision trees that are specific to Azure HPC GPU SKUs.
+This skill gives the assistant the domain knowledge it needs to actually help — correct commands, expected values, environment variables, and decision trees that are specific to Azure HPC GPU SKUs.
+
+## Layout
+
+```
+skills/ai-infra/
+  SKILL.md                              # YAML frontmatter + router/index + cross-cutting rules
+  references/
+    sku_baselines.md                    # NCCL/GPU/thermal thresholds for GB300, H100
+    rack_topology.md                    # MNNVL, ClusterUUID, FabricManager
+    ib_validation.md                    # IB ports, pkeys, error counters
+    nccl_test.md                        # how to run all_reduce_perf (Slurm + AKS)
+    nccl_diagnosis.md                   # bisection, intra/inter-rack scoping
+    gpu_validation.md                   # ubergemm GEMM
+    thermal_test.md                     # dcgmproftester
+    outlier_detection.md                # z-score, MAD, fleet analysis
+    ghr.md                              # Azure Guest Health Reporting (impact categories, REST API)
+    node_drain_and_replace.md           # Slurm node lifecycle
+```
+
+The `SKILL.md` has YAML frontmatter (`name`, `description`) so assistants that support the Skills convention auto-load it for any cluster-operations question. The index inside `SKILL.md` then directs the assistant to read only the relevant `references/*.md` files for the specific question — saving context.
 
 ## How to Use
 
-Each skill is a directory containing a `SKILL.md` file with YAML frontmatter (`name`, `description`) and the full skill content. This structure is directly compatible with `.copilot/skills/` and easy to reference from any assistant.
-
-```
-skills/slurm/
-  nccl_allreduce_test/
-    SKILL.md              # frontmatter + full skill content
-  rack_topology/
-    SKILL.md
-  ...
-```
-
 ### GitHub Copilot
 
-**Option 1 — Always-on instructions.** The repo includes `.github/copilot-instructions.md`, which Copilot auto-loads for every chat in this workspace. It points to these skills.
+**Option 1 — Always-on instructions.** The repo includes `.github/copilot-instructions.md`, which Copilot auto-loads for every chat in this workspace. It points at the skill.
 
-**Option 2 — Selective skill loading.** Copy (or symlink) skill directories into `.copilot/skills/` at the repo root:
+**Option 2 — Selective skill loading.** The repo includes a symlink at `.copilot/skills/ai-infra` pointing to `skills/ai-infra/`. Copilot reads the `description` in `SKILL.md` frontmatter and loads the skill when relevant.
 
-```bash
-# Copy all skills
-cp -r skills/slurm/* .copilot/skills/
-
-# Or symlink individual ones
-mkdir -p .copilot/skills
-ln -s ../../skills/slurm/nccl_performance_diagnosis .copilot/skills/
-```
-
-Copilot reads the `description` in each `SKILL.md` frontmatter and **selectively loads only relevant skills** based on the query — better than always-on when you have many skills.
-
-**Option 3 — On demand.** Attach a specific skill in chat: `#file:skills/slurm/nccl_performance_diagnosis/SKILL.md`
+**Option 3 — On demand.** Attach the skill in chat: `#file:skills/ai-infra/SKILL.md`, then attach specific references as needed.
 
 ### Claude Code
 
-**Option 1 — Always-on instructions.** The repo includes `CLAUDE.md` at the root, which Claude auto-loads when the repo is opened. It points to these skills.
+**Option 1 — Always-on instructions.** The repo includes `CLAUDE.md` at the root, which Claude auto-loads when the repo is opened. It points at the skill.
 
-**Option 2 — Subdirectory CLAUDE.md.** Claude Code also reads `CLAUDE.md` files in subdirectories for scoped context. You could add a `skills/slurm/CLAUDE.md` that lists all skills in that directory.
+**Option 2 — On demand.** Drag `skills/ai-infra/SKILL.md` into the chat input, or reference any specific reference file directly with `@file`.
 
-**Option 3 — On demand.** Drag a skill file into the chat input or reference it with `@file`.
+### Slash command fallback
 
-### As agent system prompts
+If the assistant doesn't auto-load the skill for a relevant question, invoke it explicitly:
 
-If you're building an AI agent, load the relevant `SKILL.md` content into the system prompt. The skills are written to be directly usable as context — they contain commands, thresholds, and decision logic, not just descriptions.
+```
+/ai-infra why is NCCL bandwidth low on rack 3?
+```
 
-## Skills Reference
+This forces the assistant to load `SKILL.md` and follow its routing.
 
-### Routing — Choose the right skill set first
+### As an agent system prompt
 
-| Skill                                       | What It Covers                                                                                                                                                    |
-| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [slurm_router](slurm/slurm_router/SKILL.md) | Intent-to-skill routing for Slurm operations. Selects the correct skills first, then enforces exact commands, thresholds, and action decisions from those skills. |
+If you're building an AI agent, load `skills/ai-infra/SKILL.md` into the system prompt and provide tool access to read `skills/ai-infra/references/*.md` on demand. The references contain commands, thresholds, and decision logic — directly usable as context.
 
-### Diagnostic — How to run tests and read results
+## Reference Index
 
-| Skill                                                               | What It Covers                                                                                                                           |
-| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| [sku_performance_baseline](slurm/sku_performance_baseline/SKILL.md) | Expected NCCL busbw, GPU GFlops, thermal limits, IB ports, and rack sizes for GB300 and H100 SKUs. Warn and GHR thresholds.              |
-| [node_gpu_validation](slurm/node_gpu_validation/SKILL.md)           | Running ubergemm GEMM benchmarks, parsing CSV output, identifying underperforming GPUs, fleet-wide analysis.                             |
-| [ib_link_validation](slurm/ib_link_validation/SKILL.md)             | Checking IB port state (operstate, ibstat), partition keys, error counters, link flap detection, and soft fixes.                         |
-| [nccl_allreduce_test](slurm/nccl_allreduce_test/SKILL.md)           | Running NCCL all_reduce_perf via the launcher, per-SKU environment variables (MNNVL, SHARP, GDR), output columns, quick vs full sweep.   |
-| [thermal_stress_test](slurm/thermal_stress_test/SKILL.md)           | Running dcgmproftester thermal stress, interpreting pass/fail, supplementary diagnostics (temperatures, throttle reasons, DCGMI levels). |
+### Concepts and baselines (orchestrator-agnostic)
 
-### Reasoning — How to analyze and isolate problems
+| Reference                                                     | What It Covers                                                                                                               |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| [sku_baselines](ai-infra/references/sku_baselines.md)         | Expected NCCL busbw, GPU GFlops, thermal limits, IB ports, and rack sizes for GB300 and H100. Warn and GHR thresholds.       |
+| [rack_topology](ai-infra/references/rack_topology.md)         | MNNVL domains, ClusterUUID discovery, expected rack sizes, FabricManager troubleshooting.                                    |
+| [ib_validation](ai-infra/references/ib_validation.md)         | IB port state, partition keys, error counters, link flap detection, soft fixes.                                              |
+| [nccl_diagnosis](ai-infra/references/nccl_diagnosis.md)       | Scoping intra-rack vs inter-rack failures, bisection algorithm for isolating bad nodes, GPU vs network root cause analysis.  |
+| [outlier_detection](ai-infra/references/outlier_detection.md) | Statistical methods (absolute threshold, z-score, MAD) for finding degraded nodes in fleet-wide test results.                |
+| [ghr](ai-infra/references/ghr.md)                             | Azure Guest Health Reporting (GHR) — complete impact category reference, IMDS/KVP data collection, REST API format, polling. |
 
-| Skill                                                                   | What It Covers                                                                                                              |
-| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| [nccl_performance_diagnosis](slurm/nccl_performance_diagnosis/SKILL.md) | Scoping intra-rack vs inter-rack failures, bisection algorithm for isolating bad nodes, GPU vs network root cause analysis. |
-| [cluster_outlier_detection](slurm/cluster_outlier_detection/SKILL.md)   | Statistical methods (absolute threshold, z-score, MAD) for finding degraded nodes in fleet-wide test results.               |
-| [rack_topology](slurm/rack_topology/SKILL.md)                           | MNNVL domains, ClusterUUID discovery via nvidia-smi, expected rack sizes, FabricManager troubleshooting.                    |
+### Test execution (Slurm; AKS counterparts referenced)
 
-### Remediation — How to fix or replace bad hardware
+| Reference                                               | What It Covers                                                                                                                           |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| [nccl_test](ai-infra/references/nccl_test.md)           | Run NCCL all_reduce_perf via the Slurm launcher. Per-SKU env vars (MNNVL, SHARP, GDR), output columns, quick vs full sweep. AKS pointer. |
+| [gpu_validation](ai-infra/references/gpu_validation.md) | Run ubergemm GEMM benchmark, parse CSV output, identify underperforming GPUs.                                                            |
+| [thermal_test](ai-infra/references/thermal_test.md)     | Run dcgmproftester thermal stress, interpret pass/fail, throttle reasons, DCGMI diagnostic levels.                                       |
 
-| Skill                                                               | What It Covers                                                                                                                          |
-| ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| [azure_node_health_report](slurm/azure_node_health_report/SKILL.md) | Complete GHR impact category reference (26 categories), collecting PhysicalHostName and Resource ID, REST API format, polling insights. |
-| [node_drain_and_replace](slurm/node_drain_and_replace/SKILL.md)     | Slurm drain/undrain commands, reboot procedure, decision tree for when to drain vs reboot vs GHR, post-replacement validation.          |
+### Remediation
+
+| Reference                                                               | What It Covers                                                                                                                 |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| [node_drain_and_replace](ai-infra/references/node_drain_and_replace.md) | Slurm drain/undrain commands, reboot procedure, decision tree for when to drain vs reboot vs GHR, post-replacement validation. |
 
 ## Example Workflows
 
 ### "I just got a new cluster, validate everything"
 
-Skills needed: `slurm_router`, `sku_performance_baseline`, `rack_topology`, `nccl_allreduce_test`, `node_gpu_validation`, `thermal_stress_test`
+References needed: `sku_baselines`, `rack_topology`, `nccl_test`, `gpu_validation`, `thermal_test`
 
 1. Discover rack topology (ClusterUUIDs).
 2. Run NCCL all_reduce per rack (MNNVL test).
@@ -99,7 +99,7 @@ Skills needed: `slurm_router`, `sku_performance_baseline`, `rack_topology`, `ncc
 
 ### "A training job is running slow"
 
-Skills needed: `slurm_router`, `nccl_performance_diagnosis`, `sku_performance_baseline`, `ib_link_validation`
+References needed: `nccl_diagnosis`, `sku_baselines`, `ib_validation`
 
 1. Run a quick NCCL check on the job's nodelist.
 2. If bandwidth is low, identify which rack is affected.
@@ -108,7 +108,7 @@ Skills needed: `slurm_router`, `nccl_performance_diagnosis`, `sku_performance_ba
 
 ### "I found a bad node, now what?"
 
-Skills needed: `slurm_router`, `node_drain_and_replace`, `azure_node_health_report`
+References needed: `node_drain_and_replace`, `ghr`
 
 1. Collect metadata (PhysicalHostName, Resource ID) **before** rebooting.
 2. Drain the node.

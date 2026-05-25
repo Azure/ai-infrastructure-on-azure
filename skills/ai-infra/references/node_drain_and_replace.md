@@ -1,11 +1,8 @@
----
-name: node-drain-and-replace
-description: "Slurm node lifecycle management — drain, undrain, reboot, and file for replacement. Decision tree for when to drain vs reboot vs GHR."
----
-
 # Node Drain and Replace
 
 Slurm node lifecycle management: when and how to drain, undrain, reboot, and file for replacement.
+
+> This reference covers Slurm-specific commands. AKS node lifecycle (cordon/drain/replace) follows similar logic but uses `kubectl` — that documentation will be added when AKS skills are written.
 
 ## Slurm Node States
 
@@ -78,14 +75,14 @@ Issue Detected
 │   └─ If still degraded after reboot → Drain + GHR
 │
 ├─ NCCL bandwidth low (one rack)?
-│   ├─ Bisect to find the bad node (see nccl_performance_diagnosis)
+│   ├─ Bisect to find the bad node (see nccl_diagnosis.md)
 │   ├─ Drain the bad node
 │   ├─ Investigate the bad node (GPU test, IB check, healthcheck)
 │   └─ File GHR if issue persists after reboot
 │
 ├─ Thermal test failure?
 │   ├─ Reboot → re-test
-│   └─ If still fails → Drain + GHR (category: gpu_throttling or dcgm_failure)
+│   └─ If still fails → Drain + GHR (category: HpcDcgmiThermalReport or HpcGpuDcgmDiagFailure)
 │
 └─ Unknown / general issue?
     ├─ Run healthcheck: sudo /usr/bin/health
@@ -100,7 +97,7 @@ Issue Detected
 
 ```bash
 # On the target node, save physical hostname and resource ID
-# See azure_node_health_report skill for commands
+# See ghr.md for commands
 ```
 
 This is **critical** — if you reboot first and the node doesn't come back, you won't have the data needed for a GHR.

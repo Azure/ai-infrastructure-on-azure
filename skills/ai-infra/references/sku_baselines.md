@@ -1,11 +1,8 @@
----
-name: sku-performance-baseline
-description: "Expected NCCL busbw, GPU GFlops, thermal limits, IB port counts, and rack sizes for GB300 and H100 SKUs. Warn and GHR thresholds."
----
-
 # SKU Performance Baseline
 
 Expected performance values for Azure HPC GPU SKUs. Use these baselines to determine whether test results indicate healthy or degraded hardware.
+
+These baselines are orchestrator-agnostic — they apply equally to Slurm and AKS deployments.
 
 ## SKU Reference
 
@@ -44,7 +41,7 @@ Expected performance values for Azure HPC GPU SKUs. Use these baselines to deter
 1. **Run the test** (GPU GEMM, NCCL, thermal) on the target nodes.
 2. **Compare results** against the Expected column for the node's SKU.
 3. **If below Warn**: Re-test to confirm. Check for transient issues (thermal throttling, noisy neighbors).
-4. **If below GHR**: Drain the node and file an Azure Guest Health Report.
+4. **If below GHR**: Drain the node and file an Azure Guest Health Report (see `ghr.md`).
 
 ## Notes
 
