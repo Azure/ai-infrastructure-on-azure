@@ -1388,7 +1388,7 @@ cat >"$OUTPUT_FILE" <<EOF
 		"ccVMSize": { "value": "${SCHEDULER_SKU}" },
 		"resourceGroup": { "value": "${RESOURCE_GROUP}" },
 		${SCHED_FILESYSTEM_JSON}
-		"sharedFilesystem": { "value": { "type": "anf-new", "anfServiceTier": "${ANF_SKU}", "anfCapacityInTiB": ${ANF_SIZE}${ANF_ZONES_JSON} } },
+		"sharedFilesystem": { "value": { "type": "anf-new", "anfServiceLevel": "${ANF_SKU}", "anfCapacityInTiB": ${ANF_SIZE}${ANF_ZONES_JSON} } },
 		${AMLFS_JSON}
 		"network": { "value": { "type": "new", "addressSpace": "${NETWORK_ADDRESS_SPACE}", "bastion": ${NETWORK_BASTION}, "createNatGateway": true } },
 		"storagePrivateDnsZone": { "value": { "type": "new" } },
