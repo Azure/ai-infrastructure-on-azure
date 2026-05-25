@@ -7,11 +7,12 @@
 3. [Setup](#3-setup)
 4. [Available Commands](#4-available-commands)
 5. [Environment Variables](#5-environment-variables)
-6. [RDMA Device Plugin Configuration](#6-rdma-device-plugin-configuration)
-7. [Azure Managed Lustre File System (AMLFS) Support](#7-azure-managed-lustre-file-system-amlfs-support)
-8. [Azure Container Storage Support](#8-azure-container-storage-support)
-9. [Dynamo Platform Support](#9-dynamo-platform-support)
-10. [Monitoring](#10-monitoring)
+6. [GB200/GB300 (Blackwell) Support](#6-gb200gb300-blackwell-support)
+7. [RDMA Device Plugin Configuration](#7-rdma-device-plugin-configuration)
+8. [Azure Managed Lustre File System (AMLFS) Support](#8-azure-managed-lustre-file-system-amlfs-support)
+9. [Azure Container Storage Support](#9-azure-container-storage-support)
+10. [Dynamo Platform Support](#10-dynamo-platform-support)
+11. [Monitoring](#11-monitoring)
 
 ## 1. Overview
 
@@ -160,6 +161,17 @@ INSTALL_DYNAMO=true ./scripts/deploy-aks.sh all
 - **`RDMA_DEVICE_PLUGIN`** - RDMA device plugin type (default: "sriov-device-plugin")
   - Options: "sriov-device-plugin", "rdma-shared-device-plugin"
 
+### Node Pool OS SKU Configuration
+
+- **`NODE_POOL_OS_SKU`** - OS SKU for the GPU node pool (default: empty, uses AKS default)
+  - Set to `Ubuntu2404` for GB200/GB300 SKUs (required — these SKUs only support NVMe disk controllers)
+  - Other options: `Ubuntu`, `AzureLinux`
+
+### InfiniBand Feature Registration
+
+- **`REGISTER_AKS_INFINIBAND`** - Register the `AKSInfinibandSupport` feature flag before adding node pools (default: "true")
+  - Set to `false` for GB200/GB300 SKUs which require this feature to be **unregistered**
+
 ### AMLFS Configuration
 
 - **`INSTALL_AMLFS`** - Install Azure Managed Lustre File System CSI driver (default: "true")
@@ -173,7 +185,67 @@ INSTALL_DYNAMO=true ./scripts/deploy-aks.sh all
 - **`ENABLE_AZURE_CONTAINER_STORAGE`** - Enable Azure Container Storage during cluster creation (default: "true")
   - Set to "false" to disable Azure Container Storage
 
-## 6. RDMA Device Plugin Configuration
+## 6. GB200/GB300 (Blackwell) Support
+
+NVIDIA GB200 and GB300 SKUs require specific configuration that differs from
+H100/H200 deployments:
+
+### Key Differences from H100/H200
+
+| Requirement                    | H100/H200                | GB200/GB300                |
+| ------------------------------ | ------------------------ | -------------------------- |
+| OS SKU                         | `Ubuntu` (default)       | `Ubuntu2404` (required)    |
+| `AKSInfinibandSupport` feature | Registered               | **Must be unregistered**   |
+| GPU driver flag                | `--gpu-driver=none`      | `--gpu-driver None`        |
+| Disk controller                | SCSI (ephemeral default) | NVMe only                  |
+| GPU Operator                   | Standard install         | Requires NVIDIA DRA driver |
+
+> **Note:** The GB300 SKU string is `Standard_ND128isr_GB300_v6`, while GB200 is
+> `Standard_ND128isr_NDR_GB200_v6`. Note the `NDR_` infix in the GB200 string.
+
+### Unregister AKSInfinibandSupport
+
+Before deploying GB200/GB300 node pools, you must unregister the
+`AKSInfinibandSupport` feature flag:
+
+```bash
+az feature unregister --namespace Microsoft.ContainerService --name AKSInfinibandSupport
+az provider register -n Microsoft.ContainerService
+```
+
+Alternatively, set `REGISTER_AKS_INFINIBAND=false` in your env file to prevent
+the deploy script from re-registering it.
+
+### Example: Deploy a GB300 Cluster
+
+```bash
+export AZURE_REGION="eastus2"
+export AZURE_RESOURCE_GROUP="my-gb300-aks"
+export CLUSTER_NAME="my-gb300"
+export NODE_POOL_VM_SIZE="Standard_ND128isr_GB300_v6"
+export NODE_POOL_NODE_COUNT="36"
+export NODE_POOL_NAME="gb300"
+export SYSTEM_POOL_VM_SIZE="Standard_F16s_v2"
+export NODE_POOL_OS_SKU="Ubuntu2404"
+export REGISTER_AKS_INFINIBAND="false"
+
+./scripts/deploy-aks.sh all
+```
+
+If adding a GB300 node pool to an existing cluster manually:
+
+```bash
+az aks nodepool add \
+    --cluster-name my-gb300 \
+    --name gb300 \
+    --resource-group my-gb300-aks \
+    --node-vm-size Standard_ND128isr_GB300_v6 \
+    --node-count 36 \
+    --gpu-driver None \
+    --os-sku Ubuntu2404
+```
+
+## 7. RDMA Device Plugin Configuration
 
 The script supports two types of RDMA device plugins for InfiniBand networking:
 
@@ -213,7 +285,7 @@ export RDMA_DEVICE_PLUGIN=rdma-shared-device-plugin
 ./scripts/deploy-aks.sh install-network-operator
 ```
 
-## 7. Azure Managed Lustre File System (AMLFS) Support
+## 8. Azure Managed Lustre File System (AMLFS) Support
 
 The deployment script includes support for Azure Managed Lustre File System (AMLFS), which provides high-performance storage for AI/ML workloads.
 
@@ -278,7 +350,7 @@ USE_EXISTING_SUBNET_ID="/subscriptions/<subid>/resourceGroups/<rg>/providers/Mic
 - **Branch**: `dynamic-provisioning-preview`
 - **Repository**: `https://github.com/kubernetes-sigs/azurelustre-csi-driver.git`
 
-## 8. Azure Container Storage Support
+## 9. Azure Container Storage Support
 
 Azure Container Storage is a cloud-based volume management service built natively for containers. The deployment script enables Azure Container Storage by default, which uses local NVMe or temp disks (ephemeral disk) for high-performance, low-latency storage.
 
@@ -346,7 +418,7 @@ See the [FIO testing documentation](../../infrastructure_validations/aks/fio/REA
 - [Install Azure Container Storage on AKS](https://learn.microsoft.com/en-us/azure/storage/container-storage/install-container-storage-aks)
 - [Use Container Storage with Local Disk](https://learn.microsoft.com/en-us/azure/storage/container-storage/use-container-storage-with-local-disk)
 
-## 9. Dynamo Platform Support
+## 10. Dynamo Platform Support
 
 [Dynamo](https://github.com/ai-dynamo/dynamo) is NVIDIA's inference graph orchestration platform for deploying and managing LLM inference pipelines on Kubernetes. It provides custom resources (`DynamoGraphDeployment`, `DynamoGraphDeploymentRequest`) for defining inference graphs with automated scaling, routing, and disaggregated serving.
 
@@ -395,7 +467,7 @@ You should see `dynamo-operator-*`, `etcd-*`, and `nats-*` pods in Running state
 ./scripts/deploy-aks.sh uninstall-dynamo
 ```
 
-## 10. Monitoring
+## 11. Monitoring
 
 ### Installation
 

@@ -23,6 +23,12 @@ image:
   tag: latest
   pullPolicy: IfNotPresent
 
+# MPI binding configuration
+mpi:
+  # NUMA-aware core binding (recommended for H100/H200)
+  # Set to false for GB300 (MNNVL handles topology at hardware level)
+  bindToCore: true
+
 # NCCL test configuration
 ncclTest:
   # Test parameters
@@ -60,6 +66,13 @@ ncclTest:
     SHARP_COLL_ENABLE_SAT: "1"
     SHARP_COLL_LOG_LEVEL: "3"
     SHARP_COLL_ENABLE_PCI_RELAXED_ORDERING: "1"
+
+# Dynamic Resource Allocation (DRA) for GPU scheduling
+# Required for GB300 (MNNVL / ComputeDomain). Leave disabled for H100/H200.
+dra:
+  enabled: false
+  # Name of the resource claim template injected into worker pods
+  claimTemplateName: "nccl-test-channel"
 
 # Affinity configuration for worker pods
 # This controls pod placement to ensure optimal network topology
