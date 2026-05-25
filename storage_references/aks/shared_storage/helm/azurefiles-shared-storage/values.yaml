@@ -1,0 +1,52 @@
+# Default values for azurefiles-shared-storage
+# This is a YAML-formatted file.
+
+# Storage configuration
+storage:
+  # Provisioning mode: "dynamic" (create new file share) or "static" (use existing file share)
+  provisioning: "dynamic"
+
+  # PVC name that will be created
+  pvcName: "shared-azurefiles-storage"
+  # Storage size for the shared volume (minimum 100Gi for Premium NFS)
+  size: "100Gi"
+  # Access modes for the PVC
+  accessModes:
+    - ReadWriteMany
+  # Reclaim policy (Delete for dynamic, Retain recommended for static)
+  reclaimPolicy: "Delete"
+  # Volume binding mode (dynamic provisioning only)
+  volumeBindingMode: "Immediate"
+
+  # Dynamic provisioning settings
+  azureFiles:
+    # Azure Files SKU — Premium_LRS for Premium NFS
+    skuName: "Premium_LRS"
+    # Protocol — nfs for NFSv4.1
+    protocol: "nfs"
+
+  # Static provisioning settings — required when provisioning is "static"
+  existingFileShare:
+    # Name of the existing Azure storage account
+    storageAccountName: ""
+    # Resource group of the storage account
+    resourceGroup: ""
+    # Name of the existing file share
+    shareName: ""
+
+  # NFS mount options optimized for performance
+  # - nconnect=8: Use 8 TCP connections for improved throughput
+  # - rsize=1048576: 1MB read buffer size for large sequential reads
+  # - wsize=1048576: 1MB write buffer size for large sequential writes
+  mountOptions:
+    - "nconnect=8"
+    - "rsize=1048576"
+    - "wsize=1048576"
+    - "actimeo=30"
+    - "noresvport"
+
+# Global annotations that will be applied to all resources
+annotations: {}
+
+# Global labels that will be applied to all resources
+labels: {}

@@ -1,3 +1,4 @@
+{{- if eq .Values.storage.provisioning "dynamic" }}
 1. The shared storage has been created with the following components:
    - StorageClass: {{ include "blob-shared-storage.fullname" . }}-blob-storage
    - PersistentVolumeClaim: {{ .Values.storage.pvcName }}
@@ -13,6 +14,7 @@
    ```
 
 3. Storage Details:
+   - Provisioning: Dynamic
    - Size: {{ .Values.storage.size }}
    - Access Modes: {{ join ", " .Values.storage.accessModes }}
    - SKU: {{ .Values.storage.skuName }}
@@ -23,3 +25,37 @@
    {{- end }}
 
 The shared storage is now ready for use by multiple applications that need access to the same blob storage container.
+{{- else }}
+1. The static blob storage has been created with the following components:
+   - PersistentVolume: {{ include "blob-shared-storage.fullname" . }}-pv
+   - PersistentVolumeClaim: {{ .Values.storage.pvcName }}
+
+2. Storage Account Details:
+   - Account Name: {{ .Values.storage.storageAccount.name }}
+   - Resource Group: {{ .Values.storage.storageAccount.resourceGroup }}
+   - Container: {{ .Values.storage.storageAccount.containerName }}
+   - Auth: Managed Identity (ensure the AKS kubelet identity has Storage Blob Data Contributor on the account)
+
+3. To use this storage in other applications:
+
+   Reference the PVC name in your deployments:
+   ```yaml
+   volumes:
+     - name: shared-data
+       persistentVolumeClaim:
+         claimName: {{ .Values.storage.pvcName }}
+   ```
+
+4. Storage Details:
+   - Provisioning: Static
+   - Size: {{ .Values.storage.size }}
+   - Access Modes: {{ join ", " .Values.storage.accessModes }}
+   - Reclaim Policy: {{ .Values.storage.reclaimPolicy }}
+
+5. Mount Options configured:
+   {{- range .Values.storage.mountOptions }}
+   - {{ . }}
+   {{- end }}
+
+The existing Azure Blob Storage account is now accessible as a PVC in your cluster.
+{{- end }}

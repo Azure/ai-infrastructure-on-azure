@@ -1,3 +1,4 @@
+{{- if eq .Values.storage.provisioning "dynamic" }}
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
@@ -20,3 +21,4 @@ mountOptions:
   {{- range .Values.storage.mountOptions }}
   - {{ . | quote }}
   {{- end }}
+{{- end }}

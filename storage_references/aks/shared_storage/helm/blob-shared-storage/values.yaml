@@ -3,19 +3,31 @@
 
 # Storage configuration
 storage:
+  # Provisioning mode: "dynamic" (create new storage) or "static" (use existing storage account)
+  provisioning: "dynamic"
+
   # PVC name that will be created
   pvcName: "shared-blob-storage"
   # Storage size for the shared volume
   size: "100Ti"
-  # Azure storage account SKU
+  # Azure storage account SKU (dynamic provisioning only)
   skuName: "Standard_LRS"
   # Access modes for the PVC
   accessModes:
     - ReadWriteMany
-  # Reclaim policy for dynamically created storage
+  # Reclaim policy (Delete for dynamic, Retain recommended for static)
   reclaimPolicy: "Delete"
-  # Volume binding mode
+  # Volume binding mode (dynamic provisioning only)
   volumeBindingMode: "Immediate"
+
+  # Static provisioning settings — required when provisioning is "static"
+  storageAccount:
+    # Name of the existing Azure storage account
+    name: ""
+    # Resource group of the storage account
+    resourceGroup: ""
+    # Name of the existing blob container
+    containerName: ""
 
   # Blobfuse mount options
   mountOptions:

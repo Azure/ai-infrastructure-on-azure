@@ -1,0 +1,31 @@
+{{- if eq .Values.storage.provisioning "static" }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ include "blob-shared-storage.fullname" . }}-pv
+  labels:
+    {{- include "blob-shared-storage.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  capacity:
+    storage: {{ .Values.storage.size }}
+  accessModes:
+    {{- range .Values.storage.accessModes }}
+    - {{ . }}
+    {{- end }}
+  persistentVolumeReclaimPolicy: {{ .Values.storage.reclaimPolicy }}
+  csi:
+    driver: blob.csi.azure.com
+    volumeHandle: {{ include "blob-shared-storage.fullname" . }}-{{ .Values.storage.storageAccount.name }}-{{ .Values.storage.storageAccount.containerName }}
+    volumeAttributes:
+      resourceGroup: {{ .Values.storage.storageAccount.resourceGroup | quote }}
+      storageAccount: {{ .Values.storage.storageAccount.name | quote }}
+      containerName: {{ .Values.storage.storageAccount.containerName | quote }}
+  mountOptions:
+    {{- range .Values.storage.mountOptions }}
+    - {{ . | quote }}
+    {{- end }}
+{{- end }}

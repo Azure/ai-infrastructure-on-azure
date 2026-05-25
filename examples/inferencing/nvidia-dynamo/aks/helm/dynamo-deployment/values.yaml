@@ -1,0 +1,26 @@
+# Default values for dynamo-deployment
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Model configuration
+model:
+  # Model identifier from HuggingFace or path
+  name: "openai/gpt-oss-120b"
+  # Inference backend (vllm, tensorrt-llm)
+  backend: vllm
+
+# Container image configuration
+image:
+  repository: nvcr.io/nvidia/ai-dynamo/dynamo-frontend
+  tag: "1.0.1"
+
+# Model cache configuration
+modelCache:
+  # Name of the existing PVC to use for model storage
+  # This should be created by the shared-storage helm chart
+  pvcName: "shared-azurefiles-storage"
+  # Path within the PVC where the model is stored
+  pvcModelPath: "gpt-oss-120b"
+
+# Namespace for deployment (optional, uses Release.Namespace by default)
+namespace: ""

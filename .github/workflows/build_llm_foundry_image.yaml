@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - examples/llm-foundry/docker/Dockerfile
+      - examples/training/llm-foundry/docker/Dockerfile
       - .github/workflows/build_llm_foundry_image.yaml
 
   workflow_dispatch:
@@ -51,8 +51,8 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          context: examples/llm-foundry/docker
-          file: examples/llm-foundry/docker/Dockerfile
+          context: examples/training/llm-foundry/docker
+          file: examples/training/llm-foundry/docker/Dockerfile
           push: true
           tags: ${{ steps.tag.outputs.tags }}
           labels: ${{ steps.tag.outputs.labels }}
