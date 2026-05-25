@@ -236,6 +236,7 @@ AMLFS_SKU="AMLFS-Durable-Premium-500"
 AMLFS_SIZE="4"
 AMLFS_AZ=""
 DATA_FILESYSTEM_ENABLED="false"
+SCHED_FILESYSTEM_SIZE_GB="30"
 MONITORING_ENABLED="false"
 MON_INGESTION_ENDPOINT=""
 MON_DCR_ID=""
@@ -1230,6 +1231,14 @@ else
 	AMLFS_JSON='"additionalFilesystem": { "value": { "type": "disabled" } },'
 fi
 
+# schedFilesystem became a required upstream parameter; populate it only when
+# the checked-out workspace template declares it so older refs still deploy.
+SCHED_FILESYSTEM_JSON=""
+if grep -Eq '^[[:space:]]*param[[:space:]]+schedFilesystem[[:space:]]' "$WORKSPACE_DIR/bicep/mainTemplate.bicep"; then
+	SCHED_FILESYSTEM_JSON='"schedFilesystem": { "value": { "type": "nfs-new", "nfsCapacityInGb": '"${SCHED_FILESYSTEM_SIZE_GB}"' } },'
+	echo "[INFO] Workspace template requires schedFilesystem; using built-in scheduler NFS (${SCHED_FILESYSTEM_SIZE_GB} GiB)." >&2
+fi
+
 # Construct monitoring JSON fragment (conditional on enabled flag)
 if [[ "$MONITORING_ENABLED" == "true" ]]; then
 	MONITORING_JSON='"monitoring": { "value": { "type": "enabled", "ingestionEndpoint": "'"${MON_INGESTION_ENDPOINT}"'", "dcrId": "'"${MON_DCR_ID}"'" } },'
@@ -1268,6 +1277,7 @@ cat >"$OUTPUT_FILE" <<EOF
 		"ccVMName": { "value": "ccw-cyclecloud-vm" },
 		"ccVMSize": { "value": "${SCHEDULER_SKU}" },
 		"resourceGroup": { "value": "${RESOURCE_GROUP}" },
+		${SCHED_FILESYSTEM_JSON}
 		"sharedFilesystem": { "value": { "type": "anf-new", "anfServiceTier": "${ANF_SKU}", "anfCapacityInTiB": ${ANF_SIZE}${ANF_ZONES_JSON} } },
 		${AMLFS_JSON}
 		"network": { "value": { "type": "new", "addressSpace": "${NETWORK_ADDRESS_SPACE}", "bastion": ${NETWORK_BASTION}, "createNatGateway": true } },

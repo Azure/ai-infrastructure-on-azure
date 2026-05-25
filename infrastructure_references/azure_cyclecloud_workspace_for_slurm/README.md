@@ -63,6 +63,8 @@ script:
 
 - User can specify a specific `commit-id` or `branch` for checkout.
 - Builds an `output.json` parameters file for the Bicep template.
+- Automatically adds the upstream-required scheduler filesystem parameter when
+  newer workspace template revisions expect it.
 - Optionally prompts for availability zones only if the region supports zonal
   SKUs.
 - Can immediately deploy the environment (or let user review first).
