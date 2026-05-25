@@ -65,6 +65,8 @@ script:
 - Builds an `output.json` parameters file for the Bicep template.
 - Automatically adds the upstream-required scheduler filesystem parameter when
   newer workspace template revisions expect it.
+- Supports scheduler filesystem selection for `/sched`, including Azure NetApp
+  Files on newer workspace revisions.
 - Optionally prompts for availability zones only if the region supports zonal
   SKUs.
 - Can immediately deploy the environment (or let user review first).
@@ -345,6 +347,45 @@ All ANF parameters must be provided together to enable ANF storage:
   - Availability zone for ANF deployment
   - Should match compute partition zones for optimal latency
   - Example: `1`
+
+#### Scheduler Filesystem (`/sched`) Configuration
+
+The upstream workspace now exposes a dedicated `/sched` filesystem setting. The
+script defaults to the upstream built-in NFS behavior, but can now emit Azure
+NetApp Files parameters for `/sched` when newer workspace templates require the
+`schedFilesystem` parameter.
+
+- **`--sched-filesystem-type <type>`** (default: `nfs`)
+
+  - Supported values: `nfs`, `anf`
+  - `nfs` keeps the built-in scheduler-managed NFS mount for `/sched`
+  - `anf` provisions Azure NetApp Files for `/sched`
+
+- **`--sched-nfs-size <size_in_GiB>`** (default: `30`)
+
+  - Built-in NFS size for `/sched`
+  - Used only when `--sched-filesystem-type nfs`
+  - Must be an integer between `10` and `10240`
+
+- **`--sched-anf-sku <sku>`** (default: `Premium`)
+
+  - Scheduler ANF service level
+  - Supported values: `Standard`, `Premium`, `Ultra`, `Flexible`
+
+- **`--sched-anf-size <size_in_TiB>`** (default: `4`)
+
+  - Scheduler ANF capacity in TiB
+  - Used only when `--sched-filesystem-type anf`
+  - Must be an integer ≥ `1`
+
+- **`--sched-anf-throughput <MiBps>`**
+
+  - Required only when `--sched-anf-sku Flexible`
+  - Must be between `128` and `640 * sched-anf-size`
+
+- **`--sched-anf-az <zone>`**
+  - Availability zone for scheduler ANF
+  - Used only when `--sched-filesystem-type anf`
 
 #### Azure Managed Lustre File System (AMLFS) Configuration
 
@@ -657,6 +698,15 @@ OPTIONAL PARAMETERS:
   --gpu-max-nodes <count>  Maximum nodes for GPU partition (interactive if omitted)
   --htc-use-spot           Use Spot (preemptible) VMs for HTC partition (flag)
   --slurm-no-start         Do not start Slurm cluster automatically (default: start cluster)
+
+  # Scheduler Filesystem (/sched)
+  --sched-filesystem-type <type> Scheduler filesystem type: nfs|anf (default: nfs)
+  --sched-nfs-size <GiB>      Built-in NFS size for /sched (default: 30)
+  --sched-anf-sku <tier>      Scheduler ANF tier: Standard|Premium|Ultra|Flexible (default: Premium)
+  --sched-anf-size <TiB>      Scheduler ANF capacity in TiB (default: 4)
+  --sched-anf-throughput <MiBps>
+                               Scheduler ANF throughput for Flexible tier (required with Flexible)
+  --sched-anf-az <zone>       Availability zone for scheduler ANF (optional)
 
   # Network Configuration
   --network-address-space <cidr>  Virtual network CIDR (default: 10.0.0.0/24)

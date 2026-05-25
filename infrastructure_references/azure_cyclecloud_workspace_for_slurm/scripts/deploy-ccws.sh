@@ -72,6 +72,15 @@ OPTIONAL PARAMETERS:
     --htc-use-spot               Use Spot (preemptible) VMs for HTC partition (flag)
     --slurm-no-start             Do not start Slurm cluster automatically (default: start cluster)
 
+  Scheduler Filesystem (/sched):
+    --sched-filesystem-type <type> Scheduler filesystem type: nfs|anf (default: nfs)
+    --sched-nfs-size <GiB>      Built-in NFS size for /sched (default: 30)
+    --sched-anf-sku <tier>      Scheduler ANF tier: Standard|Premium|Ultra|Flexible (default: Premium)
+    --sched-anf-size <TiB>      Scheduler ANF capacity in TiB (default: 4)
+    --sched-anf-throughput <MiBps>
+                                 Scheduler ANF throughput for Flexible tier (required with Flexible)
+    --sched-anf-az <zone>       Availability zone for scheduler ANF (optional)
+
   Network Configuration:
     --network-address-space <cidr>  Virtual network CIDR (default: 10.0.0.0/24)
     --bastion                    Enable Azure Bastion deployment (flag)
@@ -236,7 +245,12 @@ AMLFS_SKU="AMLFS-Durable-Premium-500"
 AMLFS_SIZE="4"
 AMLFS_AZ=""
 DATA_FILESYSTEM_ENABLED="false"
+SCHED_FILESYSTEM_TYPE="nfs"
 SCHED_FILESYSTEM_SIZE_GB="30"
+SCHED_ANF_SKU="Premium"
+SCHED_ANF_SIZE="4"
+SCHED_ANF_AZ=""
+SCHED_ANF_THROUGHPUT_MIBPS=""
 MONITORING_ENABLED="false"
 MON_INGESTION_ENDPOINT=""
 MON_DCR_ID=""
@@ -476,6 +490,30 @@ while [[ $# -gt 0 ]]; do
 		;;
 	--gpu-max-nodes)
 		GPU_MAX_NODES="$2"
+		shift 2
+		;;
+	--sched-filesystem-type)
+		SCHED_FILESYSTEM_TYPE="$2"
+		shift 2
+		;;
+	--sched-nfs-size)
+		SCHED_FILESYSTEM_SIZE_GB="$2"
+		shift 2
+		;;
+	--sched-anf-sku)
+		SCHED_ANF_SKU="$2"
+		shift 2
+		;;
+	--sched-anf-size)
+		SCHED_ANF_SIZE="$2"
+		shift 2
+		;;
+	--sched-anf-throughput)
+		SCHED_ANF_THROUGHPUT_MIBPS="$2"
+		shift 2
+		;;
+	--sched-anf-az)
+		SCHED_ANF_AZ="$2"
 		shift 2
 		;;
 	--db-name)
@@ -1081,14 +1119,15 @@ validate_all_skus
 
 if [[ "$NO_AZ" == "true" ]]; then
 	# Check if user specified any zone parameters along with --no-az
-	if [[ -n "${HTC_AZ:-}" || -n "${HPC_AZ:-}" || -n "${GPU_AZ:-}" || -n "${ANF_AZ:-}" || -n "${AMLFS_AZ:-}" ]]; then
-		echo "[ERROR] --no-az and zone specifications (--htc-az, --hpc-az, --gpu-az, --anf-az, --amlfs-az) are mutually exclusive. Please remove either --no-az or the zone parameters." >&2
+	if [[ -n "${HTC_AZ:-}" || -n "${HPC_AZ:-}" || -n "${GPU_AZ:-}" || -n "${SCHED_ANF_AZ:-}" || -n "${ANF_AZ:-}" || -n "${AMLFS_AZ:-}" ]]; then
+		echo "[ERROR] --no-az and zone specifications (--htc-az, --hpc-az, --gpu-az, --sched-anf-az, --anf-az, --amlfs-az) are mutually exclusive. Please remove either --no-az or the zone parameters." >&2
 		exit 1
 	fi
 	echo "[INFO] --no-az specified; disabling all availability zones." >&2
 	HTC_AZ=""
 	HPC_AZ=""
 	GPU_AZ=""
+	SCHED_ANF_AZ=""
 	ANF_AZ=""
 	AMLFS_AZ=""
 elif [[ "$SPECIFY_AZ" == "true" ]]; then
@@ -1106,6 +1145,9 @@ elif [[ "$SPECIFY_AZ" == "true" ]]; then
 	HPC_AZ="$(prompt_zone HPC "${HPC_SKU}" "${HPC_AZ:-}" "${POTENTIAL_HPC_AZ}")"
 	GPU_AZ="$(prompt_zone GPU "${GPU_SKU}" "${GPU_AZ:-}" "${POTENTIAL_GPU_AZ}")"
 
+	if [[ "$SCHED_FILESYSTEM_TYPE" == "anf" ]]; then
+		SCHED_ANF_AZ="$(prompt_zone_manual "Scheduler ANF" "${SCHED_ANF_AZ:-}")"
+	fi
 	ANF_AZ="$(prompt_zone_manual ANF "${ANF_AZ:-}")"
 
 	# Only prompt for AMLFS zone if data filesystem is enabled
@@ -1114,7 +1156,7 @@ elif [[ "$SPECIFY_AZ" == "true" ]]; then
 	fi
 else
 	# SPECIFY_AZ not true
-	if [[ -n "${HTC_AZ:-}" || -n "${HPC_AZ:-}" || -n "${GPU_AZ:-}" || -n "${ANF_AZ:-}" || -n "${AMLFS_AZ:-}" ]]; then
+	if [[ -n "${HTC_AZ:-}" || -n "${HPC_AZ:-}" || -n "${GPU_AZ:-}" || -n "${SCHED_ANF_AZ:-}" || -n "${ANF_AZ:-}" || -n "${AMLFS_AZ:-}" ]]; then
 		echo "[ERROR] Availability zone(s) provided via CLI but --specify-az flag not set. Re-run with --specify-az to enforce AZ placement." >&2
 		exit 1
 	else
@@ -1122,6 +1164,7 @@ else
 		HTC_AZ=""
 		HPC_AZ=""
 		GPU_AZ=""
+		SCHED_ANF_AZ=""
 		ANF_AZ=""
 		AMLFS_AZ=""
 	fi
@@ -1139,8 +1182,58 @@ fi
 if [[ -n "${HTC_AZ}" ]]; then HTC_ZONES_JSON=", \"availabilityZone\": [\"${HTC_AZ}\"]"; else HTC_ZONES_JSON=""; fi
 if [[ -n "${HPC_AZ}" ]]; then HPC_ZONES_JSON=", \"availabilityZone\": [\"${HPC_AZ}\"]"; else HPC_ZONES_JSON=""; fi
 if [[ -n "${GPU_AZ}" ]]; then GPU_ZONES_JSON=", \"availabilityZone\": [\"${GPU_AZ}\"]"; else GPU_ZONES_JSON=""; fi
+if [[ -n "${SCHED_ANF_AZ}" ]]; then SCHED_ANF_ZONES_JSON=", \"availabilityZone\": [\"${SCHED_ANF_AZ}\"]"; else SCHED_ANF_ZONES_JSON=""; fi
 if [[ -n "${ANF_AZ}" ]]; then ANF_ZONES_JSON=", \"availabilityZone\": [\"${ANF_AZ}\"]"; else ANF_ZONES_JSON=""; fi
 if [[ -n "${AMLFS_AZ}" ]]; then AMLFS_ZONES_JSON=", \"availabilityZone\": [\"${AMLFS_AZ}\"]"; else AMLFS_ZONES_JSON=""; fi
+
+# Validate scheduler filesystem inputs
+case "$SCHED_FILESYSTEM_TYPE" in
+nfs | anf) ;;
+*)
+	echo "[ERROR] --sched-filesystem-type must be one of nfs|anf. Provided: $SCHED_FILESYSTEM_TYPE" >&2
+	exit 1
+	;;
+esac
+
+if [[ "$SCHED_FILESYSTEM_TYPE" == "nfs" ]]; then
+	if ! [[ "$SCHED_FILESYSTEM_SIZE_GB" =~ ^[0-9]+$ ]]; then
+		echo "[ERROR] --sched-nfs-size must be an integer (GiB). Provided: $SCHED_FILESYSTEM_SIZE_GB" >&2
+		exit 1
+	fi
+	if ((SCHED_FILESYSTEM_SIZE_GB < 10 || SCHED_FILESYSTEM_SIZE_GB > 10240)); then
+		echo "[ERROR] --sched-nfs-size must be between 10 and 10240 GiB. Provided: $SCHED_FILESYSTEM_SIZE_GB" >&2
+		exit 1
+	fi
+	SCHED_ANF_AZ=""
+else
+	if ! [[ "$SCHED_ANF_SIZE" =~ ^[0-9]+$ ]]; then
+		echo "[ERROR] --sched-anf-size must be an integer (TiB). Provided: $SCHED_ANF_SIZE" >&2
+		exit 1
+	fi
+	if ((SCHED_ANF_SIZE < 1)); then
+		echo "[ERROR] --sched-anf-size must be >= 1 TiB. Provided: $SCHED_ANF_SIZE" >&2
+		exit 1
+	fi
+	case "$SCHED_ANF_SKU" in
+	Standard | Premium | Ultra)
+		SCHED_ANF_THROUGHPUT_MIBPS=""
+		;;
+	Flexible)
+		if ! [[ "$SCHED_ANF_THROUGHPUT_MIBPS" =~ ^[0-9]+$ ]]; then
+			echo "[ERROR] --sched-anf-throughput must be an integer (MiBps) when --sched-anf-sku Flexible is used. Provided: ${SCHED_ANF_THROUGHPUT_MIBPS:-<empty>}" >&2
+			exit 1
+		fi
+		if ((SCHED_ANF_THROUGHPUT_MIBPS < 128 || SCHED_ANF_THROUGHPUT_MIBPS > (640 * SCHED_ANF_SIZE))); then
+			echo "[ERROR] --sched-anf-throughput must be between 128 and $((640 * SCHED_ANF_SIZE)) MiBps for sched ANF size ${SCHED_ANF_SIZE} TiB. Provided: $SCHED_ANF_THROUGHPUT_MIBPS" >&2
+			exit 1
+		fi
+		;;
+	*)
+		echo "[ERROR] --sched-anf-sku must be one of Standard|Premium|Ultra|Flexible. Provided: $SCHED_ANF_SKU" >&2
+		exit 1
+		;;
+	esac
+fi
 
 # Validate ANF inputs
 if ! [[ "$ANF_SIZE" =~ ^[0-9]+$ ]]; then
@@ -1235,8 +1328,19 @@ fi
 # the checked-out workspace template declares it so older refs still deploy.
 SCHED_FILESYSTEM_JSON=""
 if grep -Eq '^[[:space:]]*param[[:space:]]+schedFilesystem[[:space:]]' "$WORKSPACE_DIR/bicep/mainTemplate.bicep"; then
-	SCHED_FILESYSTEM_JSON='"schedFilesystem": { "value": { "type": "nfs-new", "nfsCapacityInGb": '"${SCHED_FILESYSTEM_SIZE_GB}"' } },'
-	echo "[INFO] Workspace template requires schedFilesystem; using built-in scheduler NFS (${SCHED_FILESYSTEM_SIZE_GB} GiB)." >&2
+	if [[ "$SCHED_FILESYSTEM_TYPE" == "anf" ]]; then
+		SCHED_ANF_THROUGHPUT_JSON=""
+		if [[ "$SCHED_ANF_SKU" == "Flexible" ]]; then
+			SCHED_ANF_THROUGHPUT_JSON=', "anfFlexThroughputMiBps": '"${SCHED_ANF_THROUGHPUT_MIBPS}"
+		fi
+		SCHED_FILESYSTEM_JSON='"schedFilesystem": { "value": { "type": "anf-new", "anfServiceLevel": "'"${SCHED_ANF_SKU}"'", "anfCapacityInTiB": '"${SCHED_ANF_SIZE}${SCHED_ANF_THROUGHPUT_JSON}${SCHED_ANF_ZONES_JSON}"' } },'
+		echo "[INFO] Workspace template requires schedFilesystem; using scheduler ANF (${SCHED_ANF_SKU}, ${SCHED_ANF_SIZE} TiB)." >&2
+	else
+		SCHED_FILESYSTEM_JSON='"schedFilesystem": { "value": { "type": "nfs-new", "nfsCapacityInGb": '"${SCHED_FILESYSTEM_SIZE_GB}"' } },'
+		echo "[INFO] Workspace template requires schedFilesystem; using built-in scheduler NFS (${SCHED_FILESYSTEM_SIZE_GB} GiB)." >&2
+	fi
+elif [[ "$SCHED_FILESYSTEM_TYPE" != "nfs" || "$SCHED_FILESYSTEM_SIZE_GB" != "30" || -n "$SCHED_ANF_AZ" || "$SCHED_ANF_SKU" != "Premium" || "$SCHED_ANF_SIZE" != "4" || -n "$SCHED_ANF_THROUGHPUT_MIBPS" ]]; then
+	echo "[WARN] Custom scheduler filesystem options were provided, but the selected workspace template does not declare schedFilesystem; ignoring custom scheduler filesystem settings." >&2
 fi
 
 # Construct monitoring JSON fragment (conditional on enabled flag)
@@ -1331,6 +1435,15 @@ echo "Open OnDemand SKU:      ${OOD_SKU}"
 echo "Open OnDemand Domain:   ${OOD_USER_DOMAIN:-<none>}"
 echo "Open OnDemand FQDN:     ${OOD_FQDN:-<none>}"
 echo "OOD Start Cluster:      ${OOD_START_CLUSTER}"
+echo "Sched FS Type:          ${SCHED_FILESYSTEM_TYPE}"
+if [[ "$SCHED_FILESYSTEM_TYPE" == "anf" ]]; then
+	echo "Sched ANF Tier/Size/AZ: ${SCHED_ANF_SKU} / ${SCHED_ANF_SIZE} / ${SCHED_ANF_AZ:-<none>}"
+	if [[ "$SCHED_ANF_SKU" == "Flexible" ]]; then
+		echo "Sched ANF Throughput:   ${SCHED_ANF_THROUGHPUT_MIBPS} MiBps"
+	fi
+else
+	echo "Sched NFS Size:         ${SCHED_FILESYSTEM_SIZE_GB} GiB"
+fi
 echo "HPC SKU / AZ / Max:     ${HPC_SKU} / ${HPC_AZ:-<none>} / ${HPC_MAX_NODES}"
 echo "GPU SKU / AZ / Max:     ${GPU_SKU} / ${GPU_AZ:-<none>} / ${GPU_MAX_NODES}"
 echo "ANF Tier / Size / AZ:   ${ANF_SKU} / ${ANF_SIZE} / ${ANF_AZ:-<none>}"
