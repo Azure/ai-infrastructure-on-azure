@@ -1,0 +1,37 @@
+# Inference Dockerfile for GPT-OSS-20B on H100 GPU
+# Base: NVIDIA PyTorch container (includes CUDA, cuDNN, PyTorch pre-optimized)
+
+FROM nvcr.io/nvidia/pytorch:25.01-py3
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
+# Install Flask for web UI, Azure SDK, and ML packages
+RUN pip install --no-cache-dir \
+    flask \
+    gunicorn \
+    azure-storage-blob \
+    azure-identity \
+    "transformers>=4.55.0" \
+    "peft>=0.17.0" \
+    "accelerate>=0.20.0" \
+    "bitsandbytes>=0.41.0" \
+    sentencepiece \
+    protobuf
+
+# Set working directory
+WORKDIR /workspace
+
+# Copy unified inference engine, web UI, and HTML template from src folder
+COPY src/model_inference.py /workspace/model_inference.py
+COPY src/web-ui.py /workspace/web-ui.py
+COPY src/index.html /workspace/index.html
+RUN chmod +x /workspace/model_inference.py /workspace/web-ui.py
+
+# Expose port for web UI
+EXPOSE 8080
+
+# Run web UI by default (can override with CLI: model_inference.py --model [finetuned|baseline|both])
+CMD ["python3", "/workspace/web-ui.py"]
+
