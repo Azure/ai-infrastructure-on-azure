@@ -16,12 +16,12 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
 
       - name: Super-linter check
-        uses: super-linter/super-linter@v7.4.0
+        uses: super-linter/super-linter@12150456a73e248bdc94d0794898f94e23127c88 # v7.4.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FIX_JSON_PRETTIER: true
@@ -66,7 +66,7 @@ jobs:
 
       - name: Upload linting patch artifact
         if: ${{ github.event_name == 'pull_request' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: super-linter-fixes
           path: super-linter-fixes.patch
@@ -97,7 +97,7 @@ jobs:
         # - Not on the default branch
         # - When there are actual changes to commit
         if: ${{ github.event_name == 'pull_request' && github.ref_name != github.event.repository.default_branch && steps.check_changes.outputs.has_changes == 'true' }}
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@b863ae1933cb653a53c021fe36dbb774e1fb9403 # v5.2.0
         with:
           branch: ${{ github.event.pull_request.head.ref || github.head_ref || github.ref }}
           commit_message: "super-linter: fix linting issues [skip ci]"
