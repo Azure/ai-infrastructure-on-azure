@@ -49,4 +49,4 @@ Training Configuration:
 - Custom Parameters: Controlled via yamlUpdates
 
 For more information, check the documentation at:
-https://github.com/Azure/ai-infrastructure-on-azure/tree/main/examples/llm-foundry/aks
+https://github.com/Azure/ai-infrastructure-on-azure/tree/main/examples/training/llm-foundry/aks

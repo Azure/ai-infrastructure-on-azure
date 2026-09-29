@@ -1,6 +1,6 @@
 apiVersion: v2
 name: blob-shared-storage
-description: A Helm chart for creating shared blobfuse storage with dynamic provisioning
+description: A Helm chart for shared blobfuse storage with dynamic or static provisioning
 type: application
-version: 0.1.0
+version: 0.2.0
 appVersion: "1.0"

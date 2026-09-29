@@ -116,7 +116,7 @@ git clone https://github.com/Azure/ai-infrastructure-on-azure.git
 Run the setup script. The script will install uv and leverage it to create a python virtual environment and install the required packages to use NeMo-Run:
 
 ```bash
- ./ai-infrastructure-on-azure/examples/nemo-run/slurm/setup.sh
+ ./ai-infrastructure-on-azure/examples/training/nemo-run/slurm/setup.sh
 ```
 
 Once the script completes, you should see a folder in your home directory named `ccws-nemo-venv`.

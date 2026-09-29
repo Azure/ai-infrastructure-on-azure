@@ -3,6 +3,9 @@
 
 # Storage configuration
 storage:
+  # Provisioning mode: "dynamic" (create new AMLFS instance) or "static" (use existing AMLFS)
+  provisioning: "dynamic"
+
   # PVC name that will be created
   pvcName: "shared-amlfs-storage"
   # Storage size for the shared volume
@@ -10,12 +13,12 @@ storage:
   # Access modes for the PVC
   accessModes:
     - ReadWriteMany
-  # Reclaim policy for dynamically created storage
+  # Reclaim policy (Delete for dynamic, Retain recommended for static)
   reclaimPolicy: "Delete"
-  # Volume binding mode
+  # Volume binding mode (dynamic provisioning only)
   volumeBindingMode: "Immediate"
 
-  # AMLFS dynamic provisioning settings
+  # AMLFS dynamic provisioning settings (used when provisioning is "dynamic")
   amlfs:
     # AMLFS SKU name
     skuName: "AMLFS-Durable-Premium-125"
@@ -25,6 +28,13 @@ storage:
     maintenanceDayOfWeek: "Sunday"
     # Maintenance time of day in UTC
     maintenanceTimeOfDayUtc: "02:00"
+
+  # Static provisioning settings — required when provisioning is "static"
+  existingFilesystem:
+    # The Lustre MGS IP address of the existing AMLFS instance
+    mgsIPAddress: ""
+    # The filesystem name (typically "lustrefs")
+    filesystemName: "lustrefs"
 
   # Lustre mount options
   mountOptions:

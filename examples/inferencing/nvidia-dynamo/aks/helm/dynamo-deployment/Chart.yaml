@@ -1,0 +1,15 @@
+apiVersion: v2
+name: dynamo-deployment
+description: NVIDIA Dynamo Graph Deployment for LLM inference on Kubernetes
+type: application
+version: 0.1.0
+appVersion: "1.0.1"
+keywords:
+  - nvidia
+  - dynamo
+  - inference
+  - llm
+  - vllm
+home: https://github.com/Azure/ai-infrastructure-on-azure
+sources:
+  - https://developer.nvidia.com/dynamo

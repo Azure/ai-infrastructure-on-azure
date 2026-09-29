@@ -3,7 +3,7 @@ kind: PersistentVolumeClaim
 metadata:
   name: {{ .Values.storage.pvcName }}
   labels:
-    {{- include "blob-shared-storage.labels" . | nindent 4 }}
+    {{- include "azurefiles-shared-storage.labels" . | nindent 4 }}
   {{- with .Values.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -17,8 +17,8 @@ spec:
     requests:
       storage: {{ .Values.storage.size }}
   {{- if eq .Values.storage.provisioning "dynamic" }}
-  storageClassName: {{ include "blob-shared-storage.fullname" . }}-blob-storage
+  storageClassName: {{ include "azurefiles-shared-storage.fullname" . }}-azurefiles-premium-nfs
   {{- else }}
-  volumeName: {{ include "blob-shared-storage.fullname" . }}-pv
+  volumeName: {{ include "azurefiles-shared-storage.fullname" . }}-pv
   storageClassName: ""
   {{- end }}

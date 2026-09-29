@@ -1,0 +1,33 @@
+{{- if eq .Values.storage.provisioning "static" }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ include "azurefiles-shared-storage.fullname" . }}-pv
+  labels:
+    {{- include "azurefiles-shared-storage.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  capacity:
+    storage: {{ .Values.storage.size }}
+  accessModes:
+    {{- range .Values.storage.accessModes }}
+    - {{ . }}
+    {{- end }}
+  persistentVolumeReclaimPolicy: {{ .Values.storage.reclaimPolicy }}
+  csi:
+    driver: file.csi.azure.com
+    readOnly: false
+    volumeHandle: {{ include "azurefiles-shared-storage.fullname" . }}-{{ .Values.storage.existingFileShare.storageAccountName }}-{{ .Values.storage.existingFileShare.shareName }}
+    volumeAttributes:
+      resourceGroup: {{ .Values.storage.existingFileShare.resourceGroup | quote }}
+      storageAccount: {{ .Values.storage.existingFileShare.storageAccountName | quote }}
+      shareName: {{ .Values.storage.existingFileShare.shareName | quote }}
+      protocol: "nfs"
+  mountOptions:
+    {{- range .Values.storage.mountOptions }}
+    - {{ . | quote }}
+    {{- end }}
+{{- end }}
