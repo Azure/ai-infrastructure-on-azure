@@ -392,10 +392,12 @@ AMLFS provides an additional high-performance data filesystem. It is **disabled 
     `--mon-dcr-id`, and `--mon-grafana-id`
 
 - **`--mon-workspace-id <id>`**
+
   - Azure Monitor workspace resource ID (`Microsoft.Monitor/accounts`)
   - Required when `--monitoring` is enabled
 
 - **`--mon-grafana-id <id>`**
+
   - Azure Managed Grafana resource ID (`Microsoft.Dashboard/grafana`)
   - Required when `--monitoring` is enabled
 
