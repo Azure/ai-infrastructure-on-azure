@@ -1137,7 +1137,9 @@ elif [[ "$SPECIFY_AZ" == "true" ]]; then
 	HPC_AZ="$(prompt_zone HPC "${HPC_SKU}" "${HPC_AZ:-}" "${POTENTIAL_HPC_AZ}")"
 	GPU_AZ="$(prompt_zone GPU "${GPU_SKU}" "${GPU_AZ:-}" "${POTENTIAL_GPU_AZ}")"
 
-	ANF_AZ="$(prompt_zone_manual ANF "${ANF_AZ:-}")"
+	if [[ "$SHARED_FILESYSTEM" == "anf" ]]; then
+		ANF_AZ="$(prompt_zone_manual ANF "${ANF_AZ:-}")"
+	fi
 
 	# Only prompt for AMLFS zone if data filesystem is enabled
 	if [[ "$DATA_FILESYSTEM_ENABLED" == "true" ]]; then
@@ -1182,8 +1184,8 @@ anf | nfs) ;;
 	;;
 esac
 if [[ "$SHARED_FILESYSTEM" == "nfs" ]]; then
-	if ! [[ "$SHARED_NFS_SIZE" =~ ^[0-9]+$ ]] || ((SHARED_NFS_SIZE < 1)); then
-		echo "[ERROR] --shared-nfs-size must be an integer >= 1 GiB. Provided: $SHARED_NFS_SIZE" >&2
+	if ! [[ "$SHARED_NFS_SIZE" =~ ^[1-9][0-9]*$ ]]; then
+		echo "[ERROR] --shared-nfs-size must be an integer >= 1 GiB without leading zeros. Provided: $SHARED_NFS_SIZE" >&2
 		exit 1
 	fi
 fi
