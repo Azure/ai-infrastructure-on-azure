@@ -50,22 +50,29 @@ script:
 - Clones the official Azure CycleCloud Workspace for Slurm repository at a
   chosen ref/commit.
 
-> [!WARNING] This guide intentionally uses a **specific commit SHA** of the
-> Azure CycleCloud Workspace for Slurm repository to pull in hotfixes that may
-> not yet be part of the latest tagged release. Pinning the commit ensures
-> reproducible deployments and avoids regressions from upstream changes. If user
-> switches to `--workspace-ref main` without a `--workspace-commit` override
-> user may pick up newer code paths that have not been validated in this
-> environment. Always re-run validation (storage mounts, Slurm job submission,
-> NCCL tests) after changing the commit. Default **workspace reference** in the
-> current repository is the latest release tag of the Azure CycleCloud Workspace for
-> Slurm repository.
+> [!WARNING] The default workspace reference is the latest stable release tag.
+> Pin `--workspace-ref` or `--workspace-commit` for reproducible deployments.
+> Older releases or `main` may use a different parameter schema. Always re-run
+> validation after changing the workspace revision.
 
 - User can specify a specific `commit-id` or `branch` for checkout.
 - Builds an `output.json` parameters file for the Bicep template.
 - Optionally prompts for availability zones only if the region supports zonal
   SKUs.
 - Can immediately deploy the environment (or let user review first).
+
+The helper targets the parameter schema of release `2026.10.23` (published
+October 28, 2026). It uses the entered SSH `key` object, creates a 30-GB NFS
+filesystem for `/sched` (the release's UI default), and uses `anfServiceLevel`
+for shared ANF storage. The default ref is resolved from the latest stable
+GitHub release; discovery failures stop with an error instead of falling back
+to `main`. Use `--workspace-ref 2026.10.23` to reproduce this release.
+
+For built-in NFS only, pass `--shared-filesystem nfs --shared-nfs-size 128`.
+This keeps `/sched` on the scheduler's built-in 30-GB NFS filesystem and uses
+a 128-GiB built-in NFS filesystem for shared home storage, without ANF.
+The default remains `--shared-filesystem anf`; NFS defaults to 1024 GiB
+when `--shared-nfs-size` is omitted.
 
 ### 3.1. Basic Usage
 
@@ -381,7 +388,18 @@ AMLFS provides an additional high-performance data filesystem. It is **disabled 
   - Enable monitoring for the cluster
   - Flag parameter (no value required)
   - Default: disabled
-  - When enabled, requires `--mon-ingestion-endpoint` and `--mon-dcr-id`
+  - When enabled, requires `--mon-workspace-id`, `--mon-ingestion-endpoint`,
+    `--mon-dcr-id`, and `--mon-grafana-id`
+
+- **`--mon-workspace-id <id>`**
+
+  - Azure Monitor workspace resource ID (`Microsoft.Monitor/accounts`)
+  - Required when `--monitoring` is enabled
+
+- **`--mon-grafana-id <id>`**
+
+  - Azure Managed Grafana resource ID (`Microsoft.Dashboard/grafana`)
+  - Required when `--monitoring` is enabled
 
 - **`--mon-ingestion-endpoint <endpoint>`**
 
@@ -401,12 +419,12 @@ AMLFS provides an additional high-performance data filesystem. It is **disabled 
   - Enable Microsoft Entra ID authentication
   - Flag parameter (no value required)
   - Default: disabled
-  - When enabled, requires `--entra-app-umi` and `--entra-app-id`
+  - When enabled, requires `--entra-app-id`
 
 - **`--entra-app-umi <umi-id>`**
 
   - User Managed Identity resource ID used in federated credentials of the registered Entra ID application for user authentication
-  - Required when `--entra-id` is enabled
+  - Required when `--open-ondemand` is enabled
   - Format: `/subscriptions/<sub-id>/resourceGroups/<rg-name>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/<identity-name>`
   - Example: `/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/myResourceGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/myIdentity`
 
@@ -479,7 +497,7 @@ If none of the database flags are provided, `databaseConfig` defaults to:
   - Flag parameter (no value required)
   - Default: disabled
   - **Requires `--entra-id` to be enabled**
-  - Requires `--ood-user-domain` when enabled
+  - Requires `--entra-app-umi` when enabled
 
 - **`--ood-sku <sku>`** (default: `Standard_D4as_v5`)
 
@@ -488,9 +506,8 @@ If none of the database flags are provided, `databaseConfig` defaults to:
 
 - **`--ood-user-domain <domain>`**
 
-  - User domain for Open OnDemand authentication
-  - Required when `--open-ondemand` is enabled
-  - Example: `contoso.com`
+  - Deprecated: accepted with a warning for command-line compatibility
+  - No longer required or included in the release's Open OnDemand parameters
 
 - **`--ood-fqdn <fqdn>`**
 
@@ -571,6 +588,8 @@ If none of the database flags are provided, `databaseConfig` defaults to:
   --amlfs-size 8 \
   --amlfs-az 1 \
   --monitoring \
+  --mon-workspace-id "/subscriptions/12345678/resourceGroups/myRG/providers/Microsoft.Monitor/accounts/myMonitor" \
+  --mon-grafana-id "/subscriptions/12345678/resourceGroups/myRG/providers/Microsoft.Dashboard/grafana/myGrafana" \
   --mon-ingestion-endpoint "https://ccw-mon-xxxxx.swedencentral-1.metrics.ingest.monitor.azure.com/dataCollectionRules/dcr-xxxxx/streams/Microsoft-PrometheusMetrics/api/v1/write?api-version=2023-04-24" \
   --mon-dcr-id "/subscriptions/12345678/resourceGroups/myRG/providers/Microsoft.Insights/dataCollectionRules/myDCR" \
   --entra-id \
@@ -673,14 +692,16 @@ OPTIONAL PARAMETERS:
 
   # Monitoring
   --monitoring             Enable monitoring (disabled by default)
+  --mon-workspace-id <id> Azure Monitor workspace resource ID (required with --monitoring)
   --mon-ingestion-endpoint <endpoint>  Monitoring ingestion endpoint (required with --monitoring)
   --mon-dcr-id <dcr-id>    Data Collection Rule ID (required with --monitoring)
+  --mon-grafana-id <id>   Azure Managed Grafana resource ID (required with --monitoring)
 
   # Microsoft Entra ID
   --entra-id               Enable Microsoft Entra ID (disabled by default)
   --entra-app-umi <umi-id> User Managed Identity resource ID used in federated credentials
                            of the registered Entra ID application for user authentication
-                           (required with --entra-id)
+                           (required with --open-ondemand)
   --entra-app-id <app-id>  Application (client) ID of the registered Entra ID application
                            used to authenticate users (required with --entra-id)
 
@@ -696,7 +717,7 @@ OPTIONAL PARAMETERS:
   # Open OnDemand Portal
   --open-ondemand          Enable Open OnDemand web portal (flag, requires --entra-id to be enabled)
   --ood-sku <sku>          Open OnDemand VM SKU (default: Standard_D4as_v5)
-  --ood-user-domain <domain>   User domain for OOD authentication (required with --open-ondemand)
+  --ood-user-domain <domain>   Deprecated; accepted but no longer used
   --ood-fqdn <fqdn>        Fully Qualified Domain Name for OOD (optional)
   --ood-no-start           Do not start OOD cluster automatically (default: start cluster)
                            Note: App ID, Managed Identity, and Tenant ID are automatically
@@ -752,6 +773,8 @@ EXAMPLES:
     --anf-sku Premium --anf-size 4 --anf-az 1 \
     --data-filesystem --amlfs-sku AMLFS-Durable-Premium-500 --amlfs-size 8 --amlfs-az 1 \
     --monitoring \
+    --mon-workspace-id "/subscriptions/SUB/resourceGroups/RG/providers/Microsoft.Monitor/accounts/myMonitor" \
+    --mon-grafana-id "/subscriptions/SUB/resourceGroups/RG/providers/Microsoft.Dashboard/grafana/myGrafana" \
     --mon-ingestion-endpoint "https://example.metrics.ingest.monitor.azure.com/..." \
     --mon-dcr-id "/subscriptions/SUB/resourceGroups/RG/providers/Microsoft.Insights/dataCollectionRules/myDCR" \
     --entra-id \
