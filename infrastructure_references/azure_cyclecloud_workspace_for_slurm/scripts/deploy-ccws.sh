@@ -76,6 +76,10 @@ OPTIONAL PARAMETERS:
     --network-address-space <cidr>  Virtual network CIDR (default: 10.0.0.0/24)
     --bastion                    Enable Azure Bastion deployment (flag)
 
+  Shared Storage:
+    --shared-filesystem <type>   Shared home filesystem: anf|nfs (default: anf)
+    --shared-nfs-size <GiB>      Built-in NFS capacity in GiB (default: 1024, minimum: 1)
+
   Storage - Azure NetApp Files:
     --anf-sku <tier>             ANF service level: Standard|Premium|Ultra (default: Premium)
     --anf-size <TiB>             ANF capacity in TiB (integer, default: 2, minimum: 1)
@@ -89,14 +93,16 @@ OPTIONAL PARAMETERS:
 
   Monitoring:
     --monitoring                 Enable monitoring (disabled by default)
+    --mon-workspace-id <id>      Azure Monitor workspace resource ID (required with --monitoring)
     --mon-ingestion-endpoint <endpoint>  Monitoring ingestion endpoint (required with --monitoring)
     --mon-dcr-id <dcr-id>        Data Collection Rule ID (required with --monitoring)
+    --mon-grafana-id <id>        Azure Managed Grafana resource ID (required with --monitoring)
 
   Microsoft Entra ID:
     --entra-id                   Enable Microsoft Entra ID (disabled by default)
     --entra-app-umi <umi-id>     User Managed Identity resource ID used in federated credentials 
                                  of the registered Entra ID application for user authentication 
-                                 (required with --entra-id)
+                                 (required with --open-ondemand)
     --entra-app-id <app-id>      Application (client) ID of the registered Entra ID application 
                                  used to authenticate users (required with --entra-id)
 
@@ -119,7 +125,7 @@ OPTIONAL PARAMETERS:
     --open-ondemand              Enable Open OnDemand web portal (flag)
                                  Requires --entra-id to be enabled
     --ood-sku <sku>              OOD VM SKU (default: Standard_D4as_v5)
-    --ood-user-domain <domain>   User domain for OOD authentication (required with --open-ondemand)
+    --ood-user-domain <domain>   Deprecated; accepted for compatibility but no longer used
     --ood-fqdn <fqdn>            Fully Qualified Domain Name for OOD (optional)
     --ood-no-start               Do not start OOD cluster automatically (default: start cluster)
 
@@ -221,14 +227,14 @@ OOD_IMAGE="cycle.image.ubuntu24"
 HTC_IMAGE="cycle.image.ubuntu24"
 HPC_IMAGE="cycle.image.ubuntu24"
 GPU_IMAGE="cycle.image.ubuntu24"
-# Retrieve latest releas tag, default to main
-LATEST_RELEASE_TAG="$(curl -s https://api.github.com/repos/azure/cyclecloud-slurm-workspace/releases/latest | jq -r .tag_name 2>/dev/null || echo "main")"
-WORKSPACE_REF="${WORKSPACE_REF:-$LATEST_RELEASE_TAG}" # allow pre-set env var to override default
+WORKSPACE_REF="${WORKSPACE_REF:-}" # allow pre-set env var to override default
 WORKSPACE_COMMIT=""
 OUTPUT_FILE="${DEFAULT_OUTPUT_FILE}"
 WORKSPACE_DIR="${SCRIPT_DIR}/cyclecloud-slurm-workspace"
 ACCEPT_MARKETPLACE="false"
 DO_DEPLOY="false"
+SHARED_FILESYSTEM="anf"
+SHARED_NFS_SIZE="1024"
 ANF_SKU="Premium"
 ANF_SIZE="2"
 ANF_AZ=""
@@ -237,8 +243,10 @@ AMLFS_SIZE="4"
 AMLFS_AZ=""
 DATA_FILESYSTEM_ENABLED="false"
 MONITORING_ENABLED="false"
+MON_WORKSPACE_ID=""
 MON_INGESTION_ENDPOINT=""
 MON_DCR_ID=""
+MON_GRAFANA_ID=""
 ENTRA_ID_ENABLED="false"
 ENTRA_APP_UMI=""
 ENTRA_APP_ID=""
@@ -377,6 +385,14 @@ while [[ $# -gt 0 ]]; do
 		ANF_SKU="$2"
 		shift 2
 		;;
+	--shared-filesystem)
+		SHARED_FILESYSTEM="$2"
+		shift 2
+		;;
+	--shared-nfs-size)
+		SHARED_NFS_SIZE="$2"
+		shift 2
+		;;
 	--anf-size)
 		ANF_SIZE="$2"
 		shift 2
@@ -413,12 +429,20 @@ while [[ $# -gt 0 ]]; do
 		MONITORING_ENABLED="true"
 		shift 1
 		;;
+	--mon-workspace-id)
+		MON_WORKSPACE_ID="$2"
+		shift 2
+		;;
 	--mon-ingestion-endpoint)
 		MON_INGESTION_ENDPOINT="$2"
 		shift 2
 		;;
 	--mon-dcr-id)
 		MON_DCR_ID="$2"
+		shift 2
+		;;
+	--mon-grafana-id)
+		MON_GRAFANA_ID="$2"
 		shift 2
 		;;
 	--entra-id)
@@ -554,7 +578,7 @@ if [[ ! -f "$SSH_KEY_FILE" ]]; then
 	echo "SSH key file not found: $SSH_KEY_FILE" >&2
 	exit 1
 fi
-SSH_PUBLIC_KEY="$(tr -d '\n' <"$SSH_KEY_FILE")"
+SSH_PUBLIC_KEY_JSON="$(tr -d '\r\n' <"$SSH_KEY_FILE" | jq -Rs .)"
 # Generate database name if requested
 if [[ "$DB_GENERATE_NAME" == "true" ]]; then
 	if [[ "$CREATE_ACCOUNTING_MYSQL" != "true" ]]; then
@@ -791,7 +815,7 @@ load_compute_skus() {
 		debug_log "Loading SKUs with filter: HTC=$HTC_SKU, HPC=$HPC_SKU, GPU=$GPU_SKU, SCHEDULER=$SCHEDULER_SKU, LOGIN=$LOGIN_SKU, OOD=$OOD_SKU"
 	fi
 	local raw
-	if ! raw=$(az rest --method get --url "/subscriptions/{subscriptionId}/providers/Microsoft.Compute/skus?api-version=2021-07-01&\$filter=location eq '${LOCATION}'" --query "$query_filter" -o json 2>/dev/null); then
+	if ! raw=$(az rest --subscription "$SUBSCRIPTION_ID" --method get --url "/subscriptions/{subscriptionId}/providers/Microsoft.Compute/skus?api-version=2021-07-01&\$filter=location eq '${LOCATION}'" --query "$query_filter" -o json 2>/dev/null); then
 		echo "[ERROR] az rest call to list SKUs failed; zone discovery cannot proceed." >&2
 		COMPUTE_SKUS_CACHE=""
 		return 1
@@ -925,6 +949,10 @@ prompt_zone_manual() {
 
 # Validate monitoring requirements early (before AZ checks)
 if [[ "$MONITORING_ENABLED" == "true" ]]; then
+	if [[ -z "$MON_WORKSPACE_ID" ]]; then
+		echo "[ERROR] --monitoring requires --mon-workspace-id to be specified." >&2
+		exit 1
+	fi
 	if [[ -z "$MON_INGESTION_ENDPOINT" ]]; then
 		echo "[ERROR] --monitoring requires --mon-ingestion-endpoint to be specified." >&2
 		exit 1
@@ -933,20 +961,20 @@ if [[ "$MONITORING_ENABLED" == "true" ]]; then
 		echo "[ERROR] --monitoring requires --mon-dcr-id to be specified." >&2
 		exit 1
 	fi
+	if [[ -z "$MON_GRAFANA_ID" ]]; then
+		echo "[ERROR] --monitoring requires --mon-grafana-id to be specified." >&2
+		exit 1
+	fi
 fi
 
 # Validate Entra ID requirements
 if [[ "$ENTRA_ID_ENABLED" == "true" ]]; then
-	if [[ -z "$ENTRA_APP_UMI" ]]; then
-		echo "[ERROR] --entra-id requires --entra-app-umi to be specified." >&2
-		exit 1
-	fi
 	if [[ -z "$ENTRA_APP_ID" ]]; then
 		echo "[ERROR] --entra-id requires --entra-app-id to be specified." >&2
 		exit 1
 	fi
 	# Get tenant ID from active subscription (used for both Entra ID and OOD)
-	TENANT_ID=$(az account show --query tenantId -o tsv 2>/dev/null || echo "")
+	TENANT_ID=$(az account show --subscription "$SUBSCRIPTION_ID" --query tenantId -o tsv 2>/dev/null || echo "")
 	if [[ -z "$TENANT_ID" ]]; then
 		echo "[ERROR] Unable to retrieve tenant ID from active subscription." >&2
 		exit 1
@@ -960,8 +988,8 @@ if [[ "$OOD_ENABLED" == "true" ]]; then
 		echo "[ERROR] --open-ondemand requires --entra-id to be enabled." >&2
 		exit 1
 	fi
-	if [[ -z "$OOD_USER_DOMAIN" ]]; then
-		echo "[ERROR] --open-ondemand requires --ood-user-domain to be specified." >&2
+	if [[ -z "$ENTRA_APP_UMI" ]]; then
+		echo "[ERROR] --open-ondemand requires --entra-app-umi to be specified." >&2
 		exit 1
 	fi
 	if [[ -z "$OOD_SKU" ]]; then
@@ -978,6 +1006,10 @@ if [[ "$OOD_ENABLED" == "true" ]]; then
 			echo "[WARN] --ood-fqdn '$OOD_FQDN' does not appear to be a FQDN (missing dot). Proceeding anyway." >&2
 		fi
 	fi
+fi
+
+if [[ -n "$OOD_USER_DOMAIN" ]]; then
+	echo "[WARN] --ood-user-domain is no longer used by the workspace template; ignoring it." >&2
 fi
 
 # Validate all VM SKUs exist in the target region
@@ -1141,6 +1173,21 @@ if [[ -n "${GPU_AZ}" ]]; then GPU_ZONES_JSON=", \"availabilityZone\": [\"${GPU_A
 if [[ -n "${ANF_AZ}" ]]; then ANF_ZONES_JSON=", \"availabilityZone\": [\"${ANF_AZ}\"]"; else ANF_ZONES_JSON=""; fi
 if [[ -n "${AMLFS_AZ}" ]]; then AMLFS_ZONES_JSON=", \"availabilityZone\": [\"${AMLFS_AZ}\"]"; else AMLFS_ZONES_JSON=""; fi
 
+# Validate shared filesystem inputs
+case "$SHARED_FILESYSTEM" in
+anf | nfs) ;;
+*)
+	echo "[ERROR] --shared-filesystem must be one of anf|nfs. Provided: $SHARED_FILESYSTEM" >&2
+	exit 1
+	;;
+esac
+if [[ "$SHARED_FILESYSTEM" == "nfs" ]]; then
+	if ! [[ "$SHARED_NFS_SIZE" =~ ^[0-9]+$ ]] || ((SHARED_NFS_SIZE < 1)); then
+		echo "[ERROR] --shared-nfs-size must be an integer >= 1 GiB. Provided: $SHARED_NFS_SIZE" >&2
+		exit 1
+	fi
+fi
+
 # Validate ANF inputs
 if ! [[ "$ANF_SIZE" =~ ^[0-9]+$ ]]; then
 	echo "[ERROR] --anf-size must be an integer (TiB). Provided: $ANF_SIZE" >&2
@@ -1177,6 +1224,14 @@ if [[ "$DATA_FILESYSTEM_ENABLED" == "true" ]]; then
 	esac
 fi
 
+# Resolve the latest stable release only when no explicit ref or commit was supplied.
+if [[ -z "$WORKSPACE_REF" && -z "$WORKSPACE_COMMIT" ]]; then
+	if ! WORKSPACE_REF="$(curl -fsSL https://api.github.com/repos/azure/cyclecloud-slurm-workspace/releases/latest | jq -er '.tag_name | strings | select(length > 0)')"; then
+		echo "[ERROR] Unable to resolve the latest workspace release. Specify --workspace-ref or --workspace-commit explicitly." >&2
+		exit 1
+	fi
+fi
+
 # Clone workspace repo if not present
 if [[ -d "$WORKSPACE_DIR/.git" ]]; then
 	echo "[INFO] Workspace repo already present at $WORKSPACE_DIR"
@@ -1209,16 +1264,21 @@ else
 fi
 
 echo "[INFO] Generating output.json at $OUTPUT_FILE"
+if [[ "$SHARED_FILESYSTEM" == "nfs" ]]; then
+	SHARED_FILESYSTEM_JSON='"sharedFilesystem": { "value": { "type": "nfs-new", "nfsCapacityInGb": '"${SHARED_NFS_SIZE}"' } },'
+else
+	SHARED_FILESYSTEM_JSON='"sharedFilesystem": { "value": { "type": "anf-new", "anfServiceLevel": "'"${ANF_SKU}"'", "anfCapacityInTiB": '"${ANF_SIZE}${ANF_ZONES_JSON}"' } },'
+fi
 if [[ "$DB_ENABLED" == "true" ]]; then
 	# Only include databaseConfig; databaseAdminPassword is now passed via CLI to avoid persisting secrets.
-	DB_JSON_DATABASE_CONFIG='"databaseConfig": { "value": { "type": "privateEndpoint", "databaseUser": "'"${DB_USERNAME}"'", "dbInfo": { "name": "'"${DB_NAME}"'", "id": "'"${DB_ID}"'", "location": "'"${LOCATION}"'", "subscriptionName": "" } } },'
+	DB_JSON_DATABASE_CONFIG='"databaseConfig": { "value": { "type": "privateEndpoint", "databaseUser": "'"${DB_USERNAME}"'", "dbInfo": { "name": "'"${DB_NAME}"'", "id": "'"${DB_ID}"'", "location": "'"${LOCATION}"'" } } },'
 else
 	DB_JSON_DATABASE_CONFIG='"databaseConfig": { "value": { "type": "disabled" } },'
 fi
 
 # Construct Open OnDemand JSON fragment (minimal when disabled)
 if [[ "$OOD_ENABLED" == "true" ]]; then
-	OOD_JSON='"ood": { "value": { "type": "enabled", "startCluster": '"${OOD_START_CLUSTER}"', "sku": "'"${OOD_SKU}"'", "osImage": "'"${OOD_IMAGE}"'", "userDomain": "'"${OOD_USER_DOMAIN}"'", "fqdn": "'"${OOD_FQDN}"'", "registerEntraIDApp": false, "appId": "'"${ENTRA_APP_ID}"'", "appManagedIdentityId": "'"${ENTRA_APP_UMI}"'", "appTenantId": "'"${TENANT_ID}"'" } },'
+	OOD_JSON='"ood": { "value": { "type": "enabled", "startCluster": '"${OOD_START_CLUSTER}"', "sku": "'"${OOD_SKU}"'", "osImage": "'"${OOD_IMAGE}"'", "fqdn": "'"${OOD_FQDN}"'", "registerEntraIDApp": false, "appId": "'"${ENTRA_APP_ID}"'", "appManagedIdentityId": "'"${ENTRA_APP_UMI}"'", "appTenantId": "'"${TENANT_ID}"'" } },'
 else
 	OOD_JSON='"ood": { "value": { "type": "disabled" } },'
 fi
@@ -1232,14 +1292,14 @@ fi
 
 # Construct monitoring JSON fragment (conditional on enabled flag)
 if [[ "$MONITORING_ENABLED" == "true" ]]; then
-	MONITORING_JSON='"monitoring": { "value": { "type": "enabled", "ingestionEndpoint": "'"${MON_INGESTION_ENDPOINT}"'", "dcrId": "'"${MON_DCR_ID}"'" } },'
+	MONITORING_JSON='"monitoring": { "value": { "type": "enabled", "monitorWorkspaceId": "'"${MON_WORKSPACE_ID}"'", "ingestionEndpoint": "'"${MON_INGESTION_ENDPOINT}"'", "dcrId": "'"${MON_DCR_ID}"'", "grafanaId": "'"${MON_GRAFANA_ID}"'" } },'
 else
 	MONITORING_JSON='"monitoring": { "value": { "type": "disabled" } },'
 fi
 
 # Construct Entra SSO JSON fragment (conditional on enabled flag)
 if [[ "$ENTRA_ID_ENABLED" == "true" ]]; then
-	ENTRA_ID_JSON='"entraIdInfo": { "value": { "type": "enabled", "managedIdentityId": "'"${ENTRA_APP_UMI}"'", "clientId": "'"${ENTRA_APP_ID}"'", "tenantId": "'"${TENANT_ID}"'" } },'
+	ENTRA_ID_JSON='"entraIdInfo": { "value": { "type": "enabled", "clientId": "'"${ENTRA_APP_ID}"'", "tenantId": "'"${TENANT_ID}"'" } },'
 else
 	ENTRA_ID_JSON='"entraIdInfo": { "value": { "type": "disabled" } },'
 fi
@@ -1263,12 +1323,13 @@ cat >"$OUTPUT_FILE" <<EOF
 	"parameters": {
 		"location": { "value": "${LOCATION}" },
 		"adminUsername": { "value": "${ADMIN_USERNAME}" },
-		"adminSshPublicKey": { "value": "${SSH_PUBLIC_KEY}" },
+		"key": { "value": { "type": "entered", "value": ${SSH_PUBLIC_KEY_JSON} } },
 		"clusterName": { "value": "${CLUSTER_NAME}" },
 		"ccVMName": { "value": "ccw-cyclecloud-vm" },
 		"ccVMSize": { "value": "${SCHEDULER_SKU}" },
 		"resourceGroup": { "value": "${RESOURCE_GROUP}" },
-		"sharedFilesystem": { "value": { "type": "anf-new", "anfServiceTier": "${ANF_SKU}", "anfCapacityInTiB": ${ANF_SIZE}${ANF_ZONES_JSON} } },
+		"schedFilesystem": { "value": { "type": "nfs-new", "nfsCapacityInGb": 30 } },
+		${SHARED_FILESYSTEM_JSON}
 		${AMLFS_JSON}
 		"network": { "value": { "type": "new", "addressSpace": "${NETWORK_ADDRESS_SPACE}", "bastion": ${NETWORK_BASTION}, "createNatGateway": true } },
 		"storagePrivateDnsZone": { "value": { "type": "new" } },
@@ -1318,20 +1379,26 @@ echo "HTC SKU / AZ / Max:     ${HTC_SKU} / ${HTC_AZ:-<none>} / ${HTC_MAX_NODES}"
 echo "HTC Use Spot:           ${HTC_USE_SPOT}"
 echo "Open OnDemand Enabled:  ${OOD_ENABLED}"
 echo "Open OnDemand SKU:      ${OOD_SKU}"
-echo "Open OnDemand Domain:   ${OOD_USER_DOMAIN:-<none>}"
 echo "Open OnDemand FQDN:     ${OOD_FQDN:-<none>}"
 echo "OOD Start Cluster:      ${OOD_START_CLUSTER}"
 echo "HPC SKU / AZ / Max:     ${HPC_SKU} / ${HPC_AZ:-<none>} / ${HPC_MAX_NODES}"
 echo "GPU SKU / AZ / Max:     ${GPU_SKU} / ${GPU_AZ:-<none>} / ${GPU_MAX_NODES}"
-echo "ANF Tier / Size / AZ:   ${ANF_SKU} / ${ANF_SIZE} / ${ANF_AZ:-<none>}"
+echo "Shared Filesystem:      ${SHARED_FILESYSTEM}"
+if [[ "$SHARED_FILESYSTEM" == "nfs" ]]; then
+	echo "Shared NFS Size (GiB):  ${SHARED_NFS_SIZE}"
+else
+	echo "ANF Tier / Size / AZ:   ${ANF_SKU} / ${ANF_SIZE} / ${ANF_AZ:-<none>}"
+fi
 echo "Data Filesystem:        ${DATA_FILESYSTEM_ENABLED}"
 if [[ "$DATA_FILESYSTEM_ENABLED" == "true" ]]; then
 	echo "AMLFS Tier / Size / AZ: ${AMLFS_SKU} / ${AMLFS_SIZE} / ${AMLFS_AZ:-<none>}"
 fi
 echo "Monitoring Enabled:     ${MONITORING_ENABLED}"
 if [[ "$MONITORING_ENABLED" == "true" ]]; then
+	echo "Mon Workspace ID:       ${MON_WORKSPACE_ID}"
 	echo "Mon Ingestion Endpoint: ${MON_INGESTION_ENDPOINT}"
 	echo "Mon DCR ID:             ${MON_DCR_ID}"
+	echo "Mon Grafana ID:         ${MON_GRAFANA_ID}"
 fi
 echo "Entra ID Enabled:       ${ENTRA_ID_ENABLED}"
 if [[ "$ENTRA_ID_ENABLED" == "true" ]]; then
@@ -1406,12 +1473,12 @@ if [[ "$DO_DEPLOY" == "true" ]]; then
 	az account set --subscription "$SUBSCRIPTION_ID" 2>/dev/null || echo "[WARN] Unable to set subscription (login required)."
 	echo "[INFO] Performing az deployment sub create"
 	if [[ "$DB_ENABLED" == "true" ]]; then
-		az deployment sub create --name "$RANDOM_NAME" --location "$LOCATION" --template-file "$WORKSPACE_DIR/bicep/mainTemplate.bicep" --parameters @"$OUTPUT_FILE" adminPassword="$ADMIN_PASSWORD" databaseAdminPassword="$DB_PASSWORD" --debug || {
+		az deployment sub create --name "$RANDOM_NAME" --location "$LOCATION" --template-file "$WORKSPACE_DIR/bicep/mainTemplate.bicep" --parameters @"$OUTPUT_FILE" adminPassword="$ADMIN_PASSWORD" databaseAdminPassword="$DB_PASSWORD" || {
 			echo "[ERROR] Deployment failed" >&2
 			exit 1
 		}
 	else
-		az deployment sub create --name "$RANDOM_NAME" --location "$LOCATION" --template-file "$WORKSPACE_DIR/bicep/mainTemplate.bicep" --parameters @"$OUTPUT_FILE" adminPassword="$ADMIN_PASSWORD" databaseAdminPassword="" --debug || {
+		az deployment sub create --name "$RANDOM_NAME" --location "$LOCATION" --template-file "$WORKSPACE_DIR/bicep/mainTemplate.bicep" --parameters @"$OUTPUT_FILE" adminPassword="$ADMIN_PASSWORD" databaseAdminPassword="" || {
 			echo "[ERROR] Deployment failed" >&2
 			exit 1
 		}
