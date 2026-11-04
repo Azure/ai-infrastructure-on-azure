@@ -627,9 +627,15 @@ function install_amlfs() {
 		done
 
 		# Wait for node pods to be ready
+		local node_status
 		while true; do
-			node_ready=$(kubectl get -n kube-system daemonset csi-azurelustre-node -o jsonpath='{.status.numberReady}' 2>/dev/null || echo "0")
-			node_desired=$(kubectl get -n kube-system daemonset csi-azurelustre-node -o jsonpath='{.status.desiredNumberScheduled}' 2>/dev/null || echo "0")
+			node_status=$(kubectl get -n kube-system daemonsets -o json 2>/dev/null | jq -r '
+				[.items[]
+				 | select(.metadata.name == "csi-azurelustre-node" or (.metadata.name | startswith("csi-azurelustre-node-")))
+				 | .status]
+				 | [(map(.numberReady // 0) | add // 0), (map(.desiredNumberScheduled // 0) | add // 0)]
+				 | @tsv' || printf '0\t0')
+			read -r node_ready node_desired <<<"${node_status}"
 
 			if [[ "${node_ready}" -gt 0 && "${node_ready}" == "${node_desired}" ]]; then
 				echo "✅ AMLFS CSI driver is ready."
