@@ -1,0 +1,23 @@
+apiVersion: nvidia.com/v1beta1
+kind: DynamoGraphDeploymentRequest
+metadata:
+  name: {{ .Release.Name }}
+  {{- if .Values.namespace }}
+  namespace: {{ .Values.namespace }}
+  {{- end }}
+spec:
+  # Model to profile and deploy
+  overrides:
+      dgd:
+        apiVersion: nvidia.com/v1beta1
+        kind: DynamoGraphDeployment
+        spec:
+            name: {{ .Release.Name }}
+  model: {{ .Values.model.name | quote }}
+  modelCache:
+    pvcName: {{ .Values.modelCache.pvcName | quote }}
+    pvcModelPath: {{ .Values.modelCache.pvcModelPath | quote }}
+  backend: {{ .Values.model.backend }}
+  # Container image for the profiling job — must match your installed platform version.
+  # This is the same dynamo-frontend image used by the deployed inference service.
+  image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"

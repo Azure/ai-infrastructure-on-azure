@@ -1,0 +1,23 @@
+{{- if eq .Values.storage.provisioning "dynamic" }}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ include "azurefiles-shared-storage.fullname" . }}-azurefiles-premium-nfs
+  labels:
+    {{- include "azurefiles-shared-storage.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+provisioner: file.csi.azure.com
+reclaimPolicy: {{ .Values.storage.reclaimPolicy }}
+volumeBindingMode: {{ .Values.storage.volumeBindingMode }}
+allowVolumeExpansion: true
+mountOptions:
+  {{- range .Values.storage.mountOptions }}
+  - {{ . | quote }}
+  {{- end }}
+parameters:
+  skuName: {{ .Values.storage.azureFiles.skuName }}
+  protocol: {{ .Values.storage.azureFiles.protocol }}
+{{- end }}

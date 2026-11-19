@@ -1,0 +1,68 @@
+{{- if eq .Values.storage.provisioning "dynamic" }}
+1. The Azure Files Premium NFS shared storage has been created with the following components:
+   - StorageClass: {{ include "azurefiles-shared-storage.fullname" . }}-azurefiles-premium-nfs
+   - PersistentVolumeClaim: {{ .Values.storage.pvcName }}
+
+2. To use this shared storage in other applications:
+   
+   Reference the PVC name in your deployments:
+   ```yaml
+   volumes:
+     - name: shared-data
+       persistentVolumeClaim:
+         claimName: {{ .Values.storage.pvcName }}
+   ```
+
+3. Storage Details:
+   - Provisioning: Dynamic
+   - Size: {{ .Values.storage.size }}
+   - Access Modes: {{ join ", " .Values.storage.accessModes }}
+   - SKU: {{ .Values.storage.azureFiles.skuName }}
+   - Protocol: {{ .Values.storage.azureFiles.protocol }} (NFSv4.1)
+
+4. Mount Options configured for optimal performance:
+   {{- range .Values.storage.mountOptions }}
+   - {{ . }}
+   {{- end }}
+
+NOTE: Azure Files Premium NFS requires:
+- A VNet-integrated AKS cluster or private endpoint connectivity
+- Minimum share size of 100 GiB
+
+The shared storage is now ready for use by multiple applications with high-performance NFS access.
+{{- else }}
+1. The static Azure Files Premium NFS storage has been created with the following components:
+   - PersistentVolume: {{ include "azurefiles-shared-storage.fullname" . }}-pv
+   - PersistentVolumeClaim: {{ .Values.storage.pvcName }}
+
+2. File Share Details:
+   - Storage Account: {{ .Values.storage.existingFileShare.storageAccountName }}
+   - Resource Group: {{ .Values.storage.existingFileShare.resourceGroup }}
+   - Share Name: {{ .Values.storage.existingFileShare.shareName }}
+   - Protocol: NFS (NFSv4.1)
+
+3. To use this storage in other applications:
+
+   Reference the PVC name in your deployments:
+   ```yaml
+   volumes:
+     - name: shared-data
+       persistentVolumeClaim:
+         claimName: {{ .Values.storage.pvcName }}
+   ```
+
+4. Storage Details:
+   - Provisioning: Static
+   - Size: {{ .Values.storage.size }}
+   - Access Modes: {{ join ", " .Values.storage.accessModes }}
+
+5. Mount Options configured for optimal performance:
+   {{- range .Values.storage.mountOptions }}
+   - {{ . }}
+   {{- end }}
+
+NOTE: Ensure the AKS cluster has network connectivity to the Azure Files NFS endpoint
+(via VNet integration or private endpoint).
+
+The static NFS storage is now ready for use by multiple applications.
+{{- end }}

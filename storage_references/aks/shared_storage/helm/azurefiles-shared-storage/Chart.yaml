@@ -1,0 +1,6 @@
+apiVersion: v2
+name: azurefiles-shared-storage
+description: A Helm chart for Azure Files Premium NFS shared storage with dynamic or static provisioning
+type: application
+version: 0.1.0
+appVersion: "1.0"

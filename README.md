@@ -8,7 +8,7 @@
 1. [Overview](#1-overview)
 2. [Infrastructure References Catalog](#2-infrastructure-references-catalog)
 3. [Storage References Catalog](#3-storage-references-catalog)
-4. [AI Training Example Catalog](#4-ai-training-example-catalog)
+4. [AI Examples Catalog](#4-ai-examples-catalog)
 5. [Infrastructure Validation Catalog](#5-infrastructure-validation-catalog)
 6. [Scheduling and Workload Management](#6-scheduling-and-workload-management)
 7. [Utilities Catalog](#7-utilities-catalog)
@@ -53,19 +53,27 @@ monitoring and observability.
    Tuning guidance for container squashed image files on Slurm clusters,
    including Azure Managed Lustre striping optimization and local NVME staging
 
-## 4. AI Training Example Catalog
+## 4. AI Examples Catalog
+
+### 4.1. Training Examples
 
 1. MegatronLM GPT3-175B with Slimpajama 627B dataset - Example of an end-to-end
    training workflow based on MegatronLM, including data pre-processing from
    Slimpajama 627B dataset
-   - [Slurm version](./examples/megatron-lm/GPT3-175B/slurm/README.md)
-   - [AKS version](./examples/megatron-lm/GPT3-175B/aks/README.md)
+   - [Slurm version](./examples/training/megatron-lm/GPT3-175B/slurm/README.md)
+   - [AKS version](./examples/training/megatron-lm/GPT3-175B/aks/README.md)
 2. LLM Foundry MPT Training - Example of an end-to-end training workflow of
    Mosaic Pretrained Transformer (MPT) model on
    [C4](https://huggingface.co/datasets/allenai/c4) dataset, based on LLM
    Foundry
-   - [Slurm version](./examples/llm-foundry/slurm/README.md)
-   - [AKS version](./examples/llm-foundry/aks/README.md)
+   - [Slurm version](./examples/training/llm-foundry/slurm/README.md)
+   - [AKS version](./examples/training/llm-foundry/aks/README.md)
+
+### 4.2. Inferencing Examples
+
+1. NVIDIA Dynamo LLM Inference - Deploy optimized LLM inference services using
+   NVIDIA Dynamo with automatic profiling and vLLM backend
+   - [AKS version](./examples/inferencing/nvidia-dynamo/aks/README.md)
 
 ## 5. Infrastructure Validation Catalog
 
