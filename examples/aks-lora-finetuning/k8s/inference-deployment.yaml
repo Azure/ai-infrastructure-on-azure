@@ -1,0 +1,104 @@
+---
+# GPT-OSS-20B Side-by-Side Comparison Deployment
+# 2 GPUs: Fine-tuned vs Baseline with Web UI
+# Deploy: ./scripts/06-deploy-inference.sh --replicas 1
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: gpt-oss-inference
+  namespace: workloads
+  labels:
+    app: gpt-oss-inference
+spec:
+  type: LoadBalancer
+  selector:
+    app: gpt-oss-inference
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+      name: http
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gpt-oss-inference
+  namespace: workloads
+  labels:
+    app: gpt-oss-inference
+    azure.workload.identity/use: "true"
+spec:
+  replicas: 0 # Scale manually: kubectl scale deployment gpt-oss-inference -n workloads --replicas=1
+  strategy:
+    type: Recreate # GPU pods can't do rolling updates on a single node
+  selector:
+    matchLabels:
+      app: gpt-oss-inference
+  template:
+    metadata:
+      labels:
+        app: gpt-oss-inference
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: workload-identity-sa
+
+      # GPU node scheduling
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+        - key: sku
+          operator: Equal
+          value: gpu
+          effect: NoSchedule
+
+      containers:
+        - name: inference
+          image: __ACR_NAME__.azurecr.io/gpt-oss-inference:latest
+          imagePullPolicy: Always
+
+          # Web UI with comparison mode
+          command: ["python3", "/workspace/web-ui.py"]
+
+          env:
+            - name: STORAGE_ACCOUNT_NAME
+              value: "__STORAGE_ACCOUNT_NAME__"
+            - name: MODEL_CONTAINER
+              value: "models"
+            - name: MODEL_PATH
+              value: "gpt-oss-20b-multilingual"
+
+          ports:
+            - containerPort: 8080
+              name: http
+
+          # 2 GPU resources for side-by-side comparison
+          resources:
+            requests:
+              nvidia.com/gpu: 2
+              cpu: "64"
+              memory: "160Gi"
+            limits:
+              nvidia.com/gpu: 2
+              cpu: "80"
+              memory: "192Gi"
+
+          # Health probes (models take 3-4 min to load)
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 240
+            periodSeconds: 10
+            timeoutSeconds: 5
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 300
+            periodSeconds: 30
+            timeoutSeconds: 10

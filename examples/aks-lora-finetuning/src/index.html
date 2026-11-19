@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GPT-OSS-20B Comparison</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        min-height: 100vh;
+        padding: 20px;
+      }
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+      }
+      .header {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: #fff;
+        padding: 24px;
+        text-align: center;
+      }
+      .header h1 {
+        font-size: 2em;
+        margin-bottom: 6px;
+      }
+      .form {
+        padding: 24px;
+        background: #f8f9fa;
+      }
+      .form label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 6px;
+        color: #495057;
+      }
+      .form select,
+      .form textarea,
+      .form input[type="text"] {
+        width: 100%;
+        padding: 10px;
+        border: 2px solid #dee2e6;
+        border-radius: 6px;
+        font: inherit;
+        margin-bottom: 16px;
+      }
+      .form select:focus,
+      .form textarea:focus,
+      .form input[type="text"]:focus {
+        outline: 0;
+        border-color: #667eea;
+      }
+      .form textarea {
+        min-height: 100px;
+        resize: vertical;
+      }
+      .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        margin-bottom: 16px;
+      }
+      .form-col label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 6px;
+        color: #495057;
+      }
+      @media (max-width: 900px) {
+        .form-row {
+          grid-template-columns: 1fr;
+        }
+      }
+      button {
+        width: 100%;
+        padding: 14px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: #fff;
+        border: 0;
+        border-radius: 8px;
+        font-size: 1.1em;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:hover {
+        opacity: 0.9;
+        transform: translateY(-1px);
+      }
+      .loading {
+        text-align: center;
+        padding: 40px;
+        display: none;
+      }
+      .loading.show {
+        display: block;
+      }
+      .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #667eea;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 16px;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .results {
+        display: none;
+        padding: 24px;
+        gap: 24px;
+        grid-template-columns: 1fr 1fr;
+      }
+      .results.show {
+        display: grid;
+      }
+      .result {
+        background: #fff;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+      .result.ft {
+        border-left: 4px solid #28a745;
+      }
+      .result.base {
+        border-left: 4px solid #17a2b8;
+      }
+      .badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 16px;
+        font-size: 0.75em;
+        font-weight: 600;
+        text-transform: uppercase;
+        margin-bottom: 12px;
+      }
+      .badge.ft {
+        background: #28a745;
+        color: #fff;
+      }
+      .badge.base {
+        background: #17a2b8;
+        color: #fff;
+      }
+      .section-title {
+        font-size: 0.85em;
+        font-weight: 700;
+        color: #495057;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .prompt-box {
+        background: #e8eaf6;
+        border-left: 3px solid #667eea;
+        padding: 12px;
+        border-radius: 6px;
+        margin-bottom: 12px;
+        white-space: pre-wrap;
+        line-height: 1.6;
+        font-size: 0.85em;
+        font-family: monospace;
+        color: #333;
+      }
+      .reasoning-box {
+        background: #f5f5f5;
+        border-left: 3px solid #9e9e9e;
+        padding: 12px;
+        border-radius: 6px;
+        margin-bottom: 12px;
+        white-space: pre-wrap;
+        line-height: 1.6;
+        font-size: 0.9em;
+        font-style: italic;
+      }
+      .answer-box {
+        background: #fff;
+        border-left: 3px solid #667eea;
+        padding: 12px;
+        border-radius: 6px;
+        white-space: pre-wrap;
+        line-height: 1.6;
+        font-size: 0.9em;
+        font-weight: 500;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      }
+      @media (max-width: 900px) {
+        .results {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🚀 GPT-OSS-20B Comparison</h1>
+        <p>Fine-Tuned vs Baseline Models</p>
+      </div>
+      <form class="form" id="form">
+        <label for="prompt">💭 Your Prompt</label>
+        <textarea
+          id="prompt"
+          required
+          placeholder="Enter your question..."
+        ></textarea>
+
+        <div class="form-row">
+          <div class="form-col">
+            <label for="lang">🌍 Reasoning Language (Fine-Tuned)</label>
+            <select id="lang" required>
+              <option value="">Select language...</option>
+              <option>English</option>
+              <option>Spanish</option>
+              <option>German</option>
+              <option>French</option>
+              <option>Chinese</option>
+            </select>
+          </div>
+          <div class="form-col">
+            <label for="baseline-prefix">📝 Baseline Prefix (Optional)</label>
+            <input
+              type="text"
+              id="baseline-prefix"
+              placeholder="e.g., Reason in English."
+            />
+          </div>
+        </div>
+
+        <button type="submit">⚡ Compare Models</button>
+      </form>
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Generating...</p>
+      </div>
+      <div class="results" id="results">
+        <div class="result ft">
+          <span class="badge ft">Fine-Tuned</span>
+          <div class="section-title">📄 Prompt</div>
+          <div class="prompt-box" id="ft-prompt"></div>
+          <div class="section-title">🧠 Reasoning</div>
+          <div class="reasoning-box" id="ft-reasoning"></div>
+          <div class="section-title">✅ Final Answer</div>
+          <div class="answer-box" id="ft-answer"></div>
+        </div>
+        <div class="result base">
+          <span class="badge base">Baseline</span>
+          <div class="section-title">📄 Prompt</div>
+          <div class="prompt-box" id="base-prompt"></div>
+          <div class="section-title">🧠 Reasoning</div>
+          <div class="reasoning-box" id="base-reasoning"></div>
+          <div class="section-title">✅ Final Answer</div>
+          <div class="answer-box" id="base-answer"></div>
+        </div>
+      </div>
+    </div>
+    <script>
+      document.getElementById("form").onsubmit = async (e) => {
+        e.preventDefault();
+        const loading = document.getElementById("loading");
+        const results = document.getElementById("results");
+        loading.classList.add("show");
+        results.classList.remove("show");
+
+        try {
+          const r = await fetch("/compare", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              reasoning_language: document.getElementById("lang").value,
+              prompt: document.getElementById("prompt").value,
+              baseline_prefix: document.getElementById("baseline-prefix").value,
+            }),
+          });
+          const d = await r.json();
+          loading.classList.remove("show");
+
+          if (!r.ok || d.error !== undefined) {
+            alert(
+              "Error: " +
+                (d.error || d.traceback || `Server returned ${r.status}`),
+            );
+            return;
+          }
+
+          // Display prompts
+          document.getElementById("ft-prompt").textContent =
+            d.finetuned.prompt || "";
+          document.getElementById("base-prompt").textContent =
+            d.baseline.prompt || "";
+
+          // Display reasoning and answers
+          document.getElementById("ft-reasoning").textContent =
+            d.finetuned.reasoning || "(No reasoning extracted)";
+          document.getElementById("ft-answer").textContent =
+            d.finetuned.answer || "";
+          document.getElementById("base-reasoning").textContent =
+            d.baseline.reasoning || "(No reasoning extracted)";
+          document.getElementById("base-answer").textContent =
+            d.baseline.answer || "";
+
+          results.classList.add("show");
+          results.scrollIntoView({ behavior: "smooth" });
+        } catch (err) {
+          loading.classList.remove("show");
+          alert("Error: " + err.message);
+        }
+      };
+    </script>
+  </body>
+</html>
